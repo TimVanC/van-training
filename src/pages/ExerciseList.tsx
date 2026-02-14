@@ -60,6 +60,15 @@ function ExerciseList({ session, onUpdateSession, onSubmit }: ExerciseListProps)
           </li>
         ))}
       </ul>
+      <label className="input-label notes-label">
+        Notes (optional)
+        <textarea
+          className="textarea-field"
+          rows={3}
+          value={session.notes ?? ''}
+          onChange={(e) => onUpdateSession({ ...session, notes: e.target.value || undefined })}
+        />
+      </label>
       <button
         className="submit-button"
         disabled={!allCompleted}

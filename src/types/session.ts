@@ -17,6 +17,7 @@ export interface LiftSession {
   split: string;
   day: string;
   exercises: SessionExercise[];
+  notes?: string;
   startedAt: string;
 }
 
