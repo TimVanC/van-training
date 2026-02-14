@@ -4,6 +4,7 @@ import type { EnduranceSession, EnduranceActivityType } from '../types/session';
 import type { TimeFormat } from '../utils/format';
 import { parseTimeInput, formatTotalSeconds } from '../utils/format';
 import { loadSession, saveSession, clearSession } from '../utils/storage';
+import { normalizeSessionToRows } from '../utils/normalizeSession';
 
 interface EnduranceFormProps {
   activityType: EnduranceActivityType;
@@ -93,8 +94,8 @@ function EnduranceForm({
       notes: notes || undefined,
       startedAt: startedAtRef.current,
     };
-    // Temporary: log session for verification
-    console.log(session);
+    const rows = normalizeSessionToRows(session);
+    console.log(rows);
     clearSession();
     navigate('/');
   }

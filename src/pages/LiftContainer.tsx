@@ -4,6 +4,7 @@ import type { LiftSession } from '../types/session';
 import type { Split } from '../types/lift';
 import { loadSession, saveSession, clearSession } from '../utils/storage';
 import { createLiftSession } from '../utils/session';
+import { normalizeSessionToRows } from '../utils/normalizeSession';
 import splitsData from '../data/splits.json';
 import SplitSelection from './SplitSelection';
 import DaySelection from './DaySelection';
@@ -63,8 +64,8 @@ function LiftContainer(): React.JSX.Element {
 
   function handleSubmit(): void {
     if (!session) return;
-    // Temporary: log session for Phase 3 verification
-    console.log(session);
+    const rows = normalizeSessionToRows(session);
+    console.log(rows);
     clearSession();
     setSession(null);
     navigate('/');
