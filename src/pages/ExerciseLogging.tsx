@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import type { LiftSession, LoggedSet } from '../types/session';
+import TemporaryOverlay from '../components/TemporaryOverlay';
 
 interface ExerciseLoggingProps {
   session: LiftSession;
@@ -17,6 +18,9 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   const [reps, setReps] = useState('');
   const [rir, setRir] = useState('');
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [overlayMsg, setOverlayMsg] = useState('');
+  const [showOverlay, setShowOverlay] = useState(false);
+  const overlayTimer = useRef<number>(0);
 
   if (!exercise) {
     return (
@@ -28,6 +32,13 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
 
   const exerciseListPath = `/lift/${encodeURIComponent(session.split)}/${encodeURIComponent(session.day)}`;
 
+  function flashOverlay(msg: string): void {
+    setOverlayMsg(msg);
+    setShowOverlay(true);
+    window.clearTimeout(overlayTimer.current);
+    overlayTimer.current = window.setTimeout(() => setShowOverlay(false), 500);
+  }
+
   function updateExercise(updatedSets: LoggedSet[], completed?: boolean): void {
     const updatedExercises = session.exercises.map((ex, i) =>
       i === index
@@ -37,13 +48,18 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     onUpdateSession({ ...session, exercises: updatedExercises });
   }
 
+  function parseRir(): number {
+    return rir.trim() === '' ? 0 : (parseInt(rir, 10) || 0);
+  }
+
   function handleAddSet(): void {
     const w = parseFloat(weight);
     const r = parseInt(reps, 10);
-    const ri = parseInt(rir, 10);
-    if (isNaN(w) || isNaN(r) || isNaN(ri)) return;
-
-    const newSet: LoggedSet = { weight: w, reps: r, rir: ri };
+    if (isNaN(w) || isNaN(r)) {
+      flashOverlay('Weight and Reps are required');
+      return;
+    }
+    const newSet: LoggedSet = { weight: w, reps: r, rir: parseRir() };
     updateExercise([...exercise.sets, newSet]);
     setWeight('');
     setReps('');
@@ -54,11 +70,12 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     if (editingIndex === null) return;
     const w = parseFloat(weight);
     const r = parseInt(reps, 10);
-    const ri = parseInt(rir, 10);
-    if (isNaN(w) || isNaN(r) || isNaN(ri)) return;
-
+    if (isNaN(w) || isNaN(r)) {
+      flashOverlay('Weight and Reps are required');
+      return;
+    }
     const updatedSets = exercise.sets.map((s, i) =>
-      i === editingIndex ? { weight: w, reps: r, rir: ri } : s,
+      i === editingIndex ? { weight: w, reps: r, rir: parseRir() } : s,
     );
     updateExercise(updatedSets);
     setWeight('');
@@ -75,15 +92,18 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     setEditingIndex(setIndex);
   }
 
+  function handleDuplicate(setIndex: number): void {
+    const set = exercise.sets[setIndex];
+    setWeight(String(set.weight));
+    setReps(String(set.reps));
+    setRir(String(set.rir));
+    setEditingIndex(null);
+  }
+
   function handleDeleteSet(setIndex: number): void {
     const updatedSets = exercise.sets.filter((_, i) => i !== setIndex);
     updateExercise(updatedSets);
-    if (editingIndex === setIndex) {
-      setEditingIndex(null);
-      setWeight('');
-      setReps('');
-      setRir('');
-    }
+    if (editingIndex === setIndex) handleCancelEdit();
   }
 
   function handleCancelEdit(): void {
@@ -114,6 +134,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
               </span>
               <span className="set-actions">
                 <button className="set-action-button" onClick={() => handleEdit(i)}>Edit</button>
+                <button className="set-action-button" onClick={() => handleDuplicate(i)}>Dup</button>
                 <button className="set-action-button" onClick={() => handleDeleteSet(i)}>Del</button>
               </span>
             </li>
@@ -143,7 +164,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
           />
         </label>
         <label className="input-label">
-          RIR
+          RIR (optional)
           <input
             className="input-field"
             type="number"
@@ -165,6 +186,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         )}
         <button className="nav-button" onClick={handleFinish}>Finish Exercise</button>
       </div>
+      <TemporaryOverlay message={overlayMsg} visible={showOverlay} />
     </div>
   );
 }

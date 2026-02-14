@@ -5,6 +5,7 @@ import type { TimeFormat } from '../utils/format';
 import { parseTimeInput, formatTotalSeconds } from '../utils/format';
 import { loadSession, saveSession, clearSession } from '../utils/storage';
 import { normalizeSessionToRows } from '../utils/normalizeSession';
+import TemporaryOverlay from './TemporaryOverlay';
 
 interface EnduranceFormProps {
   activityType: EnduranceActivityType;
@@ -37,6 +38,9 @@ function EnduranceForm({
   const [time, setTime] = useState('');
   const [rpe, setRpe] = useState('5');
   const [notes, setNotes] = useState('');
+  const [overlayMsg, setOverlayMsg] = useState('');
+  const [showOverlay, setShowOverlay] = useState(false);
+  const overlayTimer = useRef<number>(0);
 
   useEffect(() => {
     if (showResume) return;
@@ -78,10 +82,20 @@ function EnduranceForm({
     setShowResume(false);
   }
 
+  function flashOverlay(msg: string): void {
+    setOverlayMsg(msg);
+    setShowOverlay(true);
+    window.clearTimeout(overlayTimer.current);
+    overlayTimer.current = window.setTimeout(() => setShowOverlay(false), 500);
+  }
+
   function handleSubmit(): void {
     const d = parseFloat(distance) || 0;
     const parsed = parseTimeInput(time, timeFormat);
-    if (!parsed || d <= 0) return;
+    if (!parsed || d <= 0) {
+      flashOverlay('Please complete all required fields');
+      return;
+    }
 
     const session: EnduranceSession = {
       activityType,
@@ -104,7 +118,6 @@ function EnduranceForm({
   const parsedTime = parseTimeInput(time, timeFormat);
   const isValid = d > 0 && parsedTime !== null;
   const metricValue = isValid ? formatMetric(calculateMetric(d, parsedTime)) : null;
-  const canSubmit = isValid;
   const timePlaceholder = timeFormat === 'mm:ss' ? 'MM:SS' : 'HH:MM:SS';
 
   if (showResume) {
@@ -174,11 +187,11 @@ function EnduranceForm({
       </div>
       <button
         className="submit-button"
-        disabled={!canSubmit}
         onClick={handleSubmit}
       >
         Submit {title}
       </button>
+      <TemporaryOverlay message={overlayMsg} visible={showOverlay} />
     </div>
   );
 }
