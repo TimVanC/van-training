@@ -209,3 +209,25 @@ body {
 .input-field:focus {
   border-color: #213547;
 }
+
+.textarea-field {
+  margin-top: 0.25rem;
+  padding: 0.75rem;
+  font-size: 1rem;
+  font-family: inherit;
+  border: 2px solid #ccc;
+  border-radius: 8px;
+  outline: none;
+  resize: vertical;
+}
+
+.textarea-field:focus {
+  border-color: #213547;
+}
+
+.metric-display {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: #213547;
+}

@@ -19,3 +19,19 @@ export interface LiftSession {
   exercises: SessionExercise[];
   startedAt: string;
 }
+
+export type EnduranceActivityType = 'Run' | 'Bike' | 'Swim';
+
+export interface EnduranceSession {
+  activityType: EnduranceActivityType;
+  distance: number;
+  minutes: number;
+  seconds: number;
+  totalSeconds: number;
+  derivedMetric: number;
+  rpe: number;
+  notes?: string;
+  startedAt: string;
+}
+
+export type ActiveSession = LiftSession | EnduranceSession;

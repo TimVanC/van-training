@@ -19,19 +19,20 @@ function LiftContainer(): React.JSX.Element {
 
   const [session, setSession] = useState<LiftSession | null>(() => {
     const saved = loadSession();
-    if (!saved) return null;
+    if (!saved || saved.activityType !== 'Lift') return null;
     if (isLiftRoot) return null;
     return saved;
   });
 
   const [showResume, setShowResume] = useState<boolean>(() => {
     if (!isLiftRoot) return false;
-    return loadSession() !== null;
+    const saved = loadSession();
+    return saved !== null && saved.activityType === 'Lift';
   });
 
   function handleResume(): void {
     const saved = loadSession();
-    if (!saved) return;
+    if (!saved || saved.activityType !== 'Lift') return;
     setSession(saved);
     setShowResume(false);
     navigate(`/lift/${encodeURIComponent(saved.split)}/${encodeURIComponent(saved.day)}`);
