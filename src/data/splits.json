@@ -1,0 +1,50 @@
+[
+  {
+    "split": "PPLs",
+    "days": {
+      "Push A": [
+        { "exercise": "Incline Dumbbell Press", "sets": 4, "reps": 6 },
+        { "exercise": "Flat Machine Chest Press", "sets": 3, "reps": 8 },
+        { "exercise": "Weighted Chest Dips", "sets": 2, "reps": 8 },
+        { "exercise": "Overhead Cable Triceps Extension", "sets": 3, "reps": 10 },
+        { "exercise": "Pronated Triceps Pushdowns", "sets": 2, "reps": 12 }
+      ],
+      "Pull A": [
+        { "exercise": "Neutral Grip Pull-Ups", "sets": 4, "reps": 6 },
+        { "exercise": "Single Arm Cable Lat Pulldown", "sets": 3, "reps": 10 },
+        { "exercise": "Seated Cable Row", "sets": 3, "reps": 10 },
+        { "exercise": "Straight Arm Pulldown", "sets": 3, "reps": 15 },
+        { "exercise": "Incline Dumbbell Curl", "sets": 3, "reps": 10 }
+      ],
+      "Legs + Shoulders": [
+        { "exercise": "Romanian Deadlift", "sets": 4, "reps": 6 },
+        { "exercise": "Bulgarian Split Squat", "sets": 3, "reps": 8 },
+        { "exercise": "Hamstring Curl", "sets": 3, "reps": 10 },
+        { "exercise": "Standing Calf Raise", "sets": 4, "reps": 12 },
+        { "exercise": "Seated Dumbbell Shoulder Press", "sets": 3, "reps": 8 },
+        { "exercise": "Cable Lateral Raises", "sets": 4, "reps": 15 },
+        { "exercise": "Cable Rear Delt Fly", "sets": 4, "reps": 15 }
+      ],
+      "Push B": [
+        { "exercise": "Flat Dumbbell Press", "sets": 3, "reps": 8 },
+        { "exercise": "High to Low Cable Fly", "sets": 3, "reps": 12 },
+        { "exercise": "Low to High Cable Fly", "sets": 3, "reps": 12 },
+        { "exercise": "Slight Decline Machine Press", "sets": 3, "reps": 10 },
+        { "exercise": "Reverse Grip Cable Pressdowns", "sets": 3, "reps": 15 }
+      ],
+      "Pull B": [
+        { "exercise": "Heavy Seated Cable Row", "sets": 4, "reps": 6 },
+        { "exercise": "Incline Bench Dumbbell Row", "sets": 3, "reps": 10 },
+        { "exercise": "Preacher Curls", "sets": 3, "reps": 8 },
+        { "exercise": "Hammer Curls", "sets": 3, "reps": 10 }
+      ],
+      "Legs": [
+        { "exercise": "Leg Press", "sets": 4, "reps": 8 },
+        { "exercise": "Romanian Deadlift", "sets": 4, "reps": 6 },
+        { "exercise": "Leg Extension", "sets": 3, "reps": 15 },
+        { "exercise": "Hamstring Curl", "sets": 3, "reps": 10 },
+        { "exercise": "Seated or Standing Calf Raise", "sets": 4, "reps": 15 }
+      ]
+    }
+  }
+]
