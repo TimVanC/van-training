@@ -54,8 +54,8 @@ function ExerciseList({ session, onUpdateSession, onSubmit }: ExerciseListProps)
               )}
             </div>
             <span className="exercise-detail">
-              {ex.targetSets} sets &times; {ex.targetReps} reps
-              {ex.sets.length > 0 ? ` \u2014 ${ex.sets.length} sets logged` : ''}
+              {ex.targetSets} sets &times; {(ex.targetRepRange ?? (ex.targetReps != null ? String(ex.targetReps) : '-'))} reps
+              {ex.sets.length > 0 ? ` \u2014 ${ex.sets.length === 1 ? '1 set logged' : `${ex.sets.length} sets logged`}` : ''}
             </span>
           </li>
         ))}

@@ -13,7 +13,7 @@ export function createLiftSession(
     exercises: exercises.map((ex) => ({
       name: ex.exercise,
       targetSets: ex.sets,
-      targetReps: ex.reps,
+      targetRepRange: ex.repRange,
       sets: [],
       completed: false,
     })),

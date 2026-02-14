@@ -6,14 +6,14 @@ import { loadSession, saveSession, clearSession } from '../utils/storage';
 import { createLiftSession } from '../utils/session';
 import { normalizeSessionToRows } from '../utils/normalizeSession';
 import { submitWorkout } from '../utils/submitWorkout';
-import splitsData from '../data/splits.json';
 import SplitSelection from './SplitSelection';
 import DaySelection from './DaySelection';
 import ExerciseList from './ExerciseList';
 import ExerciseLogging from './ExerciseLogging';
 import TemporaryOverlay from '../components/TemporaryOverlay';
+import splitsData from '../data/splits.json';
 
-const splits: Split[] = splitsData;
+const splits: Split[] = Array.isArray(splitsData) ? splitsData : [splitsData as Split];
 
 function LiftContainer(): React.JSX.Element {
   const navigate = useNavigate();

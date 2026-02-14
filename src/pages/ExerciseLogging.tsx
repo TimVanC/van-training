@@ -122,7 +122,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     <div className="page">
       <h1>{exercise.name}</h1>
       <p className="exercise-target">
-        Target: {exercise.targetSets} sets &times; {exercise.targetReps} reps
+        Target: {exercise.targetSets} sets &times; {(exercise.targetRepRange ?? (exercise.targetReps != null ? String(exercise.targetReps) : '-'))} reps
       </p>
 
       {exercise.sets.length > 0 && (

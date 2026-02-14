@@ -1,7 +1,7 @@
 export interface Exercise {
   exercise: string;
   sets: number;
-  reps: number;
+  repRange: string;
 }
 
 export interface Split {

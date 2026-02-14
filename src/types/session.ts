@@ -7,7 +7,9 @@ export interface LoggedSet {
 export interface SessionExercise {
   name: string;
   targetSets: number;
-  targetReps: number;
+  targetRepRange: string;
+  /** @deprecated use targetRepRange; present only for sessions loaded from localStorage */
+  targetReps?: number;
   sets: LoggedSet[];
   completed: boolean;
 }

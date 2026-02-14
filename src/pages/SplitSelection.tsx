@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import type { Split } from '../types/lift';
 import splitsData from '../data/splits.json';
 
-const splits: Split[] = splitsData;
+const splits: Split[] = Array.isArray(splitsData) ? splitsData : [splitsData as Split];
 
 function SplitSelection(): React.JSX.Element {
   const navigate = useNavigate();
