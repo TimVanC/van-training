@@ -86,7 +86,7 @@ function EnduranceForm({
     setOverlayMsg(msg);
     setShowOverlay(true);
     window.clearTimeout(overlayTimer.current);
-    overlayTimer.current = window.setTimeout(() => setShowOverlay(false), 500);
+    overlayTimer.current = window.setTimeout(() => setShowOverlay(false), 1050);
   }
 
   function handleSubmit(): void {

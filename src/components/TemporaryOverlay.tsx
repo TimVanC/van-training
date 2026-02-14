@@ -3,11 +3,9 @@ interface TemporaryOverlayProps {
   visible: boolean;
 }
 
-function TemporaryOverlay({ message, visible }: TemporaryOverlayProps): React.JSX.Element | null {
-  if (!visible) return null;
-
+function TemporaryOverlay({ message, visible }: TemporaryOverlayProps): React.JSX.Element {
   return (
-    <div className="overlay">
+    <div className={`overlay ${visible ? 'overlay--visible' : ''}`}>
       <p className="overlay-message">{message}</p>
     </div>
   );
