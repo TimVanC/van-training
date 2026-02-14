@@ -1,12 +1,15 @@
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import type { Split } from '../types/lift';
 import splitsData from '../data/splits.json';
 
 const splits: Split[] = splitsData;
 
-function DaySelection(): React.JSX.Element {
+interface DaySelectionProps {
+  onDaySelect: (splitName: string, dayName: string) => void;
+}
+
+function DaySelection({ onDaySelect }: DaySelectionProps): React.JSX.Element {
   const { splitName } = useParams<{ splitName: string }>();
-  const navigate = useNavigate();
 
   const split = splits.find((s) => s.split === splitName);
 
@@ -21,10 +24,6 @@ function DaySelection(): React.JSX.Element {
   const currentSplit = split.split;
   const dayNames = Object.keys(split.days);
 
-  function handleSelect(dayName: string): void {
-    navigate(`/lift/${encodeURIComponent(currentSplit)}/${encodeURIComponent(dayName)}`);
-  }
-
   return (
     <div className="page">
       <h1>{split.split}</h1>
@@ -33,7 +32,7 @@ function DaySelection(): React.JSX.Element {
           <button
             key={day}
             className="nav-button"
-            onClick={() => handleSelect(day)}
+            onClick={() => onDaySelect(currentSplit, day)}
           >
             {day}
           </button>

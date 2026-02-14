@@ -1,34 +1,53 @@
-import { useParams } from 'react-router-dom';
-import type { Split, Exercise } from '../types/lift';
-import splitsData from '../data/splits.json';
+import { useNavigate } from 'react-router-dom';
+import type { LiftSession } from '../types/session';
 
-const splits: Split[] = splitsData;
+interface ExerciseListProps {
+  session: LiftSession;
+  onUpdateSession: (session: LiftSession) => void;
+  onSubmit: () => void;
+}
 
-function ExerciseList(): React.JSX.Element {
-  const { splitName, dayName } = useParams<{ splitName: string; dayName: string }>();
+function ExerciseList({ session, onSubmit }: ExerciseListProps): React.JSX.Element {
+  const navigate = useNavigate();
 
-  const split = splits.find((s) => s.split === splitName);
-  const exercises: Exercise[] | undefined = split?.days[dayName ?? ''];
+  const allCompleted = session.exercises.every((ex) => ex.completed);
 
-  if (!split || !exercises) {
-    return (
-      <div className="page">
-        <h1>Day not found</h1>
-      </div>
+  function handleTap(exerciseIndex: number): void {
+    navigate(
+      `/lift/${encodeURIComponent(session.split)}/${encodeURIComponent(session.day)}/${exerciseIndex}`,
     );
   }
 
   return (
     <div className="page">
-      <h1>{dayName}</h1>
+      <h1>{session.day}</h1>
       <ul className="exercise-list">
-        {exercises.map((ex, index) => (
-          <li key={index} className="exercise-card">
-            <span className="exercise-name">{ex.exercise}</span>
-            <span className="exercise-detail">{ex.sets} sets &times; {ex.reps} reps</span>
+        {session.exercises.map((ex, index) => (
+          <li
+            key={index}
+            className={`exercise-card ${ex.completed ? 'exercise-card--completed' : ''}`}
+            onClick={() => handleTap(index)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleTap(index); }}
+          >
+            <span className="exercise-name">
+              {ex.completed ? '\u2713 ' : ''}{ex.name}
+            </span>
+            <span className="exercise-detail">
+              {ex.targetSets} sets &times; {ex.targetReps} reps
+              {ex.sets.length > 0 ? ` \u2014 ${ex.sets.length} logged` : ''}
+            </span>
           </li>
         ))}
       </ul>
+      <button
+        className="submit-button"
+        disabled={!allCompleted}
+        onClick={onSubmit}
+      >
+        Submit Workout
+      </button>
     </div>
   );
 }
