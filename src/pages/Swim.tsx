@@ -16,6 +16,7 @@ function Swim(): React.JSX.Element {
       title="Swim"
       distanceUnit="yards"
       metricLabel="Pace"
+      timeFormat="mm:ss"
       calculateMetric={calculatePacePer100}
       formatMetric={formatPacePer100}
     />

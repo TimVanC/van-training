@@ -16,6 +16,7 @@ function Run(): React.JSX.Element {
       title="Run"
       distanceUnit="miles"
       metricLabel="Pace"
+      timeFormat="mm:ss"
       calculateMetric={calculatePace}
       formatMetric={formatPace}
     />

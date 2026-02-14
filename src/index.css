@@ -231,3 +231,28 @@ body {
   margin-bottom: 1.5rem;
   color: #213547;
 }
+
+.rpe-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.rpe-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.rpe-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #213547;
+}
+
+.rpe-slider {
+  margin-top: 0.5rem;
+  width: 100%;
+  height: 2rem;
+  cursor: pointer;
+  accent-color: #213547;
+}

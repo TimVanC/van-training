@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { EnduranceSession, EnduranceActivityType } from '../types/session';
+import type { TimeFormat } from '../utils/format';
+import { parseTimeInput, formatTotalSeconds } from '../utils/format';
 import { loadSession, saveSession, clearSession } from '../utils/storage';
 
 interface EnduranceFormProps {
@@ -8,6 +10,7 @@ interface EnduranceFormProps {
   title: string;
   distanceUnit: string;
   metricLabel: string;
+  timeFormat: TimeFormat;
   calculateMetric: (distance: number, totalSeconds: number) => number;
   formatMetric: (metric: number) => string;
 }
@@ -17,6 +20,7 @@ function EnduranceForm({
   title,
   distanceUnit,
   metricLabel,
+  timeFormat,
   calculateMetric,
   formatMetric,
 }: EnduranceFormProps): React.JSX.Element {
@@ -29,44 +33,40 @@ function EnduranceForm({
   });
 
   const [distance, setDistance] = useState('');
-  const [minutes, setMinutes] = useState('');
-  const [seconds, setSeconds] = useState('');
-  const [rpe, setRpe] = useState('');
+  const [time, setTime] = useState('');
+  const [rpe, setRpe] = useState('5');
   const [notes, setNotes] = useState('');
 
-  // Persist to localStorage on every meaningful input change
   useEffect(() => {
     if (showResume) return;
-    if (!distance && !minutes && !seconds && !rpe && !notes) return;
+    if (!distance && !time) return;
 
     const d = parseFloat(distance) || 0;
-    const m = parseInt(minutes, 10) || 0;
-    const s = parseInt(seconds, 10) || 0;
-    const total = m * 60 + s;
+    const parsed = parseTimeInput(time, timeFormat);
+    const total = parsed ?? 0;
     const metric = (d > 0 && total > 0) ? calculateMetric(d, total) : 0;
 
     const session: EnduranceSession = {
       activityType,
       distance: d,
-      minutes: m,
-      seconds: s,
+      minutes: Math.floor(total / 60),
+      seconds: total % 60,
       totalSeconds: total,
       derivedMetric: metric,
-      rpe: parseInt(rpe, 10) || 0,
+      rpe: parseInt(rpe, 10) || 5,
       notes: notes || undefined,
       startedAt: startedAtRef.current,
     };
     saveSession(session);
-  }, [distance, minutes, seconds, rpe, notes, showResume, activityType, calculateMetric]);
+  }, [distance, time, rpe, notes, showResume, activityType, timeFormat, calculateMetric]);
 
   function handleResume(): void {
     const saved = loadSession();
     if (!saved || saved.activityType !== activityType) return;
     const endurance = saved as EnduranceSession;
     setDistance(endurance.distance > 0 ? String(endurance.distance) : '');
-    setMinutes(endurance.minutes > 0 ? String(endurance.minutes) : '');
-    setSeconds(endurance.seconds > 0 ? String(endurance.seconds) : '');
-    setRpe(endurance.rpe > 0 ? String(endurance.rpe) : '');
+    setTime(endurance.totalSeconds > 0 ? formatTotalSeconds(endurance.totalSeconds, timeFormat) : '');
+    setRpe(endurance.rpe > 0 ? String(endurance.rpe) : '5');
     setNotes(endurance.notes ?? '');
     startedAtRef.current = endurance.startedAt;
     setShowResume(false);
@@ -79,37 +79,32 @@ function EnduranceForm({
 
   function handleSubmit(): void {
     const d = parseFloat(distance) || 0;
-    const m = parseInt(minutes, 10) || 0;
-    const s = parseInt(seconds, 10) || 0;
-    const total = m * 60 + s;
-    const metric = (d > 0 && total > 0) ? calculateMetric(d, total) : 0;
+    const parsed = parseTimeInput(time, timeFormat);
+    if (!parsed || d <= 0) return;
 
     const session: EnduranceSession = {
       activityType,
       distance: d,
-      minutes: m,
-      seconds: s,
-      totalSeconds: total,
-      derivedMetric: metric,
-      rpe: parseInt(rpe, 10) || 0,
+      minutes: Math.floor(parsed / 60),
+      seconds: parsed % 60,
+      totalSeconds: parsed,
+      derivedMetric: calculateMetric(d, parsed),
+      rpe: parseInt(rpe, 10) || 5,
       notes: notes || undefined,
       startedAt: startedAtRef.current,
     };
-    // Temporary: log session for Phase 4 verification
+    // Temporary: log session for verification
     console.log(session);
     clearSession();
     navigate('/');
   }
 
-  // Derived metric for live display
   const d = parseFloat(distance) || 0;
-  const m = parseInt(minutes, 10) || 0;
-  const s = parseInt(seconds, 10) || 0;
-  const total = m * 60 + s;
-  const isValid = d > 0 && total > 0;
-  const metricDisplay = isValid ? formatMetric(calculateMetric(d, total)) : '--';
-  const rpeNum = parseInt(rpe, 10) || 0;
-  const canSubmit = d > 0 && total > 0 && rpeNum >= 1 && rpeNum <= 10;
+  const parsedTime = parseTimeInput(time, timeFormat);
+  const isValid = d > 0 && parsedTime !== null;
+  const metricValue = isValid ? formatMetric(calculateMetric(d, parsedTime)) : null;
+  const canSubmit = isValid;
+  const timePlaceholder = timeFormat === 'mm:ss' ? 'MM:SS' : 'HH:MM:SS';
 
   if (showResume) {
     return (
@@ -126,7 +121,9 @@ function EnduranceForm({
   return (
     <div className="page">
       <h1>{title}</h1>
-      <p className="metric-display">{metricLabel}: {metricDisplay}</p>
+      {metricValue !== null && (
+        <p className="metric-display">{metricLabel}: {metricValue}</p>
+      )}
       <div className="input-group">
         <label className="input-label">
           Distance ({distanceUnit})
@@ -140,40 +137,30 @@ function EnduranceForm({
           />
         </label>
         <label className="input-label">
-          Minutes
+          Time ({timePlaceholder})
           <input
             className="input-field"
-            type="number"
-            inputMode="numeric"
-            min="0"
-            value={minutes}
-            onChange={(e) => setMinutes(e.target.value)}
+            type="text"
+            placeholder={timeFormat === 'mm:ss' ? '40:30' : '1:12:45'}
+            value={time}
+            onChange={(e) => setTime(e.target.value)}
           />
         </label>
-        <label className="input-label">
-          Seconds
+        <div className="rpe-group">
+          <span className="rpe-header">
+            <span className="input-label">RPE</span>
+            <span className="rpe-value">{rpe}</span>
+          </span>
           <input
-            className="input-field"
-            type="number"
-            inputMode="numeric"
-            min="0"
-            max="59"
-            value={seconds}
-            onChange={(e) => setSeconds(e.target.value)}
-          />
-        </label>
-        <label className="input-label">
-          RPE (1–10)
-          <input
-            className="input-field"
-            type="number"
-            inputMode="numeric"
+            className="rpe-slider"
+            type="range"
             min="1"
             max="10"
+            step="1"
             value={rpe}
             onChange={(e) => setRpe(e.target.value)}
           />
-        </label>
+        </div>
         <label className="input-label">
           Notes (optional)
           <textarea
