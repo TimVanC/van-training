@@ -35,6 +35,7 @@ function LiftContainer(): React.JSX.Element {
 
   const [overlayMsg, setOverlayMsg] = useState('');
   const [showOverlay, setShowOverlay] = useState(false);
+  const [navigatingToHome, setNavigatingToHome] = useState(false);
   const overlayTimer = useRef<number>(0);
 
   function handleResume(): void {
@@ -79,6 +80,7 @@ function LiftContainer(): React.JSX.Element {
     if (!session) return;
     const rows = normalizeSessionToRows(session);
     if (!await submitWorkout(rows)) { flashOverlay('Submission failed. Please try again.'); return; }
+    setNavigatingToHome(true);
     clearSession();
     setSession(null);
     navigate('/');
@@ -104,12 +106,12 @@ function LiftContainer(): React.JSX.Element {
         <Route path=":splitName/:dayName" element={
           session
             ? <ExerciseList session={session} onUpdateSession={handleUpdateSession} onSubmit={handleSubmit} />
-            : <Navigate to="/lift" replace />
+            : navigatingToHome ? <Navigate to="/" replace /> : <Navigate to="/lift" replace />
         } />
         <Route path=":splitName/:dayName/:exerciseIndex" element={
           session
             ? <ExerciseLogging session={session} onUpdateSession={handleUpdateSession} />
-            : <Navigate to="/lift" replace />
+            : navigatingToHome ? <Navigate to="/" replace /> : <Navigate to="/lift" replace />
         } />
       </Routes>
       <TemporaryOverlay message={overlayMsg} visible={showOverlay} />
