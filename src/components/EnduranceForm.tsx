@@ -5,6 +5,7 @@ import type { TimeFormat } from '../utils/format';
 import { parseTimeInput, formatTotalSeconds } from '../utils/format';
 import { loadSession, saveSession, clearSession } from '../utils/storage';
 import { normalizeSessionToRows } from '../utils/normalizeSession';
+import { submitWorkout } from '../utils/submitWorkout';
 import TemporaryOverlay from './TemporaryOverlay';
 
 interface EnduranceFormProps {
@@ -89,7 +90,7 @@ function EnduranceForm({
     overlayTimer.current = window.setTimeout(() => setShowOverlay(false), 1050);
   }
 
-  function handleSubmit(): void {
+  async function handleSubmit(): Promise<void> {
     const d = parseFloat(distance) || 0;
     const parsed = parseTimeInput(time, timeFormat);
     if (!parsed || d <= 0) {
@@ -109,7 +110,7 @@ function EnduranceForm({
       startedAt: startedAtRef.current,
     };
     const rows = normalizeSessionToRows(session);
-    console.log(rows);
+    if (!await submitWorkout(rows)) { flashOverlay('Submission failed. Please try again.'); return; }
     clearSession();
     navigate('/');
   }
@@ -185,12 +186,7 @@ function EnduranceForm({
           />
         </label>
       </div>
-      <button
-        className="submit-button"
-        onClick={handleSubmit}
-      >
-        Submit {title}
-      </button>
+      <button className="submit-button" onClick={handleSubmit}>Submit {title}</button>
       <TemporaryOverlay message={overlayMsg} visible={showOverlay} />
     </div>
   );
