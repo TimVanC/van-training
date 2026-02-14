@@ -7,15 +7,22 @@ interface ExerciseListProps {
   onSubmit: () => void;
 }
 
-function ExerciseList({ session, onSubmit }: ExerciseListProps): React.JSX.Element {
+function ExerciseList({ session, onUpdateSession, onSubmit }: ExerciseListProps): React.JSX.Element {
   const navigate = useNavigate();
 
   const allCompleted = session.exercises.every((ex) => ex.completed);
 
-  function handleTap(exerciseIndex: number): void {
+  function handleNavigate(exerciseIndex: number): void {
     navigate(
       `/lift/${encodeURIComponent(session.split)}/${encodeURIComponent(session.day)}/${exerciseIndex}`,
     );
+  }
+
+  function handleSkip(exerciseIndex: number): void {
+    const updatedExercises = session.exercises.map((ex, i) =>
+      i === exerciseIndex ? { ...ex, completed: true } : ex,
+    );
+    onUpdateSession({ ...session, exercises: updatedExercises });
   }
 
   return (
@@ -26,10 +33,6 @@ function ExerciseList({ session, onSubmit }: ExerciseListProps): React.JSX.Eleme
           <li
             key={index}
             className={`exercise-card ${ex.completed ? 'exercise-card--completed' : ''}`}
-            onClick={() => handleTap(index)}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleTap(index); }}
           >
             <span className="exercise-name">
               {ex.completed ? '\u2713 ' : ''}{ex.name}
@@ -37,6 +40,22 @@ function ExerciseList({ session, onSubmit }: ExerciseListProps): React.JSX.Eleme
             <span className="exercise-detail">
               {ex.targetSets} sets &times; {ex.targetReps} reps
               {ex.sets.length > 0 ? ` \u2014 ${ex.sets.length} logged` : ''}
+            </span>
+            <span className="exercise-actions">
+              {ex.completed ? (
+                <button className="exercise-action-button" onClick={() => handleNavigate(index)}>
+                  Edit
+                </button>
+              ) : (
+                <>
+                  <button className="exercise-action-button" onClick={() => handleNavigate(index)}>
+                    Start
+                  </button>
+                  <button className="exercise-action-button" onClick={() => handleSkip(index)}>
+                    Skip
+                  </button>
+                </>
+              )}
             </span>
           </li>
         ))}

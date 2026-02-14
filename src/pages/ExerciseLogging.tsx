@@ -98,11 +98,6 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     navigate(exerciseListPath);
   }
 
-  function handleSkip(): void {
-    updateExercise(exercise.sets, true);
-    navigate(exerciseListPath);
-  }
-
   return (
     <div className="page">
       <h1>{exercise.name}</h1>
@@ -168,7 +163,6 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         ) : (
           <button className="nav-button" onClick={handleAddSet}>Add Set</button>
         )}
-        <button className="nav-button" onClick={handleSkip}>Skip Remaining</button>
         <button className="nav-button" onClick={handleFinish}>Finish Exercise</button>
       </div>
     </div>
