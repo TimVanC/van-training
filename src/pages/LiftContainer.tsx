@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import type { LiftSession } from '../types/session';
 import type { Split } from '../types/lift';
@@ -13,23 +13,21 @@ import ExerciseLogging from './ExerciseLogging';
 const splits: Split[] = splitsData;
 
 function LiftContainer(): React.JSX.Element {
-  const [session, setSession] = useState<LiftSession | null>(null);
-  const [showResume, setShowResume] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const isLiftRoot = location.pathname === '/lift' || location.pathname === '/lift/';
 
-  useEffect(() => {
+  const [session, setSession] = useState<LiftSession | null>(() => {
     const saved = loadSession();
-    if (!saved) return;
+    if (!saved) return null;
+    if (isLiftRoot) return null;
+    return saved;
+  });
 
-    const isLiftRoot = location.pathname === '/lift' || location.pathname === '/lift/';
-    if (isLiftRoot) {
-      setShowResume(true);
-    } else {
-      setSession(saved);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const [showResume, setShowResume] = useState<boolean>(() => {
+    if (!isLiftRoot) return false;
+    return loadSession() !== null;
+  });
 
   function handleResume(): void {
     const saved = loadSession();
