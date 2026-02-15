@@ -31,7 +31,6 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   const [overlayMsg, setOverlayMsg] = useState('');
   const [showOverlay, setShowOverlay] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [lastSet, setLastSet] = useState<{ weight: number; reps: number; rir: number } | null>(null);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [lastSetClientId, setLastSetClientId] = useState<string | null>(null);
@@ -83,7 +82,6 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     const clientId = genId();
     const newSet: LoggedSet = { weight: w, reps: r, rir: rid, clientId };
     updateExercise([...exercise.sets, newSet]);
-    setLastSet({ weight: w, reps: r, rir: rid });
     setToastMsg(`Set ${loggedSets + 1} saved. ${w} x ${r} @ ${rid} RIR`);
     setLastSetClientId(clientId);
     setToastVisible(true);
@@ -139,7 +137,6 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         weightRef={weightRef}
         editingIndex={editingIndex}
         isSubmitting={isSubmitting}
-        lastSet={lastSet}
         onWeightChange={setWeight}
         onRepsChange={setReps}
         onRirChange={setRir}
@@ -149,7 +146,6 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         onAddSet={handleAddSet}
         onSaveEdit={handleSaveEdit}
         onCancelEdit={() => { setEditingIndex(null); setWeight(''); setReps(''); setRir(''); }}
-        onRepeatLastSet={() => { if (lastSet) { setWeight(String(lastSet.weight)); setReps(String(lastSet.reps)); setRir(String(lastSet.rir)); } }}
         onFinish={() => { updateExercise(exercise.sets, true); navigate(listPath); }}
       />
       <LoadingOverlay visible={isSubmitting} />

@@ -205,15 +205,6 @@ body {
   flex-shrink: 0;
 }
 
-.repeat-last-set-button {
-  width: auto;
-  height: auto;
-  padding: 0.35rem 0.75rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  align-self: flex-start;
-}
-
 .input-group {
   display: flex;
   flex-direction: column;

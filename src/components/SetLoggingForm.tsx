@@ -29,7 +29,6 @@ interface SetLoggingFormProps {
   weightRef: React.RefObject<HTMLInputElement | null>;
   editingIndex: number | null;
   isSubmitting: boolean;
-  lastSet: { weight: number; reps: number; rir: number } | null;
   onWeightChange: (v: string) => void;
   onRepsChange: (v: string) => void;
   onRirChange: (v: string) => void;
@@ -39,7 +38,6 @@ interface SetLoggingFormProps {
   onAddSet: () => void;
   onSaveEdit: () => void;
   onCancelEdit: () => void;
-  onRepeatLastSet: () => void;
   onFinish: () => void;
 }
 
@@ -51,7 +49,6 @@ function SetLoggingForm({
   weightRef,
   editingIndex,
   isSubmitting,
-  lastSet,
   onWeightChange,
   onRepsChange,
   onRirChange,
@@ -61,7 +58,6 @@ function SetLoggingForm({
   onAddSet,
   onSaveEdit,
   onCancelEdit,
-  onRepeatLastSet,
   onFinish,
 }: SetLoggingFormProps): React.JSX.Element {
   const dis = isSubmitting;
@@ -106,11 +102,6 @@ function SetLoggingForm({
             onChange={(e) => onRirChange(e.target.value)} disabled={dis} />
         </label>
       </div>
-      {lastSet && (
-        <button type="button" className="set-action-button repeat-last-set-button" onClick={onRepeatLastSet} disabled={dis}>
-          Repeat Last Set
-        </button>
-      )}
       <div className="button-list">
         {editingIndex !== null ? (
           <>
