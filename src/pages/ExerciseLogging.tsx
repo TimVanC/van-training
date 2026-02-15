@@ -73,17 +73,25 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   }
 
   function handleAddSet(): LoggedSet[] | undefined {
-    const w = parseFloat(weight);
-    const r = parseInt(reps, 10);
-    if (isNaN(w) || isNaN(r)) { flashOverlay('Weight and Reps are required'); return undefined; }
+    const normalizedWeight = Number(weight);
+    const normalizedReps = Number(reps);
+    const normalizedRir = rir === '' ? 0 : Number(rir);
+    if (!Number.isFinite(normalizedWeight) || normalizedWeight <= 0) {
+      flashOverlay('Weight and Reps are required');
+      return undefined;
+    }
+    if (!Number.isFinite(normalizedReps) || normalizedReps <= 0) {
+      flashOverlay('Weight and Reps are required');
+      return undefined;
+    }
     if (isSubmitting) return undefined;
     setIsSubmitting(true);
-    const rid = parseRir();
+    const rid = Number.isFinite(normalizedRir) && normalizedRir >= 0 ? normalizedRir : 0;
     const clientId = genId();
-    const newSet: LoggedSet = { weight: w, reps: r, rir: rid, clientId };
+    const newSet: LoggedSet = { weight: normalizedWeight, reps: normalizedReps, rir: rid, clientId };
     const newSets = [...exercise.sets, newSet];
     updateExercise(newSets);
-    setToastMsg(`Set ${loggedSets + 1} saved. ${w} x ${r} @ ${rid} RIR`);
+    setToastMsg(`Set ${loggedSets + 1} saved. ${normalizedWeight} x ${normalizedReps} @ ${rid} RIR`);
     setLastSetClientId(clientId);
     setToastVisible(true);
     setWeight('');
