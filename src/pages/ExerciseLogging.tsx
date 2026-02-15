@@ -5,6 +5,7 @@ import TemporaryOverlay from '../components/TemporaryOverlay';
 import SetSavedToast from '../components/SetSavedToast';
 import SetLoggingForm from '../components/SetLoggingForm';
 import LoadingOverlay from '../components/LoadingOverlay';
+import IncompleteSetModal from '../components/IncompleteSetModal';
 
 interface ExerciseLoggingProps {
   session: LiftSession;
@@ -34,6 +35,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMsg, setToastMsg] = useState('');
   const [lastSetClientId, setLastSetClientId] = useState<string | null>(null);
+  const [showIncompleteModal, setShowIncompleteModal] = useState(false);
   const overlayTimer = useRef<number>(0);
 
   if (!exercise) {
@@ -119,22 +121,38 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     doneSave();
   }
 
-  function handleFinish(): void {
-    const w = parseFloat(weight);
-    const r = parseInt(reps, 10);
-    const rid = parseRir();
-    const hasValidData = !isNaN(w) && w > 0 && !isNaN(r) && r > 0 && rid >= 0;
+  function doFinish(setsToUse: LoggedSet[]): void {
+    updateExercise(setsToUse, true);
+    navigate(listPath);
+  }
 
-    if (hasValidData && !isSubmitting) {
+  function handleFinish(): void {
+    const normalizedWeight = Number(weight);
+    const normalizedReps = Number(reps);
+    const bothValid = Number.isFinite(normalizedWeight) && normalizedWeight > 0
+      && Number.isFinite(normalizedReps) && normalizedReps > 0;
+    const hasWeight = weight.trim() !== '';
+    const hasReps = reps.trim() !== '';
+    const bothEmpty = !hasWeight && !hasReps;
+
+    if (bothValid && !isSubmitting) {
       const newSets = handleAddSet();
       if (newSets) {
-        updateExercise(newSets, true);
-        navigate(listPath);
+        doFinish(newSets);
       }
+    } else if (!bothEmpty) {
+      setShowIncompleteModal(true);
     } else {
-      updateExercise(exercise.sets, true);
-      navigate(listPath);
+      doFinish(exercise.sets);
     }
+  }
+
+  function handleDiscardAndFinish(): void {
+    setWeight('');
+    setReps('');
+    setRir('');
+    setShowIncompleteModal(false);
+    doFinish(exercise.sets);
   }
 
   function handleUndo(): void {
@@ -179,6 +197,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
       <LoadingOverlay visible={isSubmitting} />
       <TemporaryOverlay message={overlayMsg} visible={showOverlay} />
       <SetSavedToast visible={toastVisible} message={toastMsg} onUndo={handleUndo} onDismiss={() => setToastVisible(false)} />
+      <IncompleteSetModal visible={showIncompleteModal} onDiscard={handleDiscardAndFinish} onGoBack={() => setShowIncompleteModal(false)} />
     </div>
   );
 }

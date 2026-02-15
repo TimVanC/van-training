@@ -8,12 +8,15 @@ interface SetSavedToastProps {
   durationMs?: number;
 }
 
+const UNDO_TOAST_DURATION_MS = 3500;
+const FADE_OUT_MS = 300;
+
 function SetSavedToast({
   visible,
   message,
   onUndo,
   onDismiss,
-  durationMs = 10000,
+  durationMs = UNDO_TOAST_DURATION_MS,
 }: SetSavedToastProps): React.JSX.Element {
   const timerRef = useRef<number>(0);
   const exitRef = useRef<number>(0);
@@ -30,7 +33,7 @@ function SetSavedToast({
     const raf = requestAnimationFrame(() => setEntered(true));
     timerRef.current = window.setTimeout(() => {
       setEntered(false);
-      exitRef.current = window.setTimeout(onDismiss, 300);
+      exitRef.current = window.setTimeout(onDismiss, FADE_OUT_MS);
     }, durationMs);
     return () => {
       cancelAnimationFrame(raf);

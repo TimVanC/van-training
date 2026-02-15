@@ -86,13 +86,13 @@ body {
   outline-offset: 2px;
 }
 
-.nav-button--finish-ready {
+.nav-button.nav-button--finish-ready {
   background-color: #bbf7d0;
   color: #065f46;
   border-color: #86efac;
 }
 
-.nav-button--finish-ready:hover:not(:disabled) {
+.nav-button.nav-button--finish-ready:hover:not(:disabled) {
   background-color: #86efac;
   border-color: #4ade80;
   color: #065f46;
@@ -408,13 +408,52 @@ body {
   max-width: 80%;
 }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  background-color: rgba(0, 0, 0, 0.6);
+  padding: 1rem;
+}
+
+.modal-card {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 1.5rem;
+  max-width: 400px;
+  width: 100%;
+}
+
+.modal-title {
+  font-size: 1.25rem;
+  margin-bottom: 0.75rem;
+  color: var(--text-primary);
+}
+
+.modal-message {
+  color: var(--text-secondary);
+  margin-bottom: 1.25rem;
+  line-height: 1.5;
+}
+
+.modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
 .toast {
   position: fixed;
   bottom: 1.5rem;
   left: 50%;
   transform: translateX(-50%) translateY(100%);
   opacity: 0;
-  transition: transform 0.25s ease, opacity 0.25s ease;
+  transition: transform 0.25s ease, opacity 0.28s ease-out;
   z-index: 1000;
   pointer-events: auto;
   display: flex;
