@@ -5,6 +5,25 @@ const SPREADSHEET_ID = '1hWmeYoGpiw58XilR8-KgIysuq11qI7TE2CTg3WIyuN0';
 
 type RowRecord = Record<string, unknown>;
 
+function formatDateAndTime(iso: unknown): { date: string; time: string } {
+  const str = typeof iso === 'string' ? iso : '';
+  const dateObj = new Date(str);
+  if (isNaN(dateObj.getTime())) return { date: '', time: '' };
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/New_York',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+  const parts = formatter.formatToParts(dateObj);
+  const date = `${parts.find((p) => p.type === 'year')?.value ?? ''}-${parts.find((p) => p.type === 'month')?.value ?? ''}-${parts.find((p) => p.type === 'day')?.value ?? ''}`;
+  const time = `${parts.find((p) => p.type === 'hour')?.value ?? ''}:${parts.find((p) => p.type === 'minute')?.value ?? ''}`;
+  return { date, time };
+}
+
 function getSheetName(rows: RowRecord[]): string {
   const first = rows[0];
   if (!first) return 'Lift_Log';
@@ -16,8 +35,10 @@ function getSheetName(rows: RowRecord[]): string {
 }
 
 function toLiftRow(r: RowRecord): unknown[] {
+  const { date, time } = formatDateAndTime(r.date);
   return [
-    r.date ?? '',
+    date,
+    time,
     r.split ?? '',
     r.day ?? '',
     r.exercise ?? '',
@@ -30,25 +51,29 @@ function toLiftRow(r: RowRecord): unknown[] {
 }
 
 function toRunRow(r: RowRecord): unknown[] {
+  const { date, time } = formatDateAndTime(r.date);
   const timeSeconds = Number(r.timeSeconds) || 0;
   const timeMinutes = Number((timeSeconds / 60).toFixed(2));
   const pacePerMile = Number(r.pacePerMile) || 0;
-  const paceMinutes = Number((pacePerMile / 60).toFixed(2));
+  const paceMinutesPerMile = Number((pacePerMile / 60).toFixed(2));
   return [
-    r.date ?? '',
+    date,
+    time,
     r.distance ?? '',
     timeMinutes,
-    paceMinutes,
+    paceMinutesPerMile,
     r.rpe ?? '',
     r.notes ?? '',
   ];
 }
 
 function toBikeRow(r: RowRecord): unknown[] {
+  const { date, time } = formatDateAndTime(r.date);
   const timeSeconds = Number(r.timeSeconds) || 0;
   const timeMinutes = Number((timeSeconds / 60).toFixed(2));
   return [
-    r.date ?? '',
+    date,
+    time,
     r.distance ?? '',
     timeMinutes,
     r.avgSpeed ?? '',
@@ -58,15 +83,17 @@ function toBikeRow(r: RowRecord): unknown[] {
 }
 
 function toSwimRow(r: RowRecord): unknown[] {
+  const { date, time } = formatDateAndTime(r.date);
   const timeSeconds = Number(r.timeSeconds) || 0;
   const timeMinutes = Number((timeSeconds / 60).toFixed(2));
   const pacePer100 = Number(r.pacePer100) || 0;
-  const paceMinutes = Number((pacePer100 / 60).toFixed(2));
+  const paceMinutesPer100 = Number((pacePer100 / 60).toFixed(2));
   return [
-    r.date ?? '',
+    date,
+    time,
     r.distance ?? '',
     timeMinutes,
-    paceMinutes,
+    paceMinutesPer100,
     r.rpe ?? '',
     r.notes ?? '',
   ];
