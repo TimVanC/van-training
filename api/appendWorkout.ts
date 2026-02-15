@@ -89,16 +89,15 @@ export default async function handler(
     const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
     if (!process.env.GOOGLE_CLIENT_EMAIL || !privateKey) {
       console.error('Missing GOOGLE_CLIENT_EMAIL or GOOGLE_PRIVATE_KEY');
-      res.status(500).json({ error: 'Server configuration error' });
+      res.status(500).json({ error: 'Missing GOOGLE_CLIENT_EMAIL or GOOGLE_PRIVATE_KEY' });
       return;
     }
 
-    const auth = new google.auth.JWT(
-      process.env.GOOGLE_CLIENT_EMAIL,
-      undefined,
-      privateKey,
-      ['https://www.googleapis.com/auth/spreadsheets'],
-    );
+    const auth = new google.auth.JWT({
+      email: process.env.GOOGLE_CLIENT_EMAIL,
+      key: privateKey,
+      scopes: ['https://www.googleapis.com/auth/spreadsheets'],
+    });
 
     const sheets = google.sheets({ version: 'v4', auth });
     const sheetName = getSheetName(rows);
