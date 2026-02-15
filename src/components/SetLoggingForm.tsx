@@ -1,5 +1,25 @@
-import { Pencil, Copy, Trash2 } from 'lucide-react';
 import type { LoggedSet } from '../types/session';
+
+const IconPencil = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+  </svg>
+);
+
+const IconCopy = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+    <path d="M4 16V4a2 2 0 0 1 2-2h12" />
+  </svg>
+);
+
+const IconTrash = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M3 6h18" />
+    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+  </svg>
+);
 
 interface SetLoggingFormProps {
   sets: LoggedSet[];
@@ -22,8 +42,6 @@ interface SetLoggingFormProps {
   onRepeatLastSet: () => void;
   onFinish: () => void;
 }
-
-const ICON_SIZE = 16;
 
 function SetLoggingForm({
   sets,
@@ -58,13 +76,13 @@ function SetLoggingForm({
               </span>
               <span className="set-actions">
                 <button className="set-action-button" onClick={() => onEdit(i)} disabled={dis} aria-label="Edit set">
-                  <Pencil size={ICON_SIZE} strokeWidth={2} aria-hidden />
+                  <IconPencil />
                 </button>
                 <button className="set-action-button" onClick={() => onDuplicate(i)} disabled={dis} aria-label="Duplicate set">
-                  <Copy size={ICON_SIZE} strokeWidth={2} aria-hidden />
+                  <IconCopy />
                 </button>
                 <button className="set-action-button set-action-button--delete" onClick={() => onDelete(i)} disabled={dis} aria-label="Delete set">
-                  <Trash2 size={ICON_SIZE} strokeWidth={2} aria-hidden />
+                  <IconTrash />
                 </button>
               </span>
             </li>

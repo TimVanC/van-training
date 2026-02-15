@@ -70,7 +70,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
 
   function doneSave(): void {
     weightRef.current?.focus({ preventScroll: true });
-    setTimeout(() => setIsSubmitting(false), 180);
+    setTimeout(() => setIsSubmitting(false), 500);
   }
 
   function handleAddSet(): void {

@@ -200,6 +200,11 @@ body {
   background: #ffebee;
 }
 
+.set-action-button svg {
+  display: block;
+  flex-shrink: 0;
+}
+
 .repeat-last-set-button {
   width: auto;
   height: auto;
