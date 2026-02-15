@@ -1,3 +1,4 @@
+import { Pencil, Copy, Trash2 } from 'lucide-react';
 import type { LoggedSet } from '../types/session';
 
 interface SetLoggingFormProps {
@@ -21,6 +22,8 @@ interface SetLoggingFormProps {
   onRepeatLastSet: () => void;
   onFinish: () => void;
 }
+
+const ICON_SIZE = 16;
 
 function SetLoggingForm({
   sets,
@@ -54,9 +57,15 @@ function SetLoggingForm({
                 Set {i + 1}: {set.weight} lbs &times; {set.reps} @ RIR {set.rir}
               </span>
               <span className="set-actions">
-                <button className="set-action-button" onClick={() => onEdit(i)} disabled={dis}>Edit</button>
-                <button className="set-action-button" onClick={() => onDuplicate(i)} disabled={dis}>Dup</button>
-                <button className="set-action-button" onClick={() => onDelete(i)} disabled={dis}>Del</button>
+                <button className="set-action-button" onClick={() => onEdit(i)} disabled={dis} aria-label="Edit set">
+                  <Pencil size={ICON_SIZE} strokeWidth={2} aria-hidden />
+                </button>
+                <button className="set-action-button" onClick={() => onDuplicate(i)} disabled={dis} aria-label="Duplicate set">
+                  <Copy size={ICON_SIZE} strokeWidth={2} aria-hidden />
+                </button>
+                <button className="set-action-button set-action-button--delete" onClick={() => onDelete(i)} disabled={dis} aria-label="Delete set">
+                  <Trash2 size={ICON_SIZE} strokeWidth={2} aria-hidden />
+                </button>
               </span>
             </li>
           ))}
@@ -80,17 +89,18 @@ function SetLoggingForm({
         </label>
       </div>
       {lastSet && (
-        <button type="button" className="set-action-button" style={{ marginBottom: '0.5rem' }}
-          onClick={onRepeatLastSet} disabled={dis}>Repeat Last Set</button>
+        <button type="button" className="set-action-button repeat-last-set-button" onClick={onRepeatLastSet} disabled={dis}>
+          Repeat Last Set
+        </button>
       )}
       <div className="button-list">
         {editingIndex !== null ? (
           <>
-            <button className="nav-button" onClick={onSaveEdit} disabled={isSubmitting}>{isSubmitting ? 'Saving...' : 'Save Edit'}</button>
+            <button className="nav-button" onClick={onSaveEdit} disabled={isSubmitting}>Save Edit</button>
             <button className="nav-button" onClick={onCancelEdit} disabled={dis}>Cancel</button>
           </>
         ) : (
-          <button className="nav-button" onClick={onAddSet} disabled={isSubmitting}>{isSubmitting ? 'Saving...' : 'Add Set'}</button>
+          <button className="nav-button" onClick={onAddSet} disabled={isSubmitting}>Add Set</button>
         )}
         <button className="nav-button" onClick={onFinish} disabled={dis}>Finish Exercise</button>
       </div>

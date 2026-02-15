@@ -1,6 +1,7 @@
 import type { MouseEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { LiftSession } from '../types/session';
+import LoadingOverlay from '../components/LoadingOverlay';
 
 interface ExerciseListProps {
   session: LiftSession;
@@ -87,12 +88,8 @@ function ExerciseList({
           disabled={isSubmitting}
         />
       </label>
-      <button
-        className={`submit-button ${isSubmitting ? 'submit-button--saving' : ''}`}
-        disabled={!allCompleted || isSubmitting}
-        onClick={onSubmit}
-      >
-        {isSubmitting ? 'Saving...' : 'Submit Workout'}
+      <button className="submit-button" disabled={!allCompleted || isSubmitting} onClick={onSubmit}>
+        Submit Workout
       </button>
       {submitError && (
         <div className="submit-error">
@@ -104,6 +101,7 @@ function ExerciseList({
           )}
         </div>
       )}
+      <LoadingOverlay visible={isSubmitting} />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { loadSession, saveSession, clearSession } from '../utils/storage';
 import { normalizeSessionToRows } from '../utils/normalizeSession';
 import { submitWorkout } from '../utils/submitWorkout';
 import TemporaryOverlay from './TemporaryOverlay';
+import LoadingOverlay from './LoadingOverlay';
 
 interface EnduranceFormProps {
   activityType: EnduranceActivityType;
@@ -169,8 +170,8 @@ function EnduranceForm({
           <textarea className="textarea-field" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} disabled={isSubmitting} />
         </label>
       </div>
-      <button className={`submit-button ${isSubmitting ? 'submit-button--saving' : ''}`} disabled={isSubmitting} onClick={handleSubmit}>
-        {isSubmitting ? 'Saving...' : `Submit ${title}`}
+      <button className="submit-button" disabled={isSubmitting} onClick={handleSubmit}>
+        Submit {title}
       </button>
       {submitError && (
         <div className="submit-error">
@@ -180,6 +181,7 @@ function EnduranceForm({
           </button>
         </div>
       )}
+      <LoadingOverlay visible={isSubmitting} />
       <TemporaryOverlay message={overlayMsg} visible={showOverlay} />
     </div>
   );

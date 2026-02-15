@@ -4,6 +4,7 @@ import type { LiftSession, LoggedSet } from '../types/session';
 import TemporaryOverlay from '../components/TemporaryOverlay';
 import SetSavedToast from '../components/SetSavedToast';
 import SetLoggingForm from '../components/SetLoggingForm';
+import LoadingOverlay from '../components/LoadingOverlay';
 
 interface ExerciseLoggingProps {
   session: LiftSession;
@@ -151,6 +152,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         onRepeatLastSet={() => { if (lastSet) { setWeight(String(lastSet.weight)); setReps(String(lastSet.reps)); setRir(String(lastSet.rir)); } }}
         onFinish={() => { updateExercise(exercise.sets, true); navigate(listPath); }}
       />
+      <LoadingOverlay visible={isSubmitting} />
       <TemporaryOverlay message={overlayMsg} visible={showOverlay} />
       <SetSavedToast visible={toastVisible} message={toastMsg} onUndo={handleUndo} onDismiss={() => setToastVisible(false)} />
     </div>
