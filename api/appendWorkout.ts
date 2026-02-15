@@ -30,21 +30,27 @@ function toLiftRow(r: RowRecord): unknown[] {
 }
 
 function toRunRow(r: RowRecord): unknown[] {
+  const timeSeconds = Number(r.timeSeconds) || 0;
+  const timeMinutes = Number((timeSeconds / 60).toFixed(2));
+  const pacePerMile = Number(r.pacePerMile) || 0;
+  const paceMinutes = Number((pacePerMile / 60).toFixed(2));
   return [
     r.date ?? '',
     r.distance ?? '',
-    r.timeSeconds ?? '',
-    r.pacePerMile ?? '',
+    timeMinutes,
+    paceMinutes,
     r.rpe ?? '',
     r.notes ?? '',
   ];
 }
 
 function toBikeRow(r: RowRecord): unknown[] {
+  const timeSeconds = Number(r.timeSeconds) || 0;
+  const timeMinutes = Number((timeSeconds / 60).toFixed(2));
   return [
     r.date ?? '',
     r.distance ?? '',
-    r.timeSeconds ?? '',
+    timeMinutes,
     r.avgSpeed ?? '',
     r.rpe ?? '',
     r.notes ?? '',
@@ -52,11 +58,15 @@ function toBikeRow(r: RowRecord): unknown[] {
 }
 
 function toSwimRow(r: RowRecord): unknown[] {
+  const timeSeconds = Number(r.timeSeconds) || 0;
+  const timeMinutes = Number((timeSeconds / 60).toFixed(2));
+  const pacePer100 = Number(r.pacePer100) || 0;
+  const paceMinutes = Number((pacePer100 / 60).toFixed(2));
   return [
     r.date ?? '',
     r.distance ?? '',
-    r.timeSeconds ?? '',
-    r.pacePer100 ?? '',
+    timeMinutes,
+    paceMinutes,
     r.rpe ?? '',
     r.notes ?? '',
   ];
