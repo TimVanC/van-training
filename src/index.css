@@ -86,6 +86,18 @@ body {
   outline-offset: 2px;
 }
 
+.nav-button--finish-ready {
+  background-color: #bbf7d0;
+  color: #065f46;
+  border-color: #86efac;
+}
+
+.nav-button--finish-ready:hover:not(:disabled) {
+  background-color: #86efac;
+  border-color: #4ade80;
+  color: #065f46;
+}
+
 .exercise-list {
   list-style: none;
   display: flex;

@@ -111,7 +111,7 @@ function SetLoggingForm({
         ) : (
           <button className="nav-button" onClick={onAddSet} disabled={isSubmitting}>Add Set</button>
         )}
-        <button className="nav-button" onClick={onFinish} disabled={dis}>Finish Exercise</button>
+        <button className={`nav-button ${sets.length > 0 ? 'nav-button--finish-ready' : ''}`} onClick={onFinish} disabled={dis}>Finish Exercise</button>
       </div>
     </>
   );
