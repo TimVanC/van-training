@@ -72,16 +72,17 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     setTimeout(() => setIsSubmitting(false), 500);
   }
 
-  function handleAddSet(): void {
+  function handleAddSet(): LoggedSet[] | undefined {
     const w = parseFloat(weight);
     const r = parseInt(reps, 10);
-    if (isNaN(w) || isNaN(r)) { flashOverlay('Weight and Reps are required'); return; }
-    if (isSubmitting) return;
+    if (isNaN(w) || isNaN(r)) { flashOverlay('Weight and Reps are required'); return undefined; }
+    if (isSubmitting) return undefined;
     setIsSubmitting(true);
     const rid = parseRir();
     const clientId = genId();
     const newSet: LoggedSet = { weight: w, reps: r, rir: rid, clientId };
-    updateExercise([...exercise.sets, newSet]);
+    const newSets = [...exercise.sets, newSet];
+    updateExercise(newSets);
     setToastMsg(`Set ${loggedSets + 1} saved. ${w} x ${r} @ ${rid} RIR`);
     setLastSetClientId(clientId);
     setToastVisible(true);
@@ -89,6 +90,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     setReps('');
     setRir('');
     doneSave();
+    return newSets;
   }
 
   function handleSaveEdit(): void {
@@ -107,6 +109,24 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     setRir('');
     setEditingIndex(null);
     doneSave();
+  }
+
+  function handleFinish(): void {
+    const w = parseFloat(weight);
+    const r = parseInt(reps, 10);
+    const rid = parseRir();
+    const hasValidData = !isNaN(w) && w > 0 && !isNaN(r) && r > 0 && rid >= 0;
+
+    if (hasValidData && !isSubmitting) {
+      const newSets = handleAddSet();
+      if (newSets) {
+        updateExercise(newSets, true);
+        navigate(listPath);
+      }
+    } else {
+      updateExercise(exercise.sets, true);
+      navigate(listPath);
+    }
   }
 
   function handleUndo(): void {
@@ -146,7 +166,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         onAddSet={handleAddSet}
         onSaveEdit={handleSaveEdit}
         onCancelEdit={() => { setEditingIndex(null); setWeight(''); setReps(''); setRir(''); }}
-        onFinish={() => { updateExercise(exercise.sets, true); navigate(listPath); }}
+        onFinish={handleFinish}
       />
       <LoadingOverlay visible={isSubmitting} />
       <TemporaryOverlay message={overlayMsg} visible={showOverlay} />
