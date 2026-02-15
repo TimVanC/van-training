@@ -6,12 +6,23 @@ interface ExerciseListProps {
   session: LiftSession;
   onUpdateSession: (session: LiftSession) => void;
   onSubmit: () => void;
+  isSubmitting?: boolean;
+  submitError?: string;
+  onRetry?: () => void;
 }
 
-function ExerciseList({ session, onUpdateSession, onSubmit }: ExerciseListProps): React.JSX.Element {
+function ExerciseList({
+  session,
+  onUpdateSession,
+  onSubmit,
+  isSubmitting = false,
+  submitError,
+  onRetry,
+}: ExerciseListProps): React.JSX.Element {
   const navigate = useNavigate();
-
   const allCompleted = session.exercises.every((ex) => ex.completed);
+  const totalSets = session.exercises.reduce((acc, ex) => acc + ex.targetSets, 0);
+  const loggedSets = session.exercises.reduce((acc, ex) => acc + ex.sets.length, 0);
 
   function handleNavigate(exerciseIndex: number): void {
     navigate(
@@ -30,6 +41,15 @@ function ExerciseList({ session, onUpdateSession, onSubmit }: ExerciseListProps)
   return (
     <div className="page">
       <h1>{session.day}</h1>
+      <div className="progress-bar-container">
+        <div className="progress-bar-label">{loggedSets} / {totalSets} sets completed</div>
+        <div className="progress-bar-track">
+          <div
+            className="progress-bar-fill"
+            style={{ width: `${totalSets > 0 ? (loggedSets / totalSets) * 100 : 0}%` }}
+          />
+        </div>
+      </div>
       <ul className="exercise-list">
         {session.exercises.map((ex, index) => (
           <li
@@ -45,10 +65,7 @@ function ExerciseList({ session, onUpdateSession, onSubmit }: ExerciseListProps)
                 {ex.completed ? '\u2713 ' : ''}{ex.name}
               </span>
               {!ex.completed && (
-                <button
-                  className="skip-button"
-                  onClick={(e) => handleSkip(e, index)}
-                >
+                <button className="skip-button" onClick={(e) => handleSkip(e, index)}>
                   Skip
                 </button>
               )}
@@ -67,15 +84,26 @@ function ExerciseList({ session, onUpdateSession, onSubmit }: ExerciseListProps)
           rows={3}
           value={session.notes ?? ''}
           onChange={(e) => onUpdateSession({ ...session, notes: e.target.value || undefined })}
+          disabled={isSubmitting}
         />
       </label>
       <button
-        className="submit-button"
-        disabled={!allCompleted}
+        className={`submit-button ${isSubmitting ? 'submit-button--saving' : ''}`}
+        disabled={!allCompleted || isSubmitting}
         onClick={onSubmit}
       >
-        Submit Workout
+        {isSubmitting ? 'Saving...' : 'Submit Workout'}
       </button>
+      {submitError && (
+        <div className="submit-error">
+          {submitError}
+          {onRetry && (
+            <button type="button" className="submit-error-retry" onClick={onRetry}>
+              Retry
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -41,6 +41,8 @@ function EnduranceForm({
   const [notes, setNotes] = useState('');
   const [overlayMsg, setOverlayMsg] = useState('');
   const [showOverlay, setShowOverlay] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const overlayTimer = useRef<number>(0);
 
   useEffect(() => {
@@ -97,7 +99,9 @@ function EnduranceForm({
       flashOverlay('Please complete all required fields');
       return;
     }
-
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    setSubmitError(null);
     const session: EnduranceSession = {
       activityType,
       distance: d,
@@ -110,7 +114,12 @@ function EnduranceForm({
       startedAt: startedAtRef.current,
     };
     const rows = normalizeSessionToRows(session);
-    if (!await submitWorkout(rows)) { flashOverlay('Submission failed. Please try again.'); return; }
+    const ok = await submitWorkout(rows);
+    if (!ok) {
+      setSubmitError('Submission failed. Please try again.');
+      setIsSubmitting(false);
+      return;
+    }
     clearSession();
     navigate('/');
   }
@@ -142,51 +151,35 @@ function EnduranceForm({
       <div className="input-group">
         <label className="input-label">
           Distance ({distanceUnit})
-          <input
-            className="input-field"
-            type="number"
-            inputMode="decimal"
-            step="0.01"
-            value={distance}
-            onChange={(e) => setDistance(e.target.value)}
-          />
+          <input className="input-field" type="number" inputMode="decimal" step="0.01" value={distance}
+            onChange={(e) => setDistance(e.target.value)} disabled={isSubmitting} />
         </label>
         <label className="input-label">
           Time ({timePlaceholder})
-          <input
-            className="input-field"
-            type="text"
-            placeholder={timeFormat === 'mm:ss' ? '40:30' : '1:12:45'}
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-          />
+          <input className="input-field" type="text" placeholder={timeFormat === 'mm:ss' ? '40:30' : '1:12:45'} value={time}
+            onChange={(e) => setTime(e.target.value)} disabled={isSubmitting} />
         </label>
         <div className="rpe-group">
-          <span className="rpe-header">
-            <span className="input-label">RPE</span>
-            <span className="rpe-value">{rpe}</span>
-          </span>
-          <input
-            className="rpe-slider"
-            type="range"
-            min="1"
-            max="10"
-            step="1"
-            value={rpe}
-            onChange={(e) => setRpe(e.target.value)}
-          />
+          <span className="rpe-header"><span className="input-label">RPE</span><span className="rpe-value">{rpe}</span></span>
+          <input className="rpe-slider" type="range" min="1" max="10" step="1" value={rpe}
+            onChange={(e) => setRpe(e.target.value)} disabled={isSubmitting} />
         </div>
         <label className="input-label">
           Notes (optional)
-          <textarea
-            className="textarea-field"
-            rows={3}
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-          />
+          <textarea className="textarea-field" rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} disabled={isSubmitting} />
         </label>
       </div>
-      <button className="submit-button" onClick={handleSubmit}>Submit {title}</button>
+      <button className={`submit-button ${isSubmitting ? 'submit-button--saving' : ''}`} disabled={isSubmitting} onClick={handleSubmit}>
+        {isSubmitting ? 'Saving...' : `Submit ${title}`}
+      </button>
+      {submitError && (
+        <div className="submit-error">
+          {submitError}
+          <button type="button" className="submit-error-retry" onClick={handleSubmit}>
+            Retry
+          </button>
+        </div>
+      )}
       <TemporaryOverlay message={overlayMsg} visible={showOverlay} />
     </div>
   );

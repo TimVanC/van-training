@@ -2,10 +2,18 @@ import { useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import type { LiftSession, LoggedSet } from '../types/session';
 import TemporaryOverlay from '../components/TemporaryOverlay';
+import SetSavedToast from '../components/SetSavedToast';
+import SetLoggingForm from '../components/SetLoggingForm';
 
 interface ExerciseLoggingProps {
   session: LiftSession;
   onUpdateSession: (session: LiftSession) => void;
+}
+
+function genId(): string {
+  return typeof crypto !== 'undefined' && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `id-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): React.JSX.Element {
@@ -13,6 +21,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   const navigate = useNavigate();
   const index = Number(exerciseIndex);
   const exercise = session.exercises[index];
+  const weightRef = useRef<HTMLInputElement>(null);
 
   const [weight, setWeight] = useState('');
   const [reps, setReps] = useState('');
@@ -20,6 +29,11 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [overlayMsg, setOverlayMsg] = useState('');
   const [showOverlay, setShowOverlay] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [lastSet, setLastSet] = useState<{ weight: number; reps: number; rir: number } | null>(null);
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMsg, setToastMsg] = useState('');
+  const [lastSetClientId, setLastSetClientId] = useState<string | null>(null);
   const overlayTimer = useRef<number>(0);
 
   if (!exercise) {
@@ -30,7 +44,10 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     );
   }
 
-  const exerciseListPath = `/lift/${encodeURIComponent(session.split)}/${encodeURIComponent(session.day)}`;
+  const listPath = `/lift/${encodeURIComponent(session.split)}/${encodeURIComponent(session.day)}`;
+  const loggedSets = exercise.sets.length;
+  const totalSets = exercise.targetSets;
+  const repRange = exercise.targetRepRange ?? (exercise.targetReps != null ? String(exercise.targetReps) : '-');
 
   function flashOverlay(msg: string): void {
     setOverlayMsg(msg);
@@ -40,153 +57,102 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   }
 
   function updateExercise(updatedSets: LoggedSet[], completed?: boolean): void {
-    const updatedExercises = session.exercises.map((ex, i) =>
-      i === index
-        ? { ...ex, sets: updatedSets, completed: completed ?? ex.completed }
-        : ex,
+    const updated = session.exercises.map((ex, i) =>
+      i === index ? { ...ex, sets: updatedSets, completed: completed ?? ex.completed } : ex,
     );
-    onUpdateSession({ ...session, exercises: updatedExercises });
+    onUpdateSession({ ...session, exercises: updated });
   }
 
   function parseRir(): number {
     return rir.trim() === '' ? 0 : (parseInt(rir, 10) || 0);
   }
 
+  function doneSave(): void {
+    weightRef.current?.focus({ preventScroll: true });
+    setTimeout(() => setIsSubmitting(false), 180);
+  }
+
   function handleAddSet(): void {
     const w = parseFloat(weight);
     const r = parseInt(reps, 10);
-    if (isNaN(w) || isNaN(r)) {
-      flashOverlay('Weight and Reps are required');
-      return;
-    }
-    const newSet: LoggedSet = { weight: w, reps: r, rir: parseRir() };
+    if (isNaN(w) || isNaN(r)) { flashOverlay('Weight and Reps are required'); return; }
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    const rid = parseRir();
+    const clientId = genId();
+    const newSet: LoggedSet = { weight: w, reps: r, rir: rid, clientId };
     updateExercise([...exercise.sets, newSet]);
+    setLastSet({ weight: w, reps: r, rir: rid });
+    setToastMsg(`Set ${loggedSets + 1} saved. ${w} x ${r} @ ${rid} RIR`);
+    setLastSetClientId(clientId);
+    setToastVisible(true);
     setWeight('');
     setReps('');
     setRir('');
+    doneSave();
   }
 
   function handleSaveEdit(): void {
     if (editingIndex === null) return;
     const w = parseFloat(weight);
     const r = parseInt(reps, 10);
-    if (isNaN(w) || isNaN(r)) {
-      flashOverlay('Weight and Reps are required');
-      return;
-    }
-    const updatedSets = exercise.sets.map((s, i) =>
-      i === editingIndex ? { weight: w, reps: r, rir: parseRir() } : s,
+    if (isNaN(w) || isNaN(r)) { flashOverlay('Weight and Reps are required'); return; }
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    const updated = exercise.sets.map((s, i) =>
+      i === editingIndex ? { ...s, weight: w, reps: r, rir: parseRir() } : s,
     );
-    updateExercise(updatedSets);
+    updateExercise(updated);
     setWeight('');
     setReps('');
     setRir('');
     setEditingIndex(null);
+    doneSave();
   }
 
-  function handleEdit(setIndex: number): void {
-    const set = exercise.sets[setIndex];
-    setWeight(String(set.weight));
-    setReps(String(set.reps));
-    setRir(String(set.rir));
-    setEditingIndex(setIndex);
-  }
-
-  function handleDuplicate(setIndex: number): void {
-    const set = exercise.sets[setIndex];
-    setWeight(String(set.weight));
-    setReps(String(set.reps));
-    setRir(String(set.rir));
-    setEditingIndex(null);
-  }
-
-  function handleDeleteSet(setIndex: number): void {
-    const updatedSets = exercise.sets.filter((_, i) => i !== setIndex);
-    updateExercise(updatedSets);
-    if (editingIndex === setIndex) handleCancelEdit();
-  }
-
-  function handleCancelEdit(): void {
-    setEditingIndex(null);
-    setWeight('');
-    setReps('');
-    setRir('');
-  }
-
-  function handleFinish(): void {
-    updateExercise(exercise.sets, true);
-    navigate(exerciseListPath);
+  function handleUndo(): void {
+    if (!lastSetClientId || exercise.sets.length === 0) return;
+    const last = exercise.sets[exercise.sets.length - 1];
+    if (last?.clientId !== lastSetClientId) return;
+    fetch('/api/deleteLastSet', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ setId: lastSetClientId }) }).catch(() => {});
+    updateExercise(exercise.sets.slice(0, -1));
+    setLastSetClientId(null);
+    setToastVisible(false);
   }
 
   return (
     <div className="page">
       <h1>{exercise.name}</h1>
-      <p className="exercise-target">
-        Target: {exercise.targetSets} sets &times; {(exercise.targetRepRange ?? (exercise.targetReps != null ? String(exercise.targetReps) : '-'))} reps
-      </p>
-
-      {exercise.sets.length > 0 && (
-        <ul className="set-list">
-          {exercise.sets.map((set, i) => (
-            <li key={i} className="set-row">
-              <span className="set-info">
-                Set {i + 1}: {set.weight} lbs &times; {set.reps} @ RIR {set.rir}
-              </span>
-              <span className="set-actions">
-                <button className="set-action-button" onClick={() => handleEdit(i)}>Edit</button>
-                <button className="set-action-button" onClick={() => handleDuplicate(i)}>Dup</button>
-                <button className="set-action-button" onClick={() => handleDeleteSet(i)}>Del</button>
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <div className="input-group">
-        <label className="input-label">
-          Weight (lbs)
-          <input
-            className="input-field"
-            type="number"
-            inputMode="decimal"
-            value={weight}
-            onChange={(e) => setWeight(e.target.value)}
-          />
-        </label>
-        <label className="input-label">
-          Reps
-          <input
-            className="input-field"
-            type="number"
-            inputMode="numeric"
-            value={reps}
-            onChange={(e) => setReps(e.target.value)}
-          />
-        </label>
-        <label className="input-label">
-          RIR (optional)
-          <input
-            className="input-field"
-            type="number"
-            inputMode="numeric"
-            value={rir}
-            onChange={(e) => setRir(e.target.value)}
-          />
-        </label>
+      <p className="exercise-target">Target: {totalSets} sets &times; {repRange} reps</p>
+      <div className="progress-bar-container">
+        <div className="progress-bar-label">{loggedSets} / {totalSets} sets completed</div>
+        <div className="progress-bar-track">
+          <div className="progress-bar-fill" style={{ width: `${totalSets > 0 ? (loggedSets / totalSets) * 100 : 0}%` }} />
+        </div>
       </div>
-
-      <div className="button-list">
-        {editingIndex !== null ? (
-          <>
-            <button className="nav-button" onClick={handleSaveEdit}>Save Edit</button>
-            <button className="nav-button" onClick={handleCancelEdit}>Cancel</button>
-          </>
-        ) : (
-          <button className="nav-button" onClick={handleAddSet}>Add Set</button>
-        )}
-        <button className="nav-button" onClick={handleFinish}>Finish Exercise</button>
-      </div>
+      <SetLoggingForm
+        sets={exercise.sets}
+        weight={weight}
+        reps={reps}
+        rir={rir}
+        weightRef={weightRef}
+        editingIndex={editingIndex}
+        isSubmitting={isSubmitting}
+        lastSet={lastSet}
+        onWeightChange={setWeight}
+        onRepsChange={setReps}
+        onRirChange={setRir}
+        onEdit={(i) => { const s = exercise.sets[i]; setWeight(String(s.weight)); setReps(String(s.reps)); setRir(String(s.rir)); setEditingIndex(i); }}
+        onDuplicate={(i) => { const s = exercise.sets[i]; setWeight(String(s.weight)); setReps(String(s.reps)); setRir(String(s.rir)); setEditingIndex(null); }}
+        onDelete={(i) => { updateExercise(exercise.sets.filter((_, j) => j !== i)); if (editingIndex === i) { setEditingIndex(null); setWeight(''); setReps(''); setRir(''); } }}
+        onAddSet={handleAddSet}
+        onSaveEdit={handleSaveEdit}
+        onCancelEdit={() => { setEditingIndex(null); setWeight(''); setReps(''); setRir(''); }}
+        onRepeatLastSet={() => { if (lastSet) { setWeight(String(lastSet.weight)); setReps(String(lastSet.reps)); setRir(String(lastSet.rir)); } }}
+        onFinish={() => { updateExercise(exercise.sets, true); navigate(listPath); }}
+      />
       <TemporaryOverlay message={overlayMsg} visible={showOverlay} />
+      <SetSavedToast visible={toastVisible} message={toastMsg} onUndo={handleUndo} onDismiss={() => setToastVisible(false)} />
     </div>
   );
 }

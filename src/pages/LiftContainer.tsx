@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import type { LiftSession } from '../types/session';
 import type { Split } from '../types/lift';
@@ -10,7 +10,6 @@ import SplitSelection from './SplitSelection';
 import DaySelection from './DaySelection';
 import ExerciseList from './ExerciseList';
 import ExerciseLogging from './ExerciseLogging';
-import TemporaryOverlay from '../components/TemporaryOverlay';
 import splitsData from '../data/splits.json';
 
 const splits: Split[] = Array.isArray(splitsData) ? splitsData : [splitsData as Split];
@@ -33,10 +32,9 @@ function LiftContainer(): React.JSX.Element {
     return saved !== null && saved.activityType === 'Lift';
   });
 
-  const [overlayMsg, setOverlayMsg] = useState('');
-  const [showOverlay, setShowOverlay] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [navigatingToHome, setNavigatingToHome] = useState(false);
-  const overlayTimer = useRef<number>(0);
 
   function handleResume(): void {
     const saved = loadSession();
@@ -69,17 +67,17 @@ function LiftContainer(): React.JSX.Element {
     saveSession(updated);
   }
 
-  function flashOverlay(msg: string): void {
-    setOverlayMsg(msg);
-    setShowOverlay(true);
-    window.clearTimeout(overlayTimer.current);
-    overlayTimer.current = window.setTimeout(() => setShowOverlay(false), 1050);
-  }
-
   async function handleSubmit(): Promise<void> {
-    if (!session) return;
+    if (!session || isSubmitting) return;
+    setIsSubmitting(true);
+    setSubmitError(null);
     const rows = normalizeSessionToRows(session);
-    if (!await submitWorkout(rows)) { flashOverlay('Submission failed. Please try again.'); return; }
+    const ok = await submitWorkout(rows);
+    if (!ok) {
+      setSubmitError('Submission failed. Please try again.');
+      setIsSubmitting(false);
+      return;
+    }
     setNavigatingToHome(true);
     clearSession();
     setSession(null);
@@ -105,7 +103,7 @@ function LiftContainer(): React.JSX.Element {
         <Route path=":splitName" element={<DaySelection onDaySelect={handleDaySelect} />} />
         <Route path=":splitName/:dayName" element={
           session
-            ? <ExerciseList session={session} onUpdateSession={handleUpdateSession} onSubmit={handleSubmit} />
+            ? <ExerciseList session={session} onUpdateSession={handleUpdateSession} onSubmit={handleSubmit} isSubmitting={isSubmitting} submitError={submitError ?? undefined} onRetry={handleSubmit} />
             : navigatingToHome ? <Navigate to="/" replace /> : <Navigate to="/lift" replace />
         } />
         <Route path=":splitName/:dayName/:exerciseIndex" element={
@@ -114,7 +112,6 @@ function LiftContainer(): React.JSX.Element {
             : navigatingToHome ? <Navigate to="/" replace /> : <Navigate to="/lift" replace />
         } />
       </Routes>
-      <TemporaryOverlay message={overlayMsg} visible={showOverlay} />
     </>
   );
 }

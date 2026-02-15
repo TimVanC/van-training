@@ -291,3 +291,114 @@ body {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   max-width: 80%;
 }
+
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(100%);
+  opacity: 0;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+  z-index: 1000;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: #2e7d32;
+  color: #ffffff;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+  max-width: 90%;
+}
+
+.toast.toast--visible {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+.toast-message {
+  flex: 1;
+}
+
+.toast-undo {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 6px;
+  background: transparent;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.toast-undo:active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.progress-bar-container {
+  width: 100%;
+  max-width: 400px;
+  margin-bottom: 1rem;
+}
+
+.progress-bar-label {
+  font-size: 0.875rem;
+  color: #555;
+  margin-bottom: 0.35rem;
+}
+
+.progress-bar-track {
+  height: 8px;
+  background: #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: #2e7d32;
+  border-radius: 4px;
+  transition: width 0.2s ease;
+}
+
+.submit-error {
+  width: 100%;
+  max-width: 400px;
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  background: #ffebee;
+  color: #c62828;
+  font-size: 0.875rem;
+  border-radius: 8px;
+  border: 1px solid #ef9a9a;
+  display: flex;
+  flex-direction: column;
+}
+
+.submit-error-retry {
+  margin-top: 0.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: inherit;
+  border: 2px solid #c62828;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #c62828;
+  cursor: pointer;
+}
+
+.submit-error-retry:active {
+  background: #ffebee;
+}
+
+.submit-button:disabled.submit-button--saving {
+  background-color: #2e7d32;
+  border-color: #2e7d32;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: wait;
+}

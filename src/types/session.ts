@@ -2,6 +2,8 @@ export interface LoggedSet {
   weight: number;
   reps: number;
   rir: number;
+  /** Client-generated id for undo; not sent to Sheets */
+  clientId?: string;
 }
 
 export interface SessionExercise {
