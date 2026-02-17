@@ -2,16 +2,17 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { google } from 'googleapis';
 
 const SHEET_NAME = 'Recent_Lifts';
-const MAX_ROWS = 3;
 
-/** Lift_Log / Recent_Lifts column order: date, time, split, day, exercise, setNumber, weight, reps, rir, notes */
-const COL = { date: 0, time: 1, exercise: 4, weight: 6, reps: 7, rir: 8 } as const;
-
-interface RecentLiftRow {
-  date: string;
+/** Recent_Lifts: one row per exercise. Cols: Exercise, 1_Weight, 1_Reps, 1_RIR, 2_Weight, 2_Reps, 2_RIR, 3_Weight, 3_Reps, 3_RIR */
+interface RecentLiftEntry {
   weight: string | number;
   reps: string | number;
   rir: string | number;
+}
+
+function isRepsEmpty(reps: unknown): boolean {
+  if (reps == null) return true;
+  return String(reps).trim() === '';
 }
 
 export default async function handler(
@@ -33,6 +34,8 @@ export default async function handler(
       res.status(400).json({ error: 'Missing exercise query parameter' });
       return;
     }
+
+    const normalizedExercise = exerciseName.toLowerCase();
 
     const spreadsheetId = process.env.GOOGLE_SHEET_ID;
     if (!spreadsheetId) {
@@ -59,39 +62,20 @@ export default async function handler(
     });
 
     const rows = (resp.data.values ?? []) as unknown[][];
-    const dataRows = rows.slice(1);
+    const row = rows.find((r) => String((r as unknown[])[0] ?? '').trim().toLowerCase() === normalizedExercise) as unknown[] | undefined;
 
-    const matched: Array<{ date: string; time: string; weight: unknown; reps: unknown; rir: unknown }> = [];
-    for (const row of dataRows) {
-      const arr = row as unknown[];
-      const ex = String(arr[COL.exercise] ?? '').trim();
-      if (ex.toLowerCase() !== exerciseName.toLowerCase()) continue;
-      const dateStr = String(arr[COL.date] ?? '').trim();
-      if (!dateStr) continue;
-      const timeStr = String(arr[COL.time] ?? '').trim();
-      const weightVal = arr[COL.weight];
-      const repsVal = arr[COL.reps];
-      const rirVal = arr[COL.rir];
-      matched.push({
-        date: dateStr,
-        time: timeStr,
-        weight: Number.isFinite(Number(weightVal)) ? Number(weightVal) : (weightVal ?? ''),
-        reps: Number.isFinite(Number(repsVal)) ? Number(repsVal) : (repsVal ?? ''),
-        rir: Number.isFinite(Number(rirVal)) ? Number(rirVal) : (rirVal ?? 0),
-      });
+    if (!row) {
+      res.status(200).json([]);
+      return;
     }
 
-    matched.sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`));
-    const top = matched.slice(0, MAX_ROWS);
+    const entries: RecentLiftEntry[] = [
+      { weight: row[1], reps: row[2], rir: row[3] ?? 0 },
+      { weight: row[4], reps: row[5], rir: row[6] ?? 0 },
+      { weight: row[7], reps: row[8], rir: row[9] ?? 0 },
+    ].filter((e) => !isRepsEmpty(e.reps));
 
-    const result: RecentLiftRow[] = top.map((r) => ({
-      date: r.date,
-      weight: r.weight,
-      reps: r.reps,
-      rir: r.rir,
-    }));
-
-    res.status(200).json(result);
+    res.status(200).json(entries);
   } catch (error) {
     console.error('Error in getRecentLifts:', error);
     res.status(500).json({ error: 'Internal Server Error' });
