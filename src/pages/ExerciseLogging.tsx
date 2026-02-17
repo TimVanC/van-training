@@ -6,6 +6,7 @@ import SetSavedToast from '../components/SetSavedToast';
 import SetLoggingForm from '../components/SetLoggingForm';
 import LoadingOverlay from '../components/LoadingOverlay';
 import IncompleteSetModal from '../components/IncompleteSetModal';
+import RecentLiftsSection from '../components/RecentLiftsSection';
 
 interface ExerciseLoggingProps {
   session: LiftSession;
@@ -188,18 +189,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
           <div className="progress-bar-fill" style={{ width: `${totalSets > 0 ? (loggedSets / totalSets) * 100 : 0}%` }} />
         </div>
       </div>
-      <div className="recent-lifts">
-        {recentLiftsLoading && <p className="recent-lifts-loading">Loading recent lifts...</p>}
-        {!recentLiftsLoading && recentLifts.length > 0 && (
-          <ul className="recent-lifts-list">
-            {recentLifts.map((lift, i) => (
-              <li key={i} className="recent-lifts-item">
-                {lift.date} — {lift.weight} x {lift.reps} @ {lift.rir} RIR
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      <RecentLiftsSection recentLifts={recentLifts} loading={recentLiftsLoading} />
       <SetLoggingForm
         sets={exercise.sets}
         weight={weight}
