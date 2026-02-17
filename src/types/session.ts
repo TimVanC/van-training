@@ -1,8 +1,12 @@
 export interface RecentLift {
-  date: string;
   weight: string | number;
   reps: string | number;
   rir: string | number;
+}
+
+export interface RecentLiftsResponse {
+  trainedOn?: string;
+  sets: RecentLift[];
 }
 
 export interface LoggedSet {

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import type { LiftSession, LoggedSet, RecentLift } from '../types/session';
+import type { LiftSession, LoggedSet, RecentLift, RecentLiftsResponse } from '../types/session';
 import TemporaryOverlay from '../components/TemporaryOverlay';
 import SetSavedToast from '../components/SetSavedToast';
 import SetLoggingForm from '../components/SetLoggingForm';
@@ -38,6 +38,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   const [lastSetClientId, setLastSetClientId] = useState<string | null>(null);
   const [showIncompleteModal, setShowIncompleteModal] = useState(false);
   const [recentLifts, setRecentLifts] = useState<RecentLift[]>([]);
+  const [trainedOn, setTrainedOn] = useState<string | undefined>();
   const [recentLiftsLoading, setRecentLiftsLoading] = useState(false);
   const overlayTimer = useRef<number>(0);
 
@@ -45,9 +46,13 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     if (!exercise?.name) return;
     setRecentLiftsLoading(true);
     setRecentLifts([]);
+    setTrainedOn(undefined);
     fetch(`/api/getRecentLifts?exercise=${encodeURIComponent(exercise.name)}`, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : []))
-      .then((data: RecentLift[]) => setRecentLifts(Array.isArray(data) ? data : []))
+      .then((r) => (r.ok ? r.json() : { sets: [] }))
+      .then((data: RecentLiftsResponse) => {
+        setRecentLifts(Array.isArray(data.sets) ? data.sets : []);
+        setTrainedOn(typeof data.trainedOn === 'string' && data.trainedOn ? data.trainedOn : undefined);
+      })
       .catch(() => {})
       .finally(() => setRecentLiftsLoading(false));
   }, [exercise?.name]);
@@ -179,10 +184,23 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     setToastVisible(false);
   }
 
+  function formatTrainedOnDate(dateStr: string): string {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const now = new Date();
+    const sameYear = d.getFullYear() === now.getFullYear();
+    return sameYear
+      ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
   return (
     <div className="page">
       <h1>{exercise.name}</h1>
       <p className="exercise-target">Target: {totalSets} sets &times; {repRange} reps</p>
+      {trainedOn && (
+        <p className="exercise-trained-on">Trained on: {formatTrainedOnDate(trainedOn)}</p>
+      )}
       <div className="progress-bar-container">
         <div className="progress-bar-label">{loggedSets} / {totalSets} sets completed</div>
         <div className="progress-bar-track">

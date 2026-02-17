@@ -178,6 +178,15 @@ body {
   margin-bottom: 1rem;
 }
 
+.exercise-trained-on {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+  text-align: center;
+  width: 100%;
+  max-width: 400px;
+}
+
 .recent-lifts {
   display: flex;
   flex-direction: column;
