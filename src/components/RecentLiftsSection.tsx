@@ -14,12 +14,8 @@ interface RecentLiftsSectionProps {
   loading: boolean;
 }
 
-function RecentLiftsSection({ recentLifts, loading }: RecentLiftsSectionProps): React.JSX.Element | null {
+function RecentLiftsSection({ recentLifts, loading }: RecentLiftsSectionProps): React.JSX.Element {
   const [isExpanded, setIsExpanded] = useState(false);
-
-  if (!loading && recentLifts.length === 0) {
-    return null;
-  }
 
   return (
     <div className="recent-lifts">
@@ -39,7 +35,7 @@ function RecentLiftsSection({ recentLifts, loading }: RecentLiftsSectionProps): 
           <div className="recent-lifts-content">
             {loading ? (
               <p className="recent-lifts-loading">Loading recent lifts...</p>
-            ) : (
+            ) : recentLifts.length > 0 ? (
               recentLifts.map((lift, i) => {
                 const rir = lift.rir == null || String(lift.rir).trim() === '' ? 0 : lift.rir;
                 return (
@@ -48,6 +44,8 @@ function RecentLiftsSection({ recentLifts, loading }: RecentLiftsSectionProps): 
                   </div>
                 );
               })
+            ) : (
+              <p className="recent-lifts-empty">No data available</p>
             )}
           </div>
         </div>
