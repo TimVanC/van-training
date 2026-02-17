@@ -7,6 +7,82 @@ type RowRecord = Record<string, unknown>;
 const EXERCISE_MAP_SHEET = 'Exercise_Map';
 /** Exercise_Map columns: A = exercise name, B = equipment_type */
 
+/** All exercises from splits.json with inferred equipment_type */
+const SEED_EXERCISES: Array<{ exercise: string; equipment_type: string }> = [
+  { exercise: 'Incline Dumbbell Press', equipment_type: 'dumbbell' },
+  { exercise: 'Flat Machine Chest Press', equipment_type: 'machine' },
+  { exercise: 'Weighted Chest Dips', equipment_type: 'bodyweight' },
+  { exercise: 'Overhead Cable Triceps Extension', equipment_type: 'machine' },
+  { exercise: 'Pronated Triceps Pushdowns', equipment_type: 'machine' },
+  { exercise: 'Neutral Grip Pull-Ups', equipment_type: 'bodyweight' },
+  { exercise: 'Single Arm Cable Lat Pulldown', equipment_type: 'machine' },
+  { exercise: 'Seated Cable Row', equipment_type: 'machine' },
+  { exercise: 'Straight Arm Pulldown', equipment_type: 'machine' },
+  { exercise: 'Incline Dumbbell Curl', equipment_type: 'dumbbell' },
+  { exercise: 'Leg Press', equipment_type: 'machine' },
+  { exercise: 'Romanian Deadlift', equipment_type: 'machine' },
+  { exercise: 'Leg Extension', equipment_type: 'machine' },
+  { exercise: 'Hamstring Curl', equipment_type: 'machine' },
+  { exercise: 'Standing Calf Raise', equipment_type: 'machine' },
+  { exercise: 'Seated Dumbbell Shoulder Press', equipment_type: 'dumbbell' },
+  { exercise: 'Cable Lateral Raises', equipment_type: 'machine' },
+  { exercise: 'Cable Rear Delt Fly', equipment_type: 'machine' },
+  { exercise: 'Flat Dumbbell Press', equipment_type: 'dumbbell' },
+  { exercise: 'High to Low Cable Fly', equipment_type: 'machine' },
+  { exercise: 'Low to High Cable Fly', equipment_type: 'machine' },
+  { exercise: 'Slight Decline Machine Press', equipment_type: 'machine' },
+  { exercise: 'Reverse Grip Cable Pressdowns', equipment_type: 'machine' },
+  { exercise: 'Heavy Seated Cable Row', equipment_type: 'machine' },
+  { exercise: 'Incline Bench Dumbbell Row', equipment_type: 'dumbbell' },
+  { exercise: 'Preacher Curls', equipment_type: 'machine' },
+  { exercise: 'Hammer Curls', equipment_type: 'machine' },
+  { exercise: 'Seated or Standing Calf Raise', equipment_type: 'machine' },
+];
+
+function inferEquipment(exercise: string): string {
+  const lower = exercise.toLowerCase();
+  if (lower.includes('dumbbell')) return 'dumbbell';
+  if (/pull-up|pull up|chest dips|weighted.*dips/i.test(exercise)) return 'bodyweight';
+  return 'machine';
+}
+
+async function sheetExists(sheets: sheets_v4.Sheets, spreadsheetId: string, title: string): Promise<boolean> {
+  const resp = await sheets.spreadsheets.get({ spreadsheetId });
+  return (resp.data.sheets ?? []).some(
+    (s) => (s.properties?.title ?? '').toLowerCase() === title.toLowerCase(),
+  );
+}
+
+async function createAndSeedExerciseMap(
+  sheets: sheets_v4.Sheets,
+  spreadsheetId: string,
+): Promise<void> {
+  await sheets.spreadsheets.batchUpdate({
+    spreadsheetId,
+    requestBody: {
+      requests: [
+        {
+          addSheet: {
+            properties: { title: EXERCISE_MAP_SHEET },
+          },
+        },
+      ],
+    },
+  });
+
+  const headerAndRows: string[][] = [
+    ['exercise', 'equipment_type'],
+    ...SEED_EXERCISES.map((e) => [e.exercise, e.equipment_type]),
+  ];
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId,
+    range: `${EXERCISE_MAP_SHEET}!A1`,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values: headerAndRows },
+  });
+}
+
 async function getExerciseEquipmentMap(
   sheets: sheets_v4.Sheets,
   spreadsheetId: string,
@@ -23,12 +99,42 @@ async function getExerciseEquipmentMap(
       const row = rows[i] ?? [];
       const ex = String(row[0] ?? '').trim();
       const eq = String(row[1] ?? '').trim();
-      if (ex) map.set(ex.toLowerCase(), eq);
+      if (ex) map.set(ex.toLowerCase(), eq || 'machine');
     }
   } catch {
-    // Sheet may not exist; return empty map (default: non-dumbbell)
+    // Sheet may not exist
   }
   return map;
+}
+
+async function ensureExerciseMapAndGetMap(
+  sheets: sheets_v4.Sheets,
+  spreadsheetId: string,
+): Promise<Map<string, string>> {
+  const exists = await sheetExists(sheets, spreadsheetId, EXERCISE_MAP_SHEET);
+  if (!exists) {
+    await createAndSeedExerciseMap(sheets, spreadsheetId);
+  }
+  return getExerciseEquipmentMap(sheets, spreadsheetId);
+}
+
+async function appendExerciseToMap(
+  sheets: sheets_v4.Sheets,
+  spreadsheetId: string,
+  exercise: string,
+  equipmentType: string,
+): Promise<void> {
+  try {
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: `${EXERCISE_MAP_SHEET}!A:B`,
+      valueInputOption: 'USER_ENTERED',
+      insertDataOption: 'INSERT_ROWS',
+      requestBody: { values: [[exercise, equipmentType]] },
+    });
+  } catch (e) {
+    console.error('Failed to append exercise to Exercise_Map:', e);
+  }
 }
 
 function formatDateAndTime(iso: unknown): { date: string; time: string } {
@@ -177,7 +283,22 @@ export default async function handler(
 
     const sheets = google.sheets({ version: 'v4', auth });
     const sheetName = getSheetName(rows);
-    const equipmentMap = await getExerciseEquipmentMap(sheets, spreadsheetId);
+    const equipmentMap = await ensureExerciseMapAndGetMap(sheets, spreadsheetId);
+
+    if (sheetName === 'Lift_Log') {
+      const seen = new Set<string>();
+      for (const r of rows) {
+        const ex = String(r.exercise ?? '').trim();
+        if (!ex || seen.has(ex.toLowerCase())) continue;
+        seen.add(ex.toLowerCase());
+        if (!equipmentMap.has(ex.toLowerCase())) {
+          const equipmentType = inferEquipment(ex);
+          equipmentMap.set(ex.toLowerCase(), equipmentType);
+          await appendExerciseToMap(sheets, spreadsheetId, ex, equipmentType);
+        }
+      }
+    }
+
     const formattedRows = formatRows(rows, sheetName, equipmentMap);
 
     await sheets.spreadsheets.values.append({
