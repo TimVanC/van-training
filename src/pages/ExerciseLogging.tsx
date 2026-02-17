@@ -205,12 +205,13 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
       <h1>{exercise.name}</h1>
       <p className="exercise-target">Target: {totalSets} sets &times; {repRange} reps</p>
       <p className="exercise-last-trained">
-        Last trained: {recentLiftsLoading ? (
+        <span className="exercise-last-trained-label">Last trained: </span>
+        {recentLiftsLoading ? (
           <span className="exercise-last-trained-spinner" aria-hidden />
         ) : lastTrained ? (
           formatLastTrainedDate(lastTrained)
         ) : (
-          '—'
+          'n/a'
         )}
       </p>
       <div className="progress-bar-container">
