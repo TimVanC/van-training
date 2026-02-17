@@ -39,13 +39,6 @@ const SEED_EXERCISES: Array<{ exercise: string; equipment_type: string }> = [
   { exercise: 'Seated or Standing Calf Raise', equipment_type: 'machine' },
 ];
 
-function inferEquipment(exercise: string): string {
-  const lower = exercise.toLowerCase();
-  if (lower.includes('dumbbell')) return 'dumbbell';
-  if (/pull-up|pull up|chest dips|weighted.*dips/i.test(exercise)) return 'bodyweight';
-  return 'machine';
-}
-
 async function sheetExists(sheets: sheets_v4.Sheets, spreadsheetId: string, title: string): Promise<boolean> {
   const resp = await sheets.spreadsheets.get({ spreadsheetId });
   return (resp.data.sheets ?? []).some(
@@ -292,7 +285,7 @@ export default async function handler(
         if (!ex || seen.has(ex.toLowerCase())) continue;
         seen.add(ex.toLowerCase());
         if (!equipmentMap.has(ex.toLowerCase())) {
-          const equipmentType = inferEquipment(ex);
+          const equipmentType = 'machine';
           equipmentMap.set(ex.toLowerCase(), equipmentType);
           await appendExerciseToMap(sheets, spreadsheetId, ex, equipmentType);
         }
