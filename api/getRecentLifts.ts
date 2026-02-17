@@ -18,6 +18,10 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse,
 ): Promise<void> {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+
   if (req.method !== 'GET') {
     res.status(405).json({ error: 'Method not allowed' });
     return;
@@ -65,12 +69,15 @@ export default async function handler(
       const dateStr = String(arr[COL.date] ?? '').trim();
       if (!dateStr) continue;
       const timeStr = String(arr[COL.time] ?? '').trim();
+      const weightVal = arr[COL.weight];
+      const repsVal = arr[COL.reps];
+      const rirVal = arr[COL.rir];
       matched.push({
         date: dateStr,
         time: timeStr,
-        weight: arr[COL.weight] ?? '',
-        reps: arr[COL.reps] ?? '',
-        rir: arr[COL.rir] ?? 0,
+        weight: Number.isFinite(Number(weightVal)) ? Number(weightVal) : (weightVal ?? ''),
+        reps: Number.isFinite(Number(repsVal)) ? Number(repsVal) : (repsVal ?? ''),
+        rir: Number.isFinite(Number(rirVal)) ? Number(rirVal) : (rirVal ?? 0),
       });
     }
 

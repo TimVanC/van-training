@@ -44,7 +44,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     if (!exercise?.name) return;
     setRecentLiftsLoading(true);
     setRecentLifts([]);
-    fetch(`/api/getRecentLifts?exercise=${encodeURIComponent(exercise.name)}`)
+    fetch(`/api/getRecentLifts?exercise=${encodeURIComponent(exercise.name)}`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : []))
       .then((data: RecentLift[]) => setRecentLifts(Array.isArray(data) ? data : []))
       .catch(() => {})
