@@ -5,7 +5,7 @@ export interface RecentLift {
 }
 
 export interface RecentLiftsResponse {
-  trainedOn?: string;
+  lastTrained?: string;
   sets: RecentLift[];
 }
 

@@ -111,7 +111,7 @@ export default async function handler(
       // Recent_Lifts may not exist
     }
 
-    res.status(200).json({ trainedOn, sets });
+    res.status(200).json({ lastTrained: trainedOn, sets });
   } catch (error) {
     console.error('Error in getRecentLifts:', error);
     res.status(500).json({ error: 'Internal Server Error' });
