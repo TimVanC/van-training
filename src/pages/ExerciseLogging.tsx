@@ -191,19 +191,28 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     const localDate = new Date(Number(year), Number(month) - 1, Number(day));
     if (isNaN(localDate.getTime())) return dateStr;
     const now = new Date();
-    const sameYear = localDate.getFullYear() === now.getFullYear();
-    return sameYear
-      ? localDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-      : localDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    const includeYear = localDate.getFullYear() !== now.getFullYear();
+    return localDate.toLocaleDateString(undefined, {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      ...(includeYear ? { year: 'numeric' } : {}),
+    });
   }
 
   return (
     <div className="page">
       <h1>{exercise.name}</h1>
       <p className="exercise-target">Target: {totalSets} sets &times; {repRange} reps</p>
-      {lastTrained && (
-        <p className="exercise-last-trained">Last trained: {formatLastTrainedDate(lastTrained)}</p>
-      )}
+      <p className="exercise-last-trained">
+        Last trained: {recentLiftsLoading ? (
+          <span className="exercise-last-trained-spinner" aria-hidden />
+        ) : lastTrained ? (
+          formatLastTrainedDate(lastTrained)
+        ) : (
+          '—'
+        )}
+      </p>
       <div className="progress-bar-container">
         <div className="progress-bar-label">{loggedSets} / {totalSets} sets completed</div>
         <div className="progress-bar-track">
