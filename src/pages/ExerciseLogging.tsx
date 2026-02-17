@@ -1,6 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import type { LiftSession, LoggedSet } from '../types/session';
+import type { LiftSession, LoggedSet, RecentLift } from '../types/session';
 import TemporaryOverlay from '../components/TemporaryOverlay';
 import SetSavedToast from '../components/SetSavedToast';
 import SetLoggingForm from '../components/SetLoggingForm';
@@ -36,7 +36,20 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   const [toastMsg, setToastMsg] = useState('');
   const [lastSetClientId, setLastSetClientId] = useState<string | null>(null);
   const [showIncompleteModal, setShowIncompleteModal] = useState(false);
+  const [recentLifts, setRecentLifts] = useState<RecentLift[]>([]);
+  const [recentLiftsLoading, setRecentLiftsLoading] = useState(false);
   const overlayTimer = useRef<number>(0);
+
+  useEffect(() => {
+    if (!exercise?.name) return;
+    setRecentLiftsLoading(true);
+    setRecentLifts([]);
+    fetch(`/api/getRecentLifts?exercise=${encodeURIComponent(exercise.name)}`)
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: RecentLift[]) => setRecentLifts(Array.isArray(data) ? data : []))
+      .catch(() => {})
+      .finally(() => setRecentLiftsLoading(false));
+  }, [exercise?.name]);
 
   if (!exercise) {
     return (
@@ -174,6 +187,18 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         <div className="progress-bar-track">
           <div className="progress-bar-fill" style={{ width: `${totalSets > 0 ? (loggedSets / totalSets) * 100 : 0}%` }} />
         </div>
+      </div>
+      <div className="recent-lifts">
+        {recentLiftsLoading && <p className="recent-lifts-loading">Loading recent lifts...</p>}
+        {!recentLiftsLoading && recentLifts.length > 0 && (
+          <ul className="recent-lifts-list">
+            {recentLifts.map((lift, i) => (
+              <li key={i} className="recent-lifts-item">
+                {lift.date} — {lift.weight} x {lift.reps} @ {lift.rir} RIR
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
       <SetLoggingForm
         sets={exercise.sets}

@@ -1,8 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { google } from 'googleapis';
 
-const SPREADSHEET_ID = '1hWmeYoGpiw58XilR8-KgIysuq11qI7TE2CTg3WIyuN0';
-
 type RowRecord = Record<string, unknown>;
 
 function formatDateAndTime(iso: unknown): { date: string; time: string } {
@@ -123,6 +121,11 @@ export default async function handler(
       return;
     }
 
+    const spreadsheetId = process.env.GOOGLE_SHEET_ID;
+    if (!spreadsheetId) {
+      throw new Error('Missing GOOGLE_SHEET_ID environment variable');
+    }
+
     const privateKey = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
     if (!process.env.GOOGLE_CLIENT_EMAIL || !privateKey) {
       console.error('Missing GOOGLE_CLIENT_EMAIL or GOOGLE_PRIVATE_KEY');
@@ -141,7 +144,7 @@ export default async function handler(
     const formattedRows = formatRows(rows, sheetName);
 
     await sheets.spreadsheets.values.append({
-      spreadsheetId: SPREADSHEET_ID,
+      spreadsheetId,
       range: `${sheetName}!A1`,
       valueInputOption: 'USER_ENTERED',
       requestBody: { values: formattedRows },

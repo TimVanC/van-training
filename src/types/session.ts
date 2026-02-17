@@ -1,3 +1,10 @@
+export interface RecentLift {
+  date: string;
+  weight: string | number;
+  reps: string | number;
+  rir: string | number;
+}
+
 export interface LoggedSet {
   weight: number;
   reps: number;
