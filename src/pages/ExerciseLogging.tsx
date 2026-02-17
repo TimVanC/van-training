@@ -185,13 +185,16 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   }
 
   function formatLastTrainedDate(dateStr: string): string {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
+    const parts = dateStr.split('-');
+    if (parts.length < 3) return dateStr;
+    const [year, month, day] = parts;
+    const localDate = new Date(Number(year), Number(month) - 1, Number(day));
+    if (isNaN(localDate.getTime())) return dateStr;
     const now = new Date();
-    const sameYear = d.getFullYear() === now.getFullYear();
+    const sameYear = localDate.getFullYear() === now.getFullYear();
     return sameYear
-      ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-      : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      ? localDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+      : localDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   }
 
   return (
