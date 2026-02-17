@@ -1,7 +1,35 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { google } from 'googleapis';
+import type { sheets_v4 } from 'googleapis';
 
 type RowRecord = Record<string, unknown>;
+
+const EXERCISE_MAP_SHEET = 'Exercise_Map';
+/** Exercise_Map columns: A = exercise name, B = equipment_type */
+
+async function getExerciseEquipmentMap(
+  sheets: sheets_v4.Sheets,
+  spreadsheetId: string,
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  try {
+    const resp = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `${EXERCISE_MAP_SHEET}!A:B`,
+    });
+    const rows = (resp.data.values ?? []) as string[][];
+    const start = rows.length > 0 && /^(exercise|equipment)/i.test(String(rows[0][0] ?? '')) ? 1 : 0;
+    for (let i = start; i < rows.length; i++) {
+      const row = rows[i] ?? [];
+      const ex = String(row[0] ?? '').trim();
+      const eq = String(row[1] ?? '').trim();
+      if (ex) map.set(ex.toLowerCase(), eq);
+    }
+  } catch {
+    // Sheet may not exist; return empty map (default: non-dumbbell)
+  }
+  return map;
+}
 
 function formatDateAndTime(iso: unknown): { date: string; time: string } {
   const str = typeof iso === 'string' ? iso : '';
@@ -32,8 +60,15 @@ function getSheetName(rows: RowRecord[]): string {
   return 'Lift_Log';
 }
 
-function toLiftRow(r: RowRecord): unknown[] {
+function toLiftRow(r: RowRecord, equipmentMap: Map<string, string>): unknown[] {
   const { date, time } = formatDateAndTime(r.date);
+  const normalizedWeight = Number(r.weight);
+  const normalizedReps = Number(r.reps);
+  const w = Number.isFinite(normalizedWeight) ? normalizedWeight : 0;
+  const rp = Number.isFinite(normalizedReps) ? normalizedReps : 0;
+  const equipment = equipmentMap.get(String(r.exercise ?? '').trim().toLowerCase()) ?? '';
+  const volume = w === 0 ? 0 : equipment === 'dumbbell' ? w * 2 * rp : w * rp;
+
   return [
     date,
     time,
@@ -44,6 +79,7 @@ function toLiftRow(r: RowRecord): unknown[] {
     r.weight ?? '',
     r.reps ?? '',
     r.rir ?? '',
+    volume,
     r.notes ?? '',
   ];
 }
@@ -97,12 +133,12 @@ function toSwimRow(r: RowRecord): unknown[] {
   ];
 }
 
-function formatRows(rows: RowRecord[], sheetName: string): unknown[][] {
-  if (sheetName === 'Lift_Log') return rows.map(toLiftRow);
+function formatRows(rows: RowRecord[], sheetName: string, equipmentMap: Map<string, string>): unknown[][] {
+  if (sheetName === 'Lift_Log') return rows.map((r) => toLiftRow(r, equipmentMap));
   if (sheetName === 'Run_Log') return rows.map(toRunRow);
   if (sheetName === 'Bike_Log') return rows.map(toBikeRow);
   if (sheetName === 'Swim_Log') return rows.map(toSwimRow);
-  return rows.map(toLiftRow);
+  return rows.map((r) => toLiftRow(r, equipmentMap));
 }
 
 export default async function handler(
@@ -141,7 +177,8 @@ export default async function handler(
 
     const sheets = google.sheets({ version: 'v4', auth });
     const sheetName = getSheetName(rows);
-    const formattedRows = formatRows(rows, sheetName);
+    const equipmentMap = await getExerciseEquipmentMap(sheets, spreadsheetId);
+    const formattedRows = formatRows(rows, sheetName, equipmentMap);
 
     await sheets.spreadsheets.values.append({
       spreadsheetId,
