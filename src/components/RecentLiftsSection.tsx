@@ -13,11 +13,19 @@ interface RecentLiftsSectionProps {
   recentLifts: RecentLift[];
   loading: boolean;
   previousNote?: string;
+  suggestedWeight?: number | null;
   targetSets?: number;
 }
 
-function RecentLiftsSection({ recentLifts, loading, previousNote, targetSets = 3 }: RecentLiftsSectionProps): React.JSX.Element {
+function RecentLiftsSection({
+  recentLifts,
+  loading,
+  previousNote,
+  suggestedWeight,
+  targetSets = 3,
+}: RecentLiftsSectionProps): React.JSX.Element {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isSuggestionExpanded, setIsSuggestionExpanded] = useState(false);
 
   return (
     <div className="recent-lifts">
@@ -51,6 +59,33 @@ function RecentLiftsSection({ recentLifts, loading, previousNote, targetSets = 3
             )}
             {previousNote && (
               <p className="recent-lifts-previous-note">Previous note: &quot;{previousNote}&quot;</p>
+            )}
+          </div>
+        </div>
+      </div>
+      <button
+        type="button"
+        className="recent-lifts-header recent-lifts-header--suggestion"
+        onClick={() => setIsSuggestionExpanded((v) => !v)}
+        aria-expanded={isSuggestionExpanded}
+      >
+        <span className="recent-lifts-header-text">Progression Suggestion</span>
+        <span className={`recent-lifts-caret ${isSuggestionExpanded ? 'recent-lifts-caret--open' : ''}`}>
+          <IconCaretDown />
+        </span>
+      </button>
+      <div className={`recent-lifts-panel ${isSuggestionExpanded ? 'recent-lifts-panel--expanded' : ''}`}>
+        <div className="recent-lifts-inner">
+          <div className="recent-lifts-content">
+            {loading ? (
+              <p className="recent-lifts-loading">Loading suggestion...</p>
+            ) : suggestedWeight != null ? (
+              <>
+                <p className="recent-lifts-suggestion-value">Suggested weight: {suggestedWeight} lbs</p>
+                <p className="recent-lifts-suggestion-note">Based on last session performance</p>
+              </>
+            ) : (
+              <p className="recent-lifts-empty">Not enough data to generate suggestion</p>
             )}
           </div>
         </div>

@@ -35,6 +35,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   const [recentLifts, setRecentLifts] = useState<RecentLift[]>([]);
   const [lastTrained, setLastTrained] = useState<string | undefined>();
   const [previousNote, setPreviousNote] = useState<string | undefined>();
+  const [suggestedWeight, setSuggestedWeight] = useState<number | null>(null);
   const [recentLiftsLoading, setRecentLiftsLoading] = useState(false);
   const overlayTimer = useRef<number>(0);
 
@@ -44,6 +45,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     setRecentLifts([]);
     setLastTrained(undefined);
     setPreviousNote(undefined);
+    setSuggestedWeight(null);
     const targetSets = exercise.targetSets ?? 3;
     fetch(`/api/getRecentLifts?exercise=${encodeURIComponent(exercise.name)}&targetSets=${targetSets}`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : { sets: [] }))
@@ -51,6 +53,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         setRecentLifts(Array.isArray(data.sets) ? data.sets : []);
         setLastTrained(typeof data.lastTrained === 'string' && data.lastTrained ? data.lastTrained : undefined);
         setPreviousNote(typeof data.previousNote === 'string' && data.previousNote ? data.previousNote : undefined);
+        setSuggestedWeight(typeof data.suggestedWeight === 'number' && Number.isFinite(data.suggestedWeight) ? data.suggestedWeight : null);
       })
       .catch(() => {})
       .finally(() => setRecentLiftsLoading(false));
@@ -255,7 +258,13 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
           <div className="progress-bar-fill" style={{ width: `${totalSets > 0 ? (loggedSets / totalSets) * 100 : 0}%` }} />
         </div>
       </div>
-      <RecentLiftsSection recentLifts={recentLifts} loading={recentLiftsLoading} previousNote={previousNote} targetSets={totalSets} />
+      <RecentLiftsSection
+        recentLifts={recentLifts}
+        loading={recentLiftsLoading}
+        previousNote={previousNote}
+        suggestedWeight={suggestedWeight}
+        targetSets={totalSets}
+      />
       <SetLoggingForm
         sets={exercise.sets}
         weight={weight}

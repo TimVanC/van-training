@@ -249,6 +249,11 @@ body {
   transition: color var(--transition);
 }
 
+.recent-lifts-header--suggestion {
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+}
+
 .recent-lifts-header:hover {
   color: var(--text-primary);
 }
@@ -303,6 +308,20 @@ body {
 
 .recent-lifts-item + .recent-lifts-item {
   margin-top: 0.35rem;
+}
+
+.recent-lifts-suggestion-value {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.recent-lifts-suggestion-note {
+  margin: 0.35rem 0 0;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  text-align: center;
 }
 
 .submit-button {

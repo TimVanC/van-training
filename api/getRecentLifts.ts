@@ -1,5 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { google } from 'googleapis';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 
 const LIFT_LOG_SHEET = 'Lift_Log';
 
@@ -21,6 +23,58 @@ interface LiftLogRow {
   reps: unknown;
   rir: unknown;
   notes: unknown;
+}
+
+interface RepRangeLookupEntry {
+  exercise: string;
+  repRange: string;
+}
+
+interface RepRange {
+  min: number;
+  max: number;
+}
+
+function getSessionKey(row: LiftLogRow): string {
+  return `${row.date}||${row.time}`;
+}
+
+async function loadRepRangeByExercise(): Promise<Map<string, RepRange>> {
+  const repRangeByExercise = new Map<string, RepRange>();
+  const splitsPath = path.join(process.cwd(), 'src', 'data', 'splits.json');
+  const raw = await readFile(splitsPath, 'utf8');
+  const parsed = JSON.parse(raw) as unknown;
+  const splitItems = Array.isArray(parsed) ? parsed : [parsed];
+  const entries: RepRangeLookupEntry[] = [];
+
+  for (const splitItem of splitItems) {
+    if (!splitItem || typeof splitItem !== 'object') continue;
+    const days = (splitItem as { days?: unknown }).days;
+    if (!days || typeof days !== 'object') continue;
+    for (const dayExercises of Object.values(days as Record<string, unknown>)) {
+      if (!Array.isArray(dayExercises)) continue;
+      for (const exercise of dayExercises) {
+        if (!exercise || typeof exercise !== 'object') continue;
+        const ex = exercise as { exercise?: unknown; repRange?: unknown };
+        const exerciseName = String(ex.exercise ?? '').trim().toLowerCase();
+        const repRangeText = String(ex.repRange ?? '').trim();
+        if (!exerciseName || !repRangeText) continue;
+        entries.push({ exercise: exerciseName, repRange: repRangeText });
+      }
+    }
+  }
+
+  for (const entry of entries) {
+    if (repRangeByExercise.has(entry.exercise)) continue;
+    const match = entry.repRange.match(/(\d+)\s*-\s*(\d+)/);
+    if (!match) continue;
+    const min = Number(match[1]);
+    const max = Number(match[2]);
+    if (!Number.isFinite(min) || !Number.isFinite(max)) continue;
+    repRangeByExercise.set(entry.exercise, { min, max });
+  }
+
+  return repRangeByExercise;
 }
 
 function parseLiftLogRows(rows: unknown[][]): LiftLogRow[] {
@@ -90,6 +144,14 @@ export default async function handler(
     let lastTrained: string | undefined;
     let sets: RecentLiftEntry[] = [];
     let previousNote: string | undefined;
+    let suggestedWeight: number | null = null;
+    let repRangeByExercise = new Map<string, RepRange>();
+
+    try {
+      repRangeByExercise = await loadRepRangeByExercise();
+    } catch {
+      // If rep ranges cannot be loaded, fallback still returns recent lift data.
+    }
 
     try {
       const liftLogResp = await sheets.spreadsheets.values.get({
@@ -108,6 +170,8 @@ export default async function handler(
         const mostRecentSessionRows = matched.filter(
           (r) => r.date === first.date && r.time === first.time,
         );
+        const uniqueSessionKeys = new Set(matched.map(getSessionKey));
+        const hasEnoughSessions = uniqueSessionKeys.size >= 2;
         const lastSetOfSession = mostRecentSessionRows.reduce(
           (acc, r) => (r.setNumber > acc.setNumber ? r : acc),
           mostRecentSessionRows[0]!,
@@ -122,12 +186,35 @@ export default async function handler(
           reps: r.reps ?? '',
           rir: r.rir ?? 0,
         }));
+
+        if (hasEnoughSessions) {
+          const repRange = repRangeByExercise.get(normalizedExercise);
+          const totalSets = mostRecentSessionRows.length;
+          const hitTopRangeCount = repRange
+            ? mostRecentSessionRows.reduce((count, row) => {
+                const repsVal = Number(row.reps);
+                return Number.isFinite(repsVal) && repsVal >= repRange.max ? count + 1 : count;
+              }, 0)
+            : 0;
+          const avgRIR = totalSets > 0
+            ? mostRecentSessionRows.reduce((sum, row) => {
+                const rirVal = Number(row.rir);
+                return sum + (Number.isFinite(rirVal) ? rirVal : 0);
+              }, 0) / totalSets
+            : 0;
+          const lastWeight = Number(lastSetOfSession.weight);
+          if (Number.isFinite(lastWeight)) {
+            suggestedWeight = hitTopRangeCount >= totalSets - 1 && avgRIR >= 1
+              ? lastWeight + 5
+              : lastWeight;
+          }
+        }
       }
     } catch {
       // Lift_Log may not exist
     }
 
-    res.status(200).json({ lastTrained, sets, previousNote });
+    res.status(200).json({ lastTrained, sets, previousNote, suggestedWeight });
   } catch (error) {
     console.error('Error in getRecentLifts:', error);
     res.status(500).json({ error: 'Internal Server Error' });

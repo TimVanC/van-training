@@ -8,6 +8,7 @@ export interface RecentLiftsResponse {
   lastTrained?: string;
   sets: RecentLift[];
   previousNote?: string;
+  suggestedWeight?: number | null;
 }
 
 export interface LoggedSet {
