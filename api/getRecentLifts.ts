@@ -1,12 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { google } from 'googleapis';
 
-const RECENT_LIFTS_SHEET = 'Recent_Lifts';
 const LIFT_LOG_SHEET = 'Lift_Log';
 
-/** Recent_Lifts: one row per exercise. Cols: Exercise, 1_Weight, 1_Reps, 1_RIR, ... */
 /** Lift_Log: date, time, split, day, exercise, setNumber, weight, reps, rir, volume, notes */
-const LIFT_LOG_COL = { date: 0, time: 1, exercise: 4 } as const;
+const LIFT_LOG_COL = { date: 0, time: 1, exercise: 4, setNumber: 5, weight: 6, reps: 7, rir: 8, notes: 10 } as const;
 
 interface RecentLiftEntry {
   weight: string | number;
@@ -14,28 +12,36 @@ interface RecentLiftEntry {
   rir: string | number;
 }
 
-function isRepsEmpty(reps: unknown): boolean {
-  if (reps == null) return true;
-  return String(reps).trim() === '';
+interface LiftLogRow {
+  date: string;
+  time: string;
+  exercise: string;
+  setNumber: number;
+  weight: unknown;
+  reps: unknown;
+  rir: unknown;
+  notes: unknown;
 }
 
-function getMostRecentDateFromLiftLog(
-  rows: unknown[][],
-  normalizedExercise: string,
-): string | undefined {
-  const matched: Array<{ date: string; time: string }> = [];
-  for (const row of rows) {
-    const arr = row as unknown[];
-    const ex = String(arr[LIFT_LOG_COL.exercise] ?? '').trim().toLowerCase();
-    if (ex !== normalizedExercise) continue;
-    const dateStr = String(arr[LIFT_LOG_COL.date] ?? '').trim();
-    if (!dateStr) continue;
-    const timeStr = String(arr[LIFT_LOG_COL.time] ?? '').trim();
-    matched.push({ date: dateStr, time: timeStr });
-  }
-  if (matched.length === 0) return undefined;
-  matched.sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`));
-  return matched[0]!.date;
+function parseLiftLogRows(rows: unknown[][]): LiftLogRow[] {
+  const dataRows = rows.slice(1);
+  return dataRows
+    .map((row) => {
+      const arr = row as unknown[];
+      const dateStr = String(arr[LIFT_LOG_COL.date] ?? '').trim();
+      if (!dateStr) return null;
+      return {
+        date: dateStr,
+        time: String(arr[LIFT_LOG_COL.time] ?? '').trim(),
+        exercise: String(arr[LIFT_LOG_COL.exercise] ?? '').trim().toLowerCase(),
+        setNumber: Number(arr[LIFT_LOG_COL.setNumber]) || 0,
+        weight: arr[LIFT_LOG_COL.weight],
+        reps: arr[LIFT_LOG_COL.reps],
+        rir: arr[LIFT_LOG_COL.rir],
+        notes: arr[LIFT_LOG_COL.notes],
+      };
+    })
+    .filter((r): r is LiftLogRow => r !== null);
 }
 
 export default async function handler(
@@ -58,6 +64,8 @@ export default async function handler(
       return;
     }
 
+    const rawTarget = req.query.targetSets;
+    const targetSets = typeof rawTarget === 'string' ? Math.max(1, parseInt(rawTarget, 10) || 3) : 3;
     const normalizedExercise = exerciseName.toLowerCase();
 
     const spreadsheetId = process.env.GOOGLE_SHEET_ID;
@@ -79,39 +87,47 @@ export default async function handler(
 
     const sheets = google.sheets({ version: 'v4', auth });
 
-    let trainedOn: string | undefined;
+    let lastTrained: string | undefined;
+    let sets: RecentLiftEntry[] = [];
+    let previousNote: string | undefined;
+
     try {
       const liftLogResp = await sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: `${LIFT_LOG_SHEET}!A:J`,
+        range: `${LIFT_LOG_SHEET}!A:K`,
       });
-      const liftLogRows = (liftLogResp.data.values ?? []) as unknown[][];
-      const dataRows = liftLogRows.slice(1);
-      trainedOn = getMostRecentDateFromLiftLog(dataRows, normalizedExercise);
+      const rawRows = (liftLogResp.data.values ?? []) as unknown[][];
+      const parsed = parseLiftLogRows(rawRows);
+      const matched = parsed.filter((r) => r.exercise === normalizedExercise);
+      matched.sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`));
+
+      if (matched.length > 0) {
+        const first = matched[0]!;
+        lastTrained = first.date;
+
+        const mostRecentSessionRows = matched.filter(
+          (r) => r.date === first.date && r.time === first.time,
+        );
+        const lastSetOfSession = mostRecentSessionRows.reduce(
+          (acc, r) => (r.setNumber > acc.setNumber ? r : acc),
+          mostRecentSessionRows[0]!,
+        );
+        const noteVal = lastSetOfSession?.notes;
+        if (noteVal != null && String(noteVal).trim() !== '') {
+          previousNote = String(noteVal).trim();
+        }
+
+        sets = matched.slice(0, targetSets).map((r) => ({
+          weight: r.weight ?? '',
+          reps: r.reps ?? '',
+          rir: r.rir ?? 0,
+        }));
+      }
     } catch {
       // Lift_Log may not exist
     }
 
-    let sets: RecentLiftEntry[] = [];
-    try {
-      const recentResp = await sheets.spreadsheets.values.get({
-        spreadsheetId,
-        range: `${RECENT_LIFTS_SHEET}!A:J`,
-      });
-      const recentRows = (recentResp.data.values ?? []) as unknown[][];
-      const row = recentRows.find((r) => String((r as unknown[])[0] ?? '').trim().toLowerCase() === normalizedExercise) as unknown[] | undefined;
-      if (row) {
-        sets = [
-          { weight: row[1], reps: row[2], rir: row[3] ?? 0 },
-          { weight: row[4], reps: row[5], rir: row[6] ?? 0 },
-          { weight: row[7], reps: row[8], rir: row[9] ?? 0 },
-        ].filter((e) => !isRepsEmpty(e.reps));
-      }
-    } catch {
-      // Recent_Lifts may not exist
-    }
-
-    res.status(200).json({ lastTrained: trainedOn, sets });
+    res.status(200).json({ lastTrained, sets, previousNote });
   } catch (error) {
     console.error('Error in getRecentLifts:', error);
     res.status(500).json({ error: 'Internal Server Error' });

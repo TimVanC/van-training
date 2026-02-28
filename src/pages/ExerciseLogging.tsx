@@ -39,6 +39,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   const [showIncompleteModal, setShowIncompleteModal] = useState(false);
   const [recentLifts, setRecentLifts] = useState<RecentLift[]>([]);
   const [lastTrained, setLastTrained] = useState<string | undefined>();
+  const [previousNote, setPreviousNote] = useState<string | undefined>();
   const [recentLiftsLoading, setRecentLiftsLoading] = useState(false);
   const overlayTimer = useRef<number>(0);
 
@@ -47,15 +48,18 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     setRecentLiftsLoading(true);
     setRecentLifts([]);
     setLastTrained(undefined);
-    fetch(`/api/getRecentLifts?exercise=${encodeURIComponent(exercise.name)}`, { cache: 'no-store' })
+    setPreviousNote(undefined);
+    const targetSets = exercise.targetSets ?? 3;
+    fetch(`/api/getRecentLifts?exercise=${encodeURIComponent(exercise.name)}&targetSets=${targetSets}`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : { sets: [] }))
       .then((data: RecentLiftsResponse) => {
         setRecentLifts(Array.isArray(data.sets) ? data.sets : []);
         setLastTrained(typeof data.lastTrained === 'string' && data.lastTrained ? data.lastTrained : undefined);
+        setPreviousNote(typeof data.previousNote === 'string' && data.previousNote ? data.previousNote : undefined);
       })
       .catch(() => {})
       .finally(() => setRecentLiftsLoading(false));
-  }, [exercise?.name]);
+  }, [exercise?.name, exercise?.targetSets]);
 
   if (!exercise) {
     return (
@@ -97,12 +101,12 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     const normalizedWeight = Number(weight);
     const normalizedReps = Number(reps);
     const normalizedRir = rir === '' ? 0 : Number(rir);
-    if (!Number.isFinite(normalizedWeight) || normalizedWeight <= 0) {
+    if (!Number.isFinite(normalizedWeight)) {
       flashOverlay('Weight and Reps are required');
       return undefined;
     }
     if (!Number.isFinite(normalizedReps) || normalizedReps <= 0) {
-      flashOverlay('Weight and Reps are required');
+      flashOverlay('Reps are required and must be greater than 0');
       return undefined;
     }
     if (isSubmitting) return undefined;
@@ -124,9 +128,10 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
 
   function handleSaveEdit(): void {
     if (editingIndex === null) return;
-    const w = parseFloat(weight);
-    const r = parseInt(reps, 10);
-    if (isNaN(w) || isNaN(r)) { flashOverlay('Weight and Reps are required'); return; }
+    const w = Number(weight);
+    const r = Number(reps);
+    if (!Number.isFinite(w)) { flashOverlay('Weight is required'); return; }
+    if (!Number.isFinite(r) || r <= 0) { flashOverlay('Reps must be greater than 0'); return; }
     if (isSubmitting) return;
     setIsSubmitting(true);
     const updated = exercise.sets.map((s, i) =>
@@ -148,7 +153,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   function handleFinish(): void {
     const normalizedWeight = Number(weight);
     const normalizedReps = Number(reps);
-    const bothValid = Number.isFinite(normalizedWeight) && normalizedWeight > 0
+    const bothValid = Number.isFinite(normalizedWeight)
       && Number.isFinite(normalizedReps) && normalizedReps > 0;
     const hasWeight = weight.trim() !== '';
     const hasReps = reps.trim() !== '';
@@ -220,7 +225,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
           <div className="progress-bar-fill" style={{ width: `${totalSets > 0 ? (loggedSets / totalSets) * 100 : 0}%` }} />
         </div>
       </div>
-      <RecentLiftsSection recentLifts={recentLifts} loading={recentLiftsLoading} />
+      <RecentLiftsSection recentLifts={recentLifts} loading={recentLiftsLoading} previousNote={previousNote} />
       <SetLoggingForm
         sets={exercise.sets}
         weight={weight}

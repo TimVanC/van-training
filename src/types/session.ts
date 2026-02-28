@@ -7,6 +7,7 @@ export interface RecentLift {
 export interface RecentLiftsResponse {
   lastTrained?: string;
   sets: RecentLift[];
+  previousNote?: string;
 }
 
 export interface LoggedSet {

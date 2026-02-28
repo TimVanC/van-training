@@ -12,9 +12,10 @@ function IconCaretDown(): React.JSX.Element {
 interface RecentLiftsSectionProps {
   recentLifts: RecentLift[];
   loading: boolean;
+  previousNote?: string;
 }
 
-function RecentLiftsSection({ recentLifts, loading }: RecentLiftsSectionProps): React.JSX.Element {
+function RecentLiftsSection({ recentLifts, loading, previousNote }: RecentLiftsSectionProps): React.JSX.Element {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
@@ -46,6 +47,9 @@ function RecentLiftsSection({ recentLifts, loading }: RecentLiftsSectionProps): 
               })
             ) : (
               <p className="recent-lifts-empty">No data available</p>
+            )}
+            {previousNote && (
+              <p className="recent-lifts-previous-note">Previous note: &quot;{previousNote}&quot;</p>
             )}
           </div>
         </div>

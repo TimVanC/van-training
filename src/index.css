@@ -225,6 +225,13 @@ body {
   text-align: center;
 }
 
+.recent-lifts-previous-note {
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  margin: 0.75rem 0 0;
+  text-align: center;
+}
+
 .recent-lifts-header {
   display: flex;
   align-items: center;
