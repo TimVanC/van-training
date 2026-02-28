@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import type { LiftSession, LoggedSet, RecentLift, RecentLiftsResponse } from '../types/session';
+import type { LiftSession, LoggedSet, NextSessionPlanSet, RecentLift, RecentLiftsResponse } from '../types/session';
 import TemporaryOverlay from '../components/TemporaryOverlay';
 import SetLoggingForm from '../components/SetLoggingForm';
 import LoadingOverlay from '../components/LoadingOverlay';
@@ -35,7 +35,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   const [recentLifts, setRecentLifts] = useState<RecentLift[]>([]);
   const [lastTrained, setLastTrained] = useState<string | undefined>();
   const [previousNote, setPreviousNote] = useState<string | undefined>();
-  const [suggestedWeight, setSuggestedWeight] = useState<number | null>(null);
+  const [nextSessionPlan, setNextSessionPlan] = useState<NextSessionPlanSet[] | null>(null);
   const [recentLiftsLoading, setRecentLiftsLoading] = useState(false);
   const overlayTimer = useRef<number>(0);
 
@@ -45,7 +45,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     setRecentLifts([]);
     setLastTrained(undefined);
     setPreviousNote(undefined);
-    setSuggestedWeight(null);
+    setNextSessionPlan(null);
     const targetSets = exercise.targetSets ?? 3;
     fetch(`/api/getRecentLifts?exercise=${encodeURIComponent(exercise.name)}&targetSets=${targetSets}`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : { sets: [] }))
@@ -53,7 +53,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         setRecentLifts(Array.isArray(data.sets) ? data.sets : []);
         setLastTrained(typeof data.lastTrained === 'string' && data.lastTrained ? data.lastTrained : undefined);
         setPreviousNote(typeof data.previousNote === 'string' && data.previousNote ? data.previousNote : undefined);
-        setSuggestedWeight(typeof data.suggestedWeight === 'number' && Number.isFinite(data.suggestedWeight) ? data.suggestedWeight : null);
+        setNextSessionPlan(Array.isArray(data.nextSessionPlan) ? data.nextSessionPlan : null);
       })
       .catch(() => {})
       .finally(() => setRecentLiftsLoading(false));
@@ -262,7 +262,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         recentLifts={recentLifts}
         loading={recentLiftsLoading}
         previousNote={previousNote}
-        suggestedWeight={suggestedWeight}
+        nextSessionPlan={nextSessionPlan}
         targetSets={totalSets}
       />
       <SetLoggingForm

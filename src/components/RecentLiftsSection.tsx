@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { RecentLift } from '../types/session';
+import type { NextSessionPlanSet, RecentLift } from '../types/session';
 
 function IconCaretDown(): React.JSX.Element {
   return (
@@ -13,7 +13,7 @@ interface RecentLiftsSectionProps {
   recentLifts: RecentLift[];
   loading: boolean;
   previousNote?: string;
-  suggestedWeight?: number | null;
+  nextSessionPlan?: NextSessionPlanSet[] | null;
   targetSets?: number;
 }
 
@@ -21,7 +21,7 @@ function RecentLiftsSection({
   recentLifts,
   loading,
   previousNote,
-  suggestedWeight,
+  nextSessionPlan,
   targetSets = 3,
 }: RecentLiftsSectionProps): React.JSX.Element {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -69,7 +69,7 @@ function RecentLiftsSection({
         onClick={() => setIsSuggestionExpanded((v) => !v)}
         aria-expanded={isSuggestionExpanded}
       >
-        <span className="recent-lifts-header-text">Progression Suggestion</span>
+        <span className="recent-lifts-header-text">Next Session Plan</span>
         <span className={`recent-lifts-caret ${isSuggestionExpanded ? 'recent-lifts-caret--open' : ''}`}>
           <IconCaretDown />
         </span>
@@ -78,14 +78,15 @@ function RecentLiftsSection({
         <div className="recent-lifts-inner">
           <div className="recent-lifts-content">
             {loading ? (
-              <p className="recent-lifts-loading">Loading suggestion...</p>
-            ) : suggestedWeight != null ? (
-              <>
-                <p className="recent-lifts-suggestion-value">Suggested weight: {suggestedWeight} lbs</p>
-                <p className="recent-lifts-suggestion-note">Based on last session performance</p>
-              </>
+              <p className="recent-lifts-loading">Loading plan...</p>
+            ) : nextSessionPlan && nextSessionPlan.length > 0 ? (
+              nextSessionPlan.map((planSet) => (
+                <div key={`${planSet.setNumber}-${planSet.weight}`} className="recent-lifts-item">
+                  Set {planSet.setNumber} - {planSet.weight} lbs × {planSet.targetReps}
+                </div>
+              ))
             ) : (
-              <p className="recent-lifts-empty">Not enough data to generate suggestion</p>
+              <p className="recent-lifts-empty">Not enough data to generate plan</p>
             )}
           </div>
         </div>

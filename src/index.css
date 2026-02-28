@@ -310,20 +310,6 @@ body {
   margin-top: 0.35rem;
 }
 
-.recent-lifts-suggestion-value {
-  margin: 0;
-  font-size: 0.95rem;
-  color: var(--text-secondary);
-  text-align: center;
-}
-
-.recent-lifts-suggestion-note {
-  margin: 0.35rem 0 0;
-  font-size: 0.875rem;
-  color: var(--text-muted);
-  text-align: center;
-}
-
 .submit-button {
   width: 100%;
   max-width: 400px;
