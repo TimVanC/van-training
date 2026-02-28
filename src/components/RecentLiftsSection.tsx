@@ -13,9 +13,10 @@ interface RecentLiftsSectionProps {
   recentLifts: RecentLift[];
   loading: boolean;
   previousNote?: string;
+  targetSets?: number;
 }
 
-function RecentLiftsSection({ recentLifts, loading, previousNote }: RecentLiftsSectionProps): React.JSX.Element {
+function RecentLiftsSection({ recentLifts, loading, previousNote, targetSets = 3 }: RecentLiftsSectionProps): React.JSX.Element {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
@@ -26,7 +27,7 @@ function RecentLiftsSection({ recentLifts, loading, previousNote }: RecentLiftsS
         onClick={() => setIsExpanded((v) => !v)}
         aria-expanded={isExpanded}
       >
-        <span className="recent-lifts-header-text">Last 3 Sets</span>
+        <span className="recent-lifts-header-text">Last {targetSets} Sets</span>
         <span className={`recent-lifts-caret ${isExpanded ? 'recent-lifts-caret--open' : ''}`}>
           <IconCaretDown />
         </span>
