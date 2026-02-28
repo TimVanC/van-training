@@ -14,6 +14,7 @@ export function createLiftSession(
       name: ex.exercise,
       targetSets: ex.sets,
       targetRepRange: ex.repRange,
+      inputMode: ex.inputMode ?? 'weight',
       sets: [],
       completed: false,
     })),

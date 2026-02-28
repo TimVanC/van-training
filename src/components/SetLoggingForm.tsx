@@ -27,11 +27,22 @@ interface SetLoggingFormProps {
   reps: string;
   rir: string;
   weightRef: React.RefObject<HTMLInputElement | null>;
-  editingIndex: number | null;
-  isSubmitting: boolean;
+  inputMode?: 'weight' | 'plates';
+  plate45?: string;
+  plate35?: string;
+  plate25?: string;
+  plate10?: string;
+  sled?: string;
   onWeightChange: (v: string) => void;
   onRepsChange: (v: string) => void;
   onRirChange: (v: string) => void;
+  onPlate45Change?: (v: string) => void;
+  onPlate35Change?: (v: string) => void;
+  onPlate25Change?: (v: string) => void;
+  onPlate10Change?: (v: string) => void;
+  onSledChange?: (v: string) => void;
+  editingIndex: number | null;
+  isSubmitting: boolean;
   onEdit: (i: number) => void;
   onDuplicate: (i: number) => void;
   onDelete: (i: number) => void;
@@ -47,11 +58,22 @@ function SetLoggingForm({
   reps,
   rir,
   weightRef,
-  editingIndex,
-  isSubmitting,
+  inputMode = 'weight',
+  plate45 = '',
+  plate35 = '',
+  plate25 = '',
+  plate10 = '',
+  sled = '',
   onWeightChange,
   onRepsChange,
   onRirChange,
+  onPlate45Change,
+  onPlate35Change,
+  onPlate25Change,
+  onPlate10Change,
+  onSledChange,
+  editingIndex,
+  isSubmitting,
   onEdit,
   onDuplicate,
   onDelete,
@@ -61,6 +83,9 @@ function SetLoggingForm({
   onFinish,
 }: SetLoggingFormProps): React.JSX.Element {
   const dis = isSubmitting;
+  const isPlates = inputMode === 'plates';
+  const showWeightInput = !isPlates || editingIndex !== null;
+
   return (
     <>
       {sets.length > 0 && (
@@ -86,11 +111,41 @@ function SetLoggingForm({
         </ul>
       )}
       <div className="input-group">
-        <label className="input-label">
-          Weight (lbs)
-          <input ref={weightRef} className="input-field" type="number" inputMode="decimal" value={weight}
-            onChange={(e) => onWeightChange(e.target.value)} disabled={dis} />
-        </label>
+        {showWeightInput ? (
+          <label className="input-label">
+            Weight (lbs)
+            <input ref={weightRef} className="input-field" type="number" inputMode="decimal" value={weight}
+              onChange={(e) => onWeightChange(e.target.value)} disabled={dis} />
+          </label>
+        ) : (
+          <div className="plate-inputs">
+            <label className="input-label">
+              45 lb plates (per side)
+              <input className="input-field" type="number" inputMode="numeric" min={0} value={plate45}
+                onChange={(e) => onPlate45Change?.(e.target.value)} disabled={dis} />
+            </label>
+            <label className="input-label">
+              35 lb plates (per side)
+              <input className="input-field" type="number" inputMode="numeric" min={0} value={plate35}
+                onChange={(e) => onPlate35Change?.(e.target.value)} disabled={dis} />
+            </label>
+            <label className="input-label">
+              25 lb plates (per side)
+              <input className="input-field" type="number" inputMode="numeric" min={0} value={plate25}
+                onChange={(e) => onPlate25Change?.(e.target.value)} disabled={dis} />
+            </label>
+            <label className="input-label">
+              10 lb plates (per side)
+              <input className="input-field" type="number" inputMode="numeric" min={0} value={plate10}
+                onChange={(e) => onPlate10Change?.(e.target.value)} disabled={dis} />
+            </label>
+            <label className="input-label">
+              Sled weight (lbs)
+              <input className="input-field" type="number" inputMode="numeric" min={0} value={sled}
+                onChange={(e) => onSledChange?.(e.target.value)} disabled={dis} />
+            </label>
+          </div>
+        )}
         <label className="input-label">
           Reps
           <input className="input-field" type="number" inputMode="numeric" value={reps}

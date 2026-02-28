@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import type { LiftSession, LoggedSet, RecentLift, RecentLiftsResponse } from '../types/session';
 import TemporaryOverlay from '../components/TemporaryOverlay';
-import SetSavedToast from '../components/SetSavedToast';
 import SetLoggingForm from '../components/SetLoggingForm';
 import LoadingOverlay from '../components/LoadingOverlay';
 import IncompleteSetModal from '../components/IncompleteSetModal';
@@ -11,12 +10,6 @@ import RecentLiftsSection from '../components/RecentLiftsSection';
 interface ExerciseLoggingProps {
   session: LiftSession;
   onUpdateSession: (session: LiftSession) => void;
-}
-
-function genId(): string {
-  return typeof crypto !== 'undefined' && crypto.randomUUID
-    ? crypto.randomUUID()
-    : `id-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): React.JSX.Element {
@@ -29,13 +22,15 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   const [weight, setWeight] = useState('');
   const [reps, setReps] = useState('');
   const [rir, setRir] = useState('');
+  const [plate45, setPlate45] = useState('');
+  const [plate35, setPlate35] = useState('');
+  const [plate25, setPlate25] = useState('');
+  const [plate10, setPlate10] = useState('');
+  const [sled, setSled] = useState('');
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [overlayMsg, setOverlayMsg] = useState('');
   const [showOverlay, setShowOverlay] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [toastVisible, setToastVisible] = useState(false);
-  const [toastMsg, setToastMsg] = useState('');
-  const [lastSetClientId, setLastSetClientId] = useState<string | null>(null);
   const [showIncompleteModal, setShowIncompleteModal] = useState(false);
   const [recentLifts, setRecentLifts] = useState<RecentLift[]>([]);
   const [lastTrained, setLastTrained] = useState<string | undefined>();
@@ -73,6 +68,26 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   const loggedSets = exercise.sets.length;
   const totalSets = exercise.targetSets;
   const repRange = exercise.targetRepRange ?? (exercise.targetReps != null ? String(exercise.targetReps) : '-');
+  const inputMode = exercise.inputMode ?? 'weight';
+  const isPlatesMode = inputMode === 'plates';
+
+  function computePlateWeight(): number {
+    const p45 = Number(plate45);
+    const p35 = Number(plate35);
+    const p25 = Number(plate25);
+    const p10 = Number(plate10);
+    const s = Number(sled);
+    const perSide = (45 * (Number.isFinite(p45) ? p45 : 0)) + (35 * (Number.isFinite(p35) ? p35 : 0)) + (25 * (Number.isFinite(p25) ? p25 : 0)) + (10 * (Number.isFinite(p10) ? p10 : 0));
+    return perSide * 2 + (Number.isFinite(s) ? s : 0);
+  }
+
+  function clearPlateState(): void {
+    setPlate45('');
+    setPlate35('');
+    setPlate25('');
+    setPlate10('');
+    setSled('');
+  }
 
   function flashOverlay(msg: string): void {
     setOverlayMsg(msg);
@@ -98,13 +113,27 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   }
 
   function handleAddSet(): LoggedSet[] | undefined {
-    const normalizedWeight = Number(weight);
+    let normalizedWeight: number;
+    if (isPlatesMode) {
+      const p45 = Number(plate45);
+      const p35 = Number(plate35);
+      const p25 = Number(plate25);
+      const p10 = Number(plate10);
+      const s = Number(sled);
+      if (!Number.isFinite(p45) || p45 < 0 || !Number.isFinite(p35) || p35 < 0 || !Number.isFinite(p25) || p25 < 0 || !Number.isFinite(p10) || p10 < 0 || !Number.isFinite(s) || s < 0) {
+        flashOverlay('Plate counts and sled weight must be 0 or greater');
+        return undefined;
+      }
+      normalizedWeight = computePlateWeight();
+    } else {
+      normalizedWeight = Number(weight);
+      if (!Number.isFinite(normalizedWeight)) {
+        flashOverlay('Weight and Reps are required');
+        return undefined;
+      }
+    }
     const normalizedReps = Number(reps);
     const normalizedRir = rir === '' ? 0 : Number(rir);
-    if (!Number.isFinite(normalizedWeight)) {
-      flashOverlay('Weight and Reps are required');
-      return undefined;
-    }
     if (!Number.isFinite(normalizedReps) || normalizedReps <= 0) {
       flashOverlay('Reps are required and must be greater than 0');
       return undefined;
@@ -112,14 +141,11 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     if (isSubmitting) return undefined;
     setIsSubmitting(true);
     const rid = Number.isFinite(normalizedRir) && normalizedRir >= 0 ? normalizedRir : 0;
-    const clientId = genId();
-    const newSet: LoggedSet = { weight: normalizedWeight, reps: normalizedReps, rir: rid, clientId };
+    const newSet: LoggedSet = { weight: normalizedWeight, reps: normalizedReps, rir: rid };
     const newSets = [...exercise.sets, newSet];
     updateExercise(newSets);
-    setToastMsg(`Set ${loggedSets + 1} saved. ${normalizedWeight} x ${normalizedReps} @ ${rid} RIR`);
-    setLastSetClientId(clientId);
-    setToastVisible(true);
-    setWeight('');
+    if (isPlatesMode) clearPlateState();
+    else setWeight('');
     setReps('');
     setRir('');
     doneSave();
@@ -151,13 +177,26 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   }
 
   function handleFinish(): void {
-    const normalizedWeight = Number(weight);
     const normalizedReps = Number(reps);
-    const bothValid = Number.isFinite(normalizedWeight)
-      && Number.isFinite(normalizedReps) && normalizedReps > 0;
-    const hasWeight = weight.trim() !== '';
-    const hasReps = reps.trim() !== '';
-    const bothEmpty = !hasWeight && !hasReps;
+    let bothValid: boolean;
+    let bothEmpty: boolean;
+    if (isPlatesMode) {
+      const p45 = Number(plate45);
+      const p35 = Number(plate35);
+      const p25 = Number(plate25);
+      const p10 = Number(plate10);
+      const s = Number(sled);
+      bothValid = Number.isFinite(p45) && p45 >= 0 && Number.isFinite(p35) && p35 >= 0 && Number.isFinite(p25) && p25 >= 0 && Number.isFinite(p10) && p10 >= 0 && Number.isFinite(s) && s >= 0 && Number.isFinite(normalizedReps) && normalizedReps > 0;
+      const hasReps = reps.trim() !== '';
+      const hasPlates = plate45.trim() !== '' || plate35.trim() !== '' || plate25.trim() !== '' || plate10.trim() !== '' || sled.trim() !== '';
+      bothEmpty = !hasReps && !hasPlates;
+    } else {
+      const normalizedWeight = Number(weight);
+      bothValid = Number.isFinite(normalizedWeight) && Number.isFinite(normalizedReps) && normalizedReps > 0;
+      const hasWeight = weight.trim() !== '';
+      const hasReps = reps.trim() !== '';
+      bothEmpty = !hasWeight && !hasReps;
+    }
 
     if (bothValid && !isSubmitting) {
       const newSets = handleAddSet();
@@ -175,18 +214,9 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     setWeight('');
     setReps('');
     setRir('');
+    if (isPlatesMode) clearPlateState();
     setShowIncompleteModal(false);
     doFinish(exercise.sets);
-  }
-
-  function handleUndo(): void {
-    if (!lastSetClientId || exercise.sets.length === 0) return;
-    const last = exercise.sets[exercise.sets.length - 1];
-    if (last?.clientId !== lastSetClientId) return;
-    fetch('/api/deleteLastSet', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ setId: lastSetClientId }) }).catch(() => {});
-    updateExercise(exercise.sets.slice(0, -1));
-    setLastSetClientId(null);
-    setToastVisible(false);
   }
 
   function formatLastTrainedDate(dateStr: string): string {
@@ -225,29 +255,39 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
           <div className="progress-bar-fill" style={{ width: `${totalSets > 0 ? (loggedSets / totalSets) * 100 : 0}%` }} />
         </div>
       </div>
-      <RecentLiftsSection recentLifts={recentLifts} loading={recentLiftsLoading} previousNote={previousNote} />
+      <RecentLiftsSection recentLifts={recentLifts} loading={recentLiftsLoading} previousNote={previousNote} targetSets={totalSets} />
       <SetLoggingForm
         sets={exercise.sets}
         weight={weight}
         reps={reps}
         rir={rir}
         weightRef={weightRef}
-        editingIndex={editingIndex}
-        isSubmitting={isSubmitting}
+        inputMode={inputMode}
+        plate45={plate45}
+        plate35={plate35}
+        plate25={plate25}
+        plate10={plate10}
+        sled={sled}
         onWeightChange={setWeight}
         onRepsChange={setReps}
         onRirChange={setRir}
+        onPlate45Change={setPlate45}
+        onPlate35Change={setPlate35}
+        onPlate25Change={setPlate25}
+        onPlate10Change={setPlate10}
+        onSledChange={setSled}
+        editingIndex={editingIndex}
+        isSubmitting={isSubmitting}
         onEdit={(i) => { const s = exercise.sets[i]; setWeight(String(s.weight)); setReps(String(s.reps)); setRir(String(s.rir)); setEditingIndex(i); }}
-        onDuplicate={(i) => { const s = exercise.sets[i]; setWeight(String(s.weight)); setReps(String(s.reps)); setRir(String(s.rir)); setEditingIndex(null); }}
-        onDelete={(i) => { updateExercise(exercise.sets.filter((_, j) => j !== i)); if (editingIndex === i) { setEditingIndex(null); setWeight(''); setReps(''); setRir(''); } }}
+        onDuplicate={(i) => { const s = exercise.sets[i]; setWeight(String(s.weight)); setReps(String(s.reps)); setRir(String(s.rir)); setEditingIndex(null); if (isPlatesMode) clearPlateState(); }}
+        onDelete={(i) => { updateExercise(exercise.sets.filter((_, j) => j !== i)); if (editingIndex === i) { setEditingIndex(null); setWeight(''); setReps(''); setRir(''); if (isPlatesMode) clearPlateState(); } }}
         onAddSet={handleAddSet}
         onSaveEdit={handleSaveEdit}
-        onCancelEdit={() => { setEditingIndex(null); setWeight(''); setReps(''); setRir(''); }}
+        onCancelEdit={() => { setEditingIndex(null); setWeight(''); setReps(''); setRir(''); if (isPlatesMode) clearPlateState(); }}
         onFinish={handleFinish}
       />
       <LoadingOverlay visible={isSubmitting} />
       <TemporaryOverlay message={overlayMsg} visible={showOverlay} />
-      <SetSavedToast visible={toastVisible} message={toastMsg} onUndo={handleUndo} onDismiss={() => setToastVisible(false)} />
       <IncompleteSetModal visible={showIncompleteModal} onDiscard={handleDiscardAndFinish} onGoBack={() => setShowIncompleteModal(false)} />
     </div>
   );

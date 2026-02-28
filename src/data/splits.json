@@ -16,7 +16,7 @@
         { "exercise": "Incline Dumbbell Curl", "sets": 3, "repRange": "8-12" }
       ],
       "Legs + Shoulders": [
-        { "exercise": "Leg Press", "sets": 4, "repRange": "6-10" },
+        { "exercise": "Leg Press", "sets": 4, "repRange": "6-10", "inputMode": "plates" },
         { "exercise": "Romanian Deadlift", "sets": 4, "repRange": "6-8" },
         { "exercise": "Leg Extension", "sets": 3, "repRange": "10-15" },
         { "exercise": "Hamstring Curl", "sets": 3, "repRange": "8-12" },
@@ -39,7 +39,7 @@
         { "exercise": "Hammer Curls", "sets": 3, "repRange": "8-12" }
       ],
       "Legs": [
-        { "exercise": "Leg Press", "sets": 4, "repRange": "6-10" },
+        { "exercise": "Leg Press", "sets": 4, "repRange": "6-10", "inputMode": "plates" },
         { "exercise": "Romanian Deadlift", "sets": 4, "repRange": "6-8" },
         { "exercise": "Leg Extension", "sets": 3, "repRange": "10-15" },
         { "exercise": "Hamstring Curl", "sets": 3, "repRange": "8-12" },

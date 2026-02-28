@@ -419,6 +419,12 @@ body {
   margin-bottom: 1rem;
 }
 
+.plate-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
 .input-label {
   display: flex;
   flex-direction: column;

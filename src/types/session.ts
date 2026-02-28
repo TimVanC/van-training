@@ -24,6 +24,8 @@ export interface SessionExercise {
   targetRepRange: string;
   /** @deprecated use targetRepRange; present only for sessions loaded from localStorage */
   targetReps?: number;
+  /** @default "weight" */
+  inputMode?: 'weight' | 'plates';
   sets: LoggedSet[];
   completed: boolean;
 }
