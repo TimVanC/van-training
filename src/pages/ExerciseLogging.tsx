@@ -255,7 +255,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
           <div className="progress-bar-fill" style={{ width: `${totalSets > 0 ? (loggedSets / totalSets) * 100 : 0}%` }} />
         </div>
       </div>
-      <RecentLiftsSection recentLifts={recentLifts} loading={recentLiftsLoading} previousNote={previousNote} targetSets={totalSets} />
+      <RecentLiftsSection recentLifts={recentLifts} loading={recentLiftsLoading} previousNote={previousNote} />
       <SetLoggingForm
         sets={exercise.sets}
         weight={weight}
