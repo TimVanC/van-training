@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { NextSessionPlanSet, RecentLift } from '../types/session';
+import type { RecommendedPlanSet, RecentLift } from '../types/session';
 
 function IconCaretDown(): React.JSX.Element {
   return (
@@ -13,7 +13,7 @@ interface RecentLiftsSectionProps {
   recentLifts: RecentLift[];
   loading: boolean;
   previousNote?: string;
-  nextSessionPlan?: NextSessionPlanSet[] | null;
+  recommendedPlan?: RecommendedPlanSet[] | null;
   targetSets?: number;
 }
 
@@ -21,7 +21,7 @@ function RecentLiftsSection({
   recentLifts,
   loading,
   previousNote,
-  nextSessionPlan,
+  recommendedPlan,
   targetSets = 3,
 }: RecentLiftsSectionProps): React.JSX.Element {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -69,7 +69,7 @@ function RecentLiftsSection({
         onClick={() => setIsSuggestionExpanded((v) => !v)}
         aria-expanded={isSuggestionExpanded}
       >
-        <span className="recent-lifts-header-text">Next Session Plan</span>
+        <span className="recent-lifts-header-text">Recommended Progression</span>
         <span className={`recent-lifts-caret ${isSuggestionExpanded ? 'recent-lifts-caret--open' : ''}`}>
           <IconCaretDown />
         </span>
@@ -78,15 +78,15 @@ function RecentLiftsSection({
         <div className="recent-lifts-inner">
           <div className="recent-lifts-content">
             {loading ? (
-              <p className="recent-lifts-loading">Loading plan...</p>
-            ) : nextSessionPlan && nextSessionPlan.length > 0 ? (
-              nextSessionPlan.map((planSet) => (
+              <p className="recent-lifts-loading">Loading progression...</p>
+            ) : recommendedPlan && recommendedPlan.length > 0 ? (
+              recommendedPlan.map((planSet) => (
                 <div key={`${planSet.setNumber}-${planSet.weight}`} className="recent-lifts-item">
-                  Set {planSet.setNumber} - {planSet.weight} lbs × {planSet.targetReps}
+                  Set {planSet.setNumber} - {planSet.weight} lbs -> {planSet.targetReps} reps (Target RIR: {planSet.targetRIR})
                 </div>
               ))
             ) : (
-              <p className="recent-lifts-empty">Not enough data to generate plan</p>
+              <p className="recent-lifts-empty">Not enough data to generate progression.</p>
             )}
           </div>
         </div>

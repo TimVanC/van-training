@@ -35,10 +35,11 @@ interface RepRange {
   max: number;
 }
 
-interface NextSessionPlanSet {
+interface RecommendedPlanSet {
   setNumber: number;
   weight: number;
-  targetReps: string;
+  targetReps: number;
+  targetRIR: number;
 }
 
 function getSessionKey(row: LiftLogRow): string {
@@ -150,7 +151,7 @@ export default async function handler(
     let lastTrained: string | undefined;
     let sets: RecentLiftEntry[] = [];
     let previousNote: string | undefined;
-    let nextSessionPlan: NextSessionPlanSet[] | null = null;
+    let recommendedPlan: RecommendedPlanSet[] | null = null;
     let repRangeByExercise = new Map<string, RepRange>();
 
     try {
@@ -196,22 +197,35 @@ export default async function handler(
         if (hasEnoughSessions) {
           const repRange = repRangeByExercise.get(normalizedExercise);
           if (repRange) {
-            const targetReps = `${repRange.min}–${repRange.max}`;
             const sortedSessionSets = [...mostRecentSessionRows].sort((a, b) => a.setNumber - b.setNumber);
-            const plannedSets: NextSessionPlanSet[] = [];
+            const plannedSets: RecommendedPlanSet[] = [];
             for (const row of sortedSessionSets) {
               const lastWeight = Number(row.weight);
               if (!Number.isFinite(lastWeight)) continue;
-              const repsVal = Number(row.reps);
-              const rirVal = Number(row.rir);
-              const progressed = Number.isFinite(repsVal) && Number.isFinite(rirVal) && repsVal >= repRange.max && rirVal >= 1;
+              const lastReps = Number(row.reps);
+              if (!Number.isFinite(lastReps)) continue;
+              const lastRIR = Number(row.rir);
+
+              let targetWeight = lastWeight;
+              let targetReps = lastReps;
+
+              if (Number.isFinite(lastRIR) && lastRIR === 0) {
+                targetReps = lastReps + 1;
+              } else if (lastReps === repRange.max && Number.isFinite(lastRIR) && lastRIR >= 1) {
+                targetWeight = lastWeight + 5;
+                targetReps = repRange.min;
+              } else if (lastReps < repRange.max) {
+                targetReps = lastReps + 1;
+              }
+
               plannedSets.push({
                 setNumber: row.setNumber,
-                weight: progressed ? lastWeight + 5 : lastWeight,
+                weight: targetWeight,
                 targetReps,
+                targetRIR: 1,
               });
             }
-            nextSessionPlan = plannedSets.length > 0 ? plannedSets : null;
+            recommendedPlan = plannedSets.length > 0 ? plannedSets : null;
           }
         }
       }
@@ -219,7 +233,7 @@ export default async function handler(
       // Lift_Log may not exist
     }
 
-    res.status(200).json({ lastTrained, sets, previousNote, nextSessionPlan });
+    res.status(200).json({ lastTrained, sets, previousNote, recommendedPlan });
   } catch (error) {
     console.error('Error in getRecentLifts:', error);
     res.status(500).json({ error: 'Internal Server Error' });

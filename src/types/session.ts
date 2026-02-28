@@ -4,17 +4,18 @@ export interface RecentLift {
   rir: string | number;
 }
 
-export interface NextSessionPlanSet {
+export interface RecommendedPlanSet {
   setNumber: number;
   weight: number;
-  targetReps: string;
+  targetReps: number;
+  targetRIR: number;
 }
 
 export interface RecentLiftsResponse {
   lastTrained?: string;
   sets: RecentLift[];
   previousNote?: string;
-  nextSessionPlan?: NextSessionPlanSet[] | null;
+  recommendedPlan?: RecommendedPlanSet[] | null;
 }
 
 export interface LoggedSet {
