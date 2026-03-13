@@ -26,7 +26,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   const [plate35, setPlate35] = useState('');
   const [plate25, setPlate25] = useState('');
   const [plate10, setPlate10] = useState('');
-  const [sled, setSled] = useState('');
+  const [sled, setSled] = useState('100');
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [overlayMsg, setOverlayMsg] = useState('');
   const [showOverlay, setShowOverlay] = useState(false);

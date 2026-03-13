@@ -118,27 +118,29 @@ function SetLoggingForm({
               onChange={(e) => onWeightChange(e.target.value)} disabled={dis} />
           </label>
         ) : (
-          <div className="plate-inputs">
-            <label className="input-label">
-              45 lb plates (per side)
-              <input className="input-field" type="number" inputMode="numeric" min={0} value={plate45}
-                onChange={(e) => onPlate45Change?.(e.target.value)} disabled={dis} />
-            </label>
-            <label className="input-label">
-              35 lb plates (per side)
-              <input className="input-field" type="number" inputMode="numeric" min={0} value={plate35}
-                onChange={(e) => onPlate35Change?.(e.target.value)} disabled={dis} />
-            </label>
-            <label className="input-label">
-              25 lb plates (per side)
-              <input className="input-field" type="number" inputMode="numeric" min={0} value={plate25}
-                onChange={(e) => onPlate25Change?.(e.target.value)} disabled={dis} />
-            </label>
-            <label className="input-label">
-              10 lb plates (per side)
-              <input className="input-field" type="number" inputMode="numeric" min={0} value={plate10}
-                onChange={(e) => onPlate10Change?.(e.target.value)} disabled={dis} />
-            </label>
+          <div className="plate-fields">
+            <div className="plate-inputs">
+              <label className="input-label">
+                45 lb plates (per side)
+                <input className="input-field" type="number" inputMode="numeric" min={0} value={plate45}
+                  onChange={(e) => onPlate45Change?.(e.target.value)} disabled={dis} />
+              </label>
+              <label className="input-label">
+                35 lb plates (per side)
+                <input className="input-field" type="number" inputMode="numeric" min={0} value={plate35}
+                  onChange={(e) => onPlate35Change?.(e.target.value)} disabled={dis} />
+              </label>
+              <label className="input-label">
+                25 lb plates (per side)
+                <input className="input-field" type="number" inputMode="numeric" min={0} value={plate25}
+                  onChange={(e) => onPlate25Change?.(e.target.value)} disabled={dis} />
+              </label>
+              <label className="input-label">
+                10 lb plates (per side)
+                <input className="input-field" type="number" inputMode="numeric" min={0} value={plate10}
+                  onChange={(e) => onPlate10Change?.(e.target.value)} disabled={dis} />
+              </label>
+            </div>
             <label className="input-label">
               Sled weight (lbs)
               <input className="input-field" type="number" inputMode="numeric" min={0} value={sled}
