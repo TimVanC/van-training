@@ -28,6 +28,8 @@ export interface LoggedSet {
 
 export interface SessionExercise {
   name: string;
+  /** Session-only exercise name override used for swap substitutions */
+  activeName?: string;
   targetSets: number;
   targetRepRange: string;
   /** @deprecated use targetRepRange; present only for sessions loaded from localStorage */

@@ -178,6 +178,60 @@ body {
   margin-bottom: 1rem;
 }
 
+.exercise-substitute-note {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  text-align: center;
+  width: 100%;
+  max-width: 400px;
+  margin: -0.5rem 0 0.75rem;
+}
+
+.exercise-swap {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.swap-button {
+  width: 100%;
+  max-width: 400px;
+  min-height: 44px;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  font-family: inherit;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background-color var(--transition), border-color var(--transition), color var(--transition);
+}
+
+.swap-button:hover:not(:disabled) {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  color: #ffffff;
+}
+
+.swap-button:focus-visible {
+  outline: 2px solid var(--accent-focus);
+  outline-offset: 2px;
+}
+
+.exercise-swap-label {
+  width: 100%;
+}
+
+.exercise-swap-select {
+  width: 100%;
+}
+
 .exercise-last-trained {
   font-size: 0.9rem;
   color: var(--text-secondary);

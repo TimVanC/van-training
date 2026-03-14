@@ -12,7 +12,7 @@ function normalizeLift(session: LiftSession): LiftRow[] {
         date,
         split: session.split,
         day: session.day,
-        exercise: exercise.name,
+        exercise: exercise.activeName ?? exercise.name,
         setNumber: i + 1,
         weight: set.weight,
         reps: set.reps,

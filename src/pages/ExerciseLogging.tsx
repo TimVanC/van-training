@@ -6,6 +6,7 @@ import SetLoggingForm from '../components/SetLoggingForm';
 import LoadingOverlay from '../components/LoadingOverlay';
 import IncompleteSetModal from '../components/IncompleteSetModal';
 import RecentLiftsSection from '../components/RecentLiftsSection';
+import { exerciseAlternates } from '../data/exerciseAlternates';
 
 interface ExerciseLoggingProps {
   session: LiftSession;
@@ -37,6 +38,8 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   const [previousNote, setPreviousNote] = useState<string | undefined>();
   const [recommendedPlan, setRecommendedPlan] = useState<RecommendedPlanSet[] | null>(null);
   const [recentLiftsLoading, setRecentLiftsLoading] = useState(false);
+  const [activeExercise, setActiveExercise] = useState(exercise?.activeName ?? exercise?.name ?? '');
+  const [showSwapOptions, setShowSwapOptions] = useState(false);
   const overlayTimer = useRef<number>(0);
 
   useEffect(() => {
@@ -59,6 +62,12 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
       .finally(() => setRecentLiftsLoading(false));
   }, [exercise?.name, exercise?.targetSets]);
 
+  useEffect(() => {
+    if (!exercise?.name) return;
+    setActiveExercise(exercise.activeName ?? exercise.name);
+    setShowSwapOptions(false);
+  }, [exercise?.name, exercise?.activeName, session.startedAt]);
+
   if (!exercise) {
     return (
       <div className="page">
@@ -73,6 +82,9 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   const repRange = exercise.targetRepRange ?? (exercise.targetReps != null ? String(exercise.targetReps) : '-');
   const inputMode = exercise.inputMode ?? 'weight';
   const isPlatesMode = inputMode === 'plates';
+  const baseExerciseName = exercise.name;
+  const alternateExercises = exerciseAlternates[baseExerciseName] ?? [];
+  const canSwapExercise = alternateExercises.length > 0;
 
   function computePlateWeight(): number {
     const p45 = Number(plate45);
@@ -101,7 +113,17 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
 
   function updateExercise(updatedSets: LoggedSet[], completed?: boolean): void {
     const updated = session.exercises.map((ex, i) =>
-      i === index ? { ...ex, sets: updatedSets, completed: completed ?? ex.completed } : ex,
+      i === index
+        ? { ...ex, activeName: activeExercise, sets: updatedSets, completed: completed ?? ex.completed }
+        : ex,
+    );
+    onUpdateSession({ ...session, exercises: updated });
+  }
+
+  function handleExerciseSwap(nextExercise: string): void {
+    setActiveExercise(nextExercise);
+    const updated = session.exercises.map((ex, i) =>
+      i === index ? { ...ex, activeName: nextExercise } : ex,
     );
     onUpdateSession({ ...session, exercises: updated });
   }
@@ -240,8 +262,39 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
 
   return (
     <div className="page">
-      <h1>{exercise.name}</h1>
+      <h1>{activeExercise}</h1>
+      {activeExercise !== baseExerciseName && (
+        <p className="exercise-substitute-note">(substitute for {baseExerciseName})</p>
+      )}
       <p className="exercise-target">Target: {totalSets} sets &times; {repRange} reps</p>
+      {canSwapExercise && (
+        <div className="exercise-swap">
+          <button
+            type="button"
+            className="swap-button"
+            onClick={() => setShowSwapOptions((prev) => !prev)}
+            disabled={isSubmitting}
+          >
+            Swap Exercise
+          </button>
+          {showSwapOptions && (
+            <label className="input-label exercise-swap-label">
+              Select exercise
+              <select
+                className="input-field exercise-swap-select"
+                value={activeExercise}
+                onChange={(e) => handleExerciseSwap(e.target.value)}
+                disabled={isSubmitting}
+              >
+                <option value={baseExerciseName}>{baseExerciseName}</option>
+                {alternateExercises.map((alt) => (
+                  <option key={alt} value={alt}>{alt}</option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
+      )}
       <p className="exercise-last-trained">
         <span className="exercise-last-trained-label">Last trained: </span>
         {recentLiftsLoading ? (

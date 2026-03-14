@@ -20,7 +20,7 @@
         { "exercise": "Romanian Deadlift", "sets": 4, "repRange": "6-8" },
         { "exercise": "Leg Extension", "sets": 3, "repRange": "10-15" },
         { "exercise": "Hamstring Curl", "sets": 3, "repRange": "8-12" },
-        { "exercise": "Standing Calf Raise", "sets": 4, "repRange": "8-15" },
+        { "exercise": "Seated Calf Raise", "sets": 4, "repRange": "8-15" },
         { "exercise": "Seated Dumbbell Shoulder Press", "sets": 3, "repRange": "6-10" },
         { "exercise": "Cable Lateral Raises", "sets": 4, "repRange": "12-20" },
         { "exercise": "Cable Rear Delt Fly", "sets": 4, "repRange": "12-20" }
@@ -30,11 +30,11 @@
         { "exercise": "High to Low Cable Fly", "sets": 3, "repRange": "10-15" },
         { "exercise": "Low to High Cable Fly", "sets": 3, "repRange": "10-15" },
         { "exercise": "Slight Decline Machine Press", "sets": 3, "repRange": "8-12" },
-        { "exercise": "Reverse Grip Cable Pressdowns", "sets": 3, "repRange": "12-15" }
+        { "exercise": "Triceps Pushdowns", "sets": 3, "repRange": "12-15" }
       ],
       "Pull B": [
         { "exercise": "Heavy Seated Cable Row", "sets": 4, "repRange": "6-8" },
-        { "exercise": "Incline Bench Dumbbell Row", "sets": 3, "repRange": "8-12" },
+        { "exercise": "Dumbbell Row", "sets": 3, "repRange": "8-12" },
         { "exercise": "Preacher Curls", "sets": 3, "repRange": "6-10" },
         { "exercise": "Hammer Curls", "sets": 3, "repRange": "8-12" }
       ],
@@ -43,7 +43,7 @@
         { "exercise": "Romanian Deadlift", "sets": 4, "repRange": "6-8" },
         { "exercise": "Leg Extension", "sets": 3, "repRange": "10-15" },
         { "exercise": "Hamstring Curl", "sets": 3, "repRange": "8-12" },
-        { "exercise": "Seated or Standing Calf Raise", "sets": 4, "repRange": "8-15" }
+        { "exercise": "Seated Calf Raise", "sets": 4, "repRange": "8-15" }
       ]
     }
   }
