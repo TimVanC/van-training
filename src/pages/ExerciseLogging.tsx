@@ -139,12 +139,17 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
 
   function handleAddSet(): LoggedSet[] | undefined {
     let normalizedWeight: number;
+    let p45 = 0;
+    let p35 = 0;
+    let p25 = 0;
+    let p10 = 0;
+    let s = 0;
     if (isPlatesMode) {
-      const p45 = Number(plate45);
-      const p35 = Number(plate35);
-      const p25 = Number(plate25);
-      const p10 = Number(plate10);
-      const s = Number(sled);
+      p45 = Number(plate45);
+      p35 = Number(plate35);
+      p25 = Number(plate25);
+      p10 = Number(plate10);
+      s = Number(sled);
       if (!Number.isFinite(p45) || p45 < 0 || !Number.isFinite(p35) || p35 < 0 || !Number.isFinite(p25) || p25 < 0 || !Number.isFinite(p10) || p10 < 0 || !Number.isFinite(s) || s < 0) {
         flashOverlay('Plate counts and sled weight must be 0 or greater');
         return undefined;
@@ -166,7 +171,18 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     if (isSubmitting) return undefined;
     setIsSubmitting(true);
     const rid = Number.isFinite(normalizedRir) && normalizedRir >= 0 ? normalizedRir : 0;
-    const newSet: LoggedSet = { weight: normalizedWeight, reps: normalizedReps, rir: rid };
+    const newSet: LoggedSet = isPlatesMode
+      ? {
+        weight: normalizedWeight,
+        reps: normalizedReps,
+        rir: rid,
+        plate45: Math.trunc(p45),
+        plate35: Math.trunc(p35),
+        plate25: Math.trunc(p25),
+        plate10: Math.trunc(p10),
+        sled: s,
+      }
+      : { weight: normalizedWeight, reps: normalizedReps, rir: rid };
     const newSets = [...exercise.sets, newSet];
     updateExercise(newSets);
     if (isPlatesMode) clearPlateState();
@@ -317,6 +333,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         previousNote={previousNote}
         recommendedPlan={recommendedPlan}
         targetSets={totalSets}
+        inputMode={inputMode}
       />
       <SetLoggingForm
         sets={exercise.sets}
@@ -340,8 +357,34 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         onSledChange={setSled}
         editingIndex={editingIndex}
         isSubmitting={isSubmitting}
-        onEdit={(i) => { const s = exercise.sets[i]; setWeight(String(s.weight)); setReps(String(s.reps)); setRir(String(s.rir)); setEditingIndex(i); }}
-        onDuplicate={(i) => { const s = exercise.sets[i]; setWeight(String(s.weight)); setReps(String(s.reps)); setRir(String(s.rir)); setEditingIndex(null); if (isPlatesMode) clearPlateState(); }}
+        onEdit={(i) => {
+          const s = exercise.sets[i];
+          setWeight(String(s.weight));
+          setReps(String(s.reps));
+          setRir(String(s.rir));
+          if (isPlatesMode) {
+            setPlate45(s.plate45 != null ? String(s.plate45) : '');
+            setPlate35(s.plate35 != null ? String(s.plate35) : '');
+            setPlate25(s.plate25 != null ? String(s.plate25) : '');
+            setPlate10(s.plate10 != null ? String(s.plate10) : '');
+            setSled(s.sled != null ? String(s.sled) : '');
+          }
+          setEditingIndex(i);
+        }}
+        onDuplicate={(i) => {
+          const s = exercise.sets[i];
+          setWeight(String(s.weight));
+          setReps(String(s.reps));
+          setRir(String(s.rir));
+          setEditingIndex(null);
+          if (isPlatesMode) {
+            setPlate45(s.plate45 != null ? String(s.plate45) : '');
+            setPlate35(s.plate35 != null ? String(s.plate35) : '');
+            setPlate25(s.plate25 != null ? String(s.plate25) : '');
+            setPlate10(s.plate10 != null ? String(s.plate10) : '');
+            setSled(s.sled != null ? String(s.sled) : '');
+          }
+        }}
         onDelete={(i) => { updateExercise(exercise.sets.filter((_, j) => j !== i)); if (editingIndex === i) { setEditingIndex(null); setWeight(''); setReps(''); setRir(''); if (isPlatesMode) clearPlateState(); } }}
         onAddSet={handleAddSet}
         onSaveEdit={handleSaveEdit}

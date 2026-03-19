@@ -15,6 +15,13 @@ interface RecentLiftsSectionProps {
   previousNote?: string;
   recommendedPlan?: RecommendedPlanSet[] | null;
   targetSets?: number;
+  inputMode?: 'weight' | 'plates';
+}
+
+function formatPlateBreakdown(lift: RecentLift): string | null {
+  const plate = lift.plateBreakdown;
+  if (!plate) return null;
+  return `45s: ${plate.plate45}/side, 35s: ${plate.plate35}/side, 25s: ${plate.plate25}/side, 10s: ${plate.plate10}/side, sled: ${plate.sled} lbs`;
 }
 
 function RecentLiftsSection({
@@ -23,6 +30,7 @@ function RecentLiftsSection({
   previousNote,
   recommendedPlan,
   targetSets = 3,
+  inputMode = 'weight',
 }: RecentLiftsSectionProps): React.JSX.Element {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isSuggestionExpanded, setIsSuggestionExpanded] = useState(false);
@@ -48,9 +56,18 @@ function RecentLiftsSection({
             ) : recentLifts.length > 0 ? (
               recentLifts.map((lift, i) => {
                 const rir = lift.rir == null || String(lift.rir).trim() === '' ? 0 : lift.rir;
+                const plateText = formatPlateBreakdown(lift);
                 return (
                   <div key={i} className="recent-lifts-item">
-                    <strong>Set {i + 1}</strong> - <strong>Weight:</strong> {lift.weight} lbs, <strong>Reps:</strong> {lift.reps}, <strong>RIR:</strong> {rir}
+                    <strong>Set {i + 1}</strong> - {inputMode === 'plates' ? (
+                      <>
+                        <strong>Plates:</strong> {plateText ?? `unavailable (logged as ${lift.weight} lbs)`}, <strong>Reps:</strong> {lift.reps}, <strong>RIR:</strong> {rir}
+                      </>
+                    ) : (
+                      <>
+                        <strong>Weight:</strong> {lift.weight} lbs, <strong>Reps:</strong> {lift.reps}, <strong>RIR:</strong> {rir}
+                      </>
+                    )}
                   </div>
                 );
               })
@@ -82,7 +99,7 @@ function RecentLiftsSection({
             ) : recommendedPlan && recommendedPlan.length > 0 ? (
               recommendedPlan.map((planSet) => (
                 <div key={`${planSet.setNumber}-${planSet.weight}`} className="recent-lifts-item">
-                  Set {planSet.setNumber} - {planSet.weight} lbs -> {planSet.targetReps} reps (Target RIR: {planSet.targetRIR})
+                  Set {planSet.setNumber} - {planSet.weight} lbs {'->'} {planSet.targetReps} reps (Target RIR: {planSet.targetRIR})
                 </div>
               ))
             ) : (

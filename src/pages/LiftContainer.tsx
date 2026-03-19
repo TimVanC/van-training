@@ -10,9 +10,9 @@ import SplitSelection from './SplitSelection';
 import DaySelection from './DaySelection';
 import ExerciseList from './ExerciseList';
 import ExerciseLogging from './ExerciseLogging';
-import splitsData from '../data/splits.json';
+import splits from '../data/splits';
 
-const splits: Split[] = Array.isArray(splitsData) ? splitsData : [splitsData as Split];
+const splitItems: Split[] = splits;
 
 function LiftContainer(): React.JSX.Element {
   const navigate = useNavigate();
@@ -51,7 +51,7 @@ function LiftContainer(): React.JSX.Element {
   }
 
   function handleDaySelect(splitName: string, dayName: string): void {
-    const split = splits.find((s) => s.split === splitName);
+    const split = splitItems.find((s) => s.split === splitName);
     if (!split) return;
     const exercises = split.days[dayName];
     if (!exercises) return;

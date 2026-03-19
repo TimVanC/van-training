@@ -7,7 +7,7 @@ type RowRecord = Record<string, unknown>;
 const EXERCISE_MAP_SHEET = 'Exercise_Map';
 /** Exercise_Map columns: A = exercise name, B = equipment_type */
 
-/** All exercises from splits.json with inferred equipment_type */
+/** Seed exercise names inferred from the CSV split source */
 const SEED_EXERCISES: Array<{ exercise: string; equipment_type: string }> = [
   { exercise: 'Incline Dumbbell Press', equipment_type: 'dumbbell' },
   { exercise: 'Flat Machine Chest Press', equipment_type: 'machine' },

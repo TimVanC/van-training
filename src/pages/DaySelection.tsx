@@ -1,8 +1,5 @@
 import { useParams } from 'react-router-dom';
-import type { Split } from '../types/lift';
-import splitsData from '../data/splits.json';
-
-const splits: Split[] = Array.isArray(splitsData) ? splitsData : [splitsData as Split];
+import splits from '../data/splits';
 
 interface DaySelectionProps {
   onDaySelect: (splitName: string, dayName: string) => void;

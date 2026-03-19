@@ -2,6 +2,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { google } from 'googleapis';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { buildSplitsFromCsv } from '../src/data/parseSplitsCsv';
+import { extractPlateMetadata } from '../src/utils/plateNote';
 
 const LIFT_LOG_SHEET = 'Lift_Log';
 
@@ -12,6 +14,13 @@ interface RecentLiftEntry {
   weight: string | number;
   reps: string | number;
   rir: string | number;
+  plateBreakdown?: {
+    plate45: number;
+    plate35: number;
+    plate25: number;
+    plate10: number;
+    sled: number;
+  };
 }
 
 interface LiftLogRow {
@@ -23,11 +32,6 @@ interface LiftLogRow {
   reps: unknown;
   rir: unknown;
   notes: unknown;
-}
-
-interface RepRangeLookupEntry {
-  exercise: string;
-  repRange: string;
 }
 
 interface RepRange {
@@ -48,37 +52,23 @@ function getSessionKey(row: LiftLogRow): string {
 
 async function loadRepRangeByExercise(): Promise<Map<string, RepRange>> {
   const repRangeByExercise = new Map<string, RepRange>();
-  const splitsPath = path.join(process.cwd(), 'src', 'data', 'splits.json');
-  const raw = await readFile(splitsPath, 'utf8');
-  const parsed = JSON.parse(raw) as unknown;
-  const splitItems = Array.isArray(parsed) ? parsed : [parsed];
-  const entries: RepRangeLookupEntry[] = [];
+  const splitsPath = path.join(process.cwd(), 'src', 'data', 'updated Split.csv');
+  const csvText = await readFile(splitsPath, 'utf8');
+  const splitItems = buildSplitsFromCsv(csvText);
 
   for (const splitItem of splitItems) {
-    if (!splitItem || typeof splitItem !== 'object') continue;
-    const days = (splitItem as { days?: unknown }).days;
-    if (!days || typeof days !== 'object') continue;
-    for (const dayExercises of Object.values(days as Record<string, unknown>)) {
-      if (!Array.isArray(dayExercises)) continue;
+    for (const dayExercises of Object.values(splitItem.days)) {
       for (const exercise of dayExercises) {
-        if (!exercise || typeof exercise !== 'object') continue;
-        const ex = exercise as { exercise?: unknown; repRange?: unknown };
-        const exerciseName = String(ex.exercise ?? '').trim().toLowerCase();
-        const repRangeText = String(ex.repRange ?? '').trim();
-        if (!exerciseName || !repRangeText) continue;
-        entries.push({ exercise: exerciseName, repRange: repRangeText });
+        const exerciseName = exercise.exercise.trim().toLowerCase();
+        if (!exerciseName || repRangeByExercise.has(exerciseName)) continue;
+        const match = exercise.repRange.match(/(\d+)\s*-\s*(\d+)/);
+        if (!match) continue;
+        const min = Number(match[1]);
+        const max = Number(match[2]);
+        if (!Number.isFinite(min) || !Number.isFinite(max)) continue;
+        repRangeByExercise.set(exerciseName, { min, max });
       }
     }
-  }
-
-  for (const entry of entries) {
-    if (repRangeByExercise.has(entry.exercise)) continue;
-    const match = entry.repRange.match(/(\d+)\s*-\s*(\d+)/);
-    if (!match) continue;
-    const min = Number(match[1]);
-    const max = Number(match[2]);
-    if (!Number.isFinite(min) || !Number.isFinite(max)) continue;
-    repRangeByExercise.set(entry.exercise, { min, max });
   }
 
   return repRangeByExercise;
@@ -184,15 +174,20 @@ export default async function handler(
           mostRecentSessionRows[0]!,
         );
         const noteVal = lastSetOfSession?.notes;
-        if (noteVal != null && String(noteVal).trim() !== '') {
-          previousNote = String(noteVal).trim();
+        const parsedLastSetNote = extractPlateMetadata(noteVal);
+        if (parsedLastSetNote.cleanedNote !== '') {
+          previousNote = parsedLastSetNote.cleanedNote;
         }
 
-        sets = matched.slice(0, targetSets).map((r) => ({
-          weight: r.weight ?? '',
-          reps: r.reps ?? '',
-          rir: r.rir ?? 0,
-        }));
+        sets = matched.slice(0, targetSets).map((r) => {
+          const parsedNote = extractPlateMetadata(r.notes);
+          return {
+            weight: r.weight ?? '',
+            reps: r.reps ?? '',
+            rir: r.rir ?? 0,
+            ...(parsedNote.plateBreakdown ? { plateBreakdown: parsedNote.plateBreakdown } : {}),
+          };
+        });
 
         if (hasEnoughSessions) {
           const repRange = repRangeByExercise.get(normalizedExercise);

@@ -1,5 +1,6 @@
 import type { ActiveSession, LiftSession, EnduranceSession } from '../types/session';
 import type { LiftRow, RunRow, BikeRow, SwimRow, SessionRow } from '../types/rows';
+import { formatPlateMetadata } from './plateNote';
 
 function normalizeLift(session: LiftSession): LiftRow[] {
   const date = session.startedAt;
@@ -18,8 +19,26 @@ function normalizeLift(session: LiftSession): LiftRow[] {
         reps: set.reps,
         rir: set.rir,
       };
-      if (session.notes) {
-        row.notes = session.notes;
+      const isPlatesMode = exercise.inputMode === 'plates';
+      const hasPlateMetadata = isPlatesMode
+        && Number.isFinite(set.plate45)
+        && Number.isFinite(set.plate35)
+        && Number.isFinite(set.plate25)
+        && Number.isFinite(set.plate10)
+        && Number.isFinite(set.sled);
+      const sessionNote = session.notes?.trim() ?? '';
+
+      if (hasPlateMetadata) {
+        const metadata = formatPlateMetadata({
+          plate45: set.plate45 as number,
+          plate35: set.plate35 as number,
+          plate25: set.plate25 as number,
+          plate10: set.plate10 as number,
+          sled: set.sled as number,
+        });
+        row.notes = sessionNote ? `${metadata} ${sessionNote}` : metadata;
+      } else if (sessionNote) {
+        row.notes = sessionNote;
       }
       rows.push(row);
     }

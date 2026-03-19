@@ -1,7 +1,16 @@
+export interface PlateBreakdown {
+  plate45: number;
+  plate35: number;
+  plate25: number;
+  plate10: number;
+  sled: number;
+}
+
 export interface RecentLift {
   weight: string | number;
   reps: string | number;
   rir: string | number;
+  plateBreakdown?: PlateBreakdown;
 }
 
 export interface RecommendedPlanSet {
@@ -22,6 +31,11 @@ export interface LoggedSet {
   weight: number;
   reps: number;
   rir: number;
+  plate45?: number;
+  plate35?: number;
+  plate25?: number;
+  plate10?: number;
+  sled?: number;
   /** Client-generated id for undo; not sent to Sheets */
   clientId?: string;
 }

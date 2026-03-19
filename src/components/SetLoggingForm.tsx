@@ -86,6 +86,21 @@ function SetLoggingForm({
   const isPlates = inputMode === 'plates';
   const showWeightInput = !isPlates || editingIndex !== null;
 
+  function renderSetSummary(set: LoggedSet, index: number): React.JSX.Element {
+    if (isPlates && set.plate45 != null && set.plate35 != null && set.plate25 != null && set.plate10 != null && set.sled != null) {
+      return (
+        <>
+          Set {index + 1}: 45s {set.plate45}/side, 35s {set.plate35}/side, 25s {set.plate25}/side, 10s {set.plate10}/side, sled {set.sled} lbs &times; {set.reps} @ RIR {set.rir}
+        </>
+      );
+    }
+    return (
+      <>
+        Set {index + 1}: {set.weight} lbs &times; {set.reps} @ RIR {set.rir}
+      </>
+    );
+  }
+
   return (
     <>
       {sets.length > 0 && (
@@ -93,7 +108,7 @@ function SetLoggingForm({
           {sets.map((set, i) => (
             <li key={set.clientId ?? i} className="set-row">
               <span className="set-info">
-                Set {i + 1}: {set.weight} lbs &times; {set.reps} @ RIR {set.rir}
+                {renderSetSummary(set, i)}
               </span>
               <span className="set-actions">
                 <button className="set-action-button" onClick={() => onEdit(i)} disabled={dis} aria-label="Edit set">
