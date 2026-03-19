@@ -235,6 +235,14 @@ export default async function handler(
       const sessions = buildSessionHistories(matched);
 
       if ((sessions.length === 0 || usedFallbackMatching) && parsed.length > 0) {
+        const similarCandidates = parsed
+          .filter((row) => row.rawExercise && row.rawExercise.trim() !== '')
+          .filter((row) => exerciseNamesMatch(row.rawExercise, exerciseName))
+          .slice(0, 10)
+          .map((row) => ({
+            saved: row.rawExercise,
+            normalizedSaved: row.exercise,
+          }));
         const candidateRows = parsed
           .filter((row) => row.rawExercise && row.rawExercise.trim() !== '')
           .slice(0, 5)
@@ -247,6 +255,7 @@ export default async function handler(
           normalizedCurrent: normalizedExercise,
           fallbackUsed: usedFallbackMatching,
           matchedRows: matched.length,
+          similarCandidates,
           candidates: candidateRows,
         });
       }
