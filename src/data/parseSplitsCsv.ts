@@ -17,6 +17,13 @@ interface ParsedCsvRow {
   repRange: string;
 }
 
+function cleanCsvTextField(value: string): string {
+  return value
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
 function parseCsvLine(line: string): string[] {
   const fields: string[] = [];
   let current = '';
@@ -57,10 +64,10 @@ function normalizeRows(csvText: string): ParsedCsvRow[] {
   const rows: ParsedCsvRow[] = [];
   for (const line of lines.slice(1)) {
     const cols = parseCsvLine(line);
-    const day = (cols[0] ?? '').trim();
-    const exercise = (cols[1] ?? '').trim();
+    const day = cleanCsvTextField(cols[0] ?? '');
+    const exercise = cleanCsvTextField(cols[1] ?? '');
     const setsRaw = (cols[2] ?? '').trim();
-    const repRange = (cols[3] ?? '').trim();
+    const repRange = cleanCsvTextField(cols[3] ?? '');
     const sets = Number(setsRaw);
 
     if (!day || !exercise || !repRange || !Number.isFinite(sets)) continue;

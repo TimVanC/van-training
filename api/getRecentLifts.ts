@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { buildSplitsFromCsv } from '../src/data/parseSplitsCsv';
 import { extractPlateMetadata } from '../src/utils/plateNote';
+import { normalizeExerciseName, exerciseNamesMatch } from '../src/utils/normalizeExerciseName';
 
 const LIFT_LOG_SHEET = 'Lift_Log';
 
@@ -27,6 +28,7 @@ interface LiftLogRow {
   date: string;
   time: string;
   exercise: string;
+  rawExercise: string;
   setNumber: number;
   weight: unknown;
   reps: unknown;
@@ -123,7 +125,7 @@ async function loadRepRangeByExercise(): Promise<Map<string, RepRange>> {
   for (const splitItem of splitItems) {
     for (const dayExercises of Object.values(splitItem.days)) {
       for (const exercise of dayExercises) {
-        const exerciseName = exercise.exercise.trim().toLowerCase();
+        const exerciseName = normalizeExerciseName(exercise.exercise);
         if (!exerciseName || repRangeByExercise.has(exerciseName)) continue;
         const match = exercise.repRange.match(/(\d+)\s*-\s*(\d+)/);
         if (!match) continue;
@@ -148,7 +150,8 @@ function parseLiftLogRows(rows: unknown[][]): LiftLogRow[] {
       return {
         date: dateStr,
         time: String(arr[LIFT_LOG_COL.time] ?? '').trim(),
-        exercise: String(arr[LIFT_LOG_COL.exercise] ?? '').trim().toLowerCase(),
+        rawExercise: String(arr[LIFT_LOG_COL.exercise] ?? ''),
+        exercise: normalizeExerciseName(arr[LIFT_LOG_COL.exercise]),
         setNumber: Number(arr[LIFT_LOG_COL.setNumber]) || 0,
         weight: arr[LIFT_LOG_COL.weight],
         reps: arr[LIFT_LOG_COL.reps],
@@ -181,7 +184,7 @@ export default async function handler(
 
     const rawTarget = req.query.targetSets;
     const targetSets = typeof rawTarget === 'string' ? Math.max(1, parseInt(rawTarget, 10) || 3) : 3;
-    const normalizedExercise = exerciseName.toLowerCase();
+    const normalizedExercise = normalizeExerciseName(exerciseName);
 
     const spreadsheetId = process.env.GOOGLE_SHEET_ID;
     if (!spreadsheetId) {
@@ -222,9 +225,31 @@ export default async function handler(
       });
       const rawRows = (liftLogResp.data.values ?? []) as unknown[][];
       const parsed = parseLiftLogRows(rawRows);
-      const matched = parsed.filter((r) => r.exercise === normalizedExercise);
+      let matched = parsed.filter((r) => r.exercise === normalizedExercise);
+      let usedFallbackMatching = false;
+      if (matched.length === 0) {
+        matched = parsed.filter((r) => exerciseNamesMatch(r.rawExercise, exerciseName));
+        usedFallbackMatching = matched.length > 0;
+      }
       matched.sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`));
       const sessions = buildSessionHistories(matched);
+
+      if ((sessions.length === 0 || usedFallbackMatching) && parsed.length > 0) {
+        const candidateRows = parsed
+          .filter((row) => row.rawExercise && row.rawExercise.trim() !== '')
+          .slice(0, 5)
+          .map((row) => ({
+            saved: row.rawExercise,
+            normalizedSaved: row.exercise,
+          }));
+        console.log({
+          current: exerciseName,
+          normalizedCurrent: normalizedExercise,
+          fallbackUsed: usedFallbackMatching,
+          matchedRows: matched.length,
+          candidates: candidateRows,
+        });
+      }
 
       if (sessions.length > 0) {
         const mostRecentSession = sessions[0]!;

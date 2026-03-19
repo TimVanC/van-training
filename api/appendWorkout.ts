@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { google } from 'googleapis';
 import type { sheets_v4 } from 'googleapis';
+import { normalizeExerciseName } from '../src/utils/normalizeExerciseName';
 
 type RowRecord = Record<string, unknown>;
 
@@ -92,7 +93,8 @@ async function getExerciseEquipmentMap(
       const row = rows[i] ?? [];
       const ex = String(row[0] ?? '').trim();
       const eq = String(row[1] ?? '').trim();
-      if (ex) map.set(ex.toLowerCase(), eq || 'machine');
+      const normalizedExercise = normalizeExerciseName(ex);
+      if (normalizedExercise) map.set(normalizedExercise, eq || 'machine');
     }
   } catch {
     // Sheet may not exist
@@ -165,7 +167,8 @@ function toLiftRow(r: RowRecord, equipmentMap: Map<string, string>): unknown[] {
   const normalizedReps = Number(r.reps);
   const w = Number.isFinite(normalizedWeight) ? normalizedWeight : 0;
   const rp = Number.isFinite(normalizedReps) ? normalizedReps : 0;
-  const equipment = equipmentMap.get(String(r.exercise ?? '').trim().toLowerCase()) ?? '';
+  const normalizedExercise = normalizeExerciseName(r.exercise);
+  const equipment = equipmentMap.get(normalizedExercise) ?? '';
   const volume = w === 0 ? 0 : equipment === 'dumbbell' ? w * 2 * rp : w * rp;
 
   return [
@@ -282,11 +285,12 @@ export default async function handler(
       const seen = new Set<string>();
       for (const r of rows) {
         const ex = String(r.exercise ?? '').trim();
-        if (!ex || seen.has(ex.toLowerCase())) continue;
-        seen.add(ex.toLowerCase());
-        if (!equipmentMap.has(ex.toLowerCase())) {
+        const normalizedExercise = normalizeExerciseName(ex);
+        if (!normalizedExercise || seen.has(normalizedExercise)) continue;
+        seen.add(normalizedExercise);
+        if (!equipmentMap.has(normalizedExercise)) {
           const equipmentType = 'machine';
-          equipmentMap.set(ex.toLowerCase(), equipmentType);
+          equipmentMap.set(normalizedExercise, equipmentType);
           await appendExerciseToMap(sheets, spreadsheetId, ex, equipmentType);
         }
       }
