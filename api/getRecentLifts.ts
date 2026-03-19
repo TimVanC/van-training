@@ -116,6 +116,52 @@ function parseNumeric(value: unknown): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
+interface LiftLogColumnMap {
+  date: number;
+  time: number;
+  exercise: number;
+  setNumber: number;
+  weight: number;
+  reps: number;
+  rir: number;
+  notes: number;
+}
+
+function normalizeHeaderKey(value: unknown): string {
+  return String(value ?? '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
+function detectLiftLogColumns(headerRow: unknown[] | undefined): LiftLogColumnMap {
+  const defaults: LiftLogColumnMap = { ...LIFT_LOG_COL };
+  if (!Array.isArray(headerRow) || headerRow.length === 0) return defaults;
+
+  const normalizedHeaders = headerRow.map((cell) => normalizeHeaderKey(cell));
+  const looksLikeHeader = normalizedHeaders.includes('date') && normalizedHeaders.includes('exercise');
+  if (!looksLikeHeader) return defaults;
+
+  const findFirst = (keys: string[], fallback: number): number => {
+    for (const key of keys) {
+      const idx = normalizedHeaders.indexOf(key);
+      if (idx >= 0) return idx;
+    }
+    return fallback;
+  };
+
+  return {
+    date: findFirst(['date'], defaults.date),
+    time: findFirst(['time'], defaults.time),
+    exercise: findFirst(['exercise', 'exercisename'], defaults.exercise),
+    setNumber: findFirst(['setnumber', 'set'], defaults.setNumber),
+    weight: findFirst(['weight'], defaults.weight),
+    reps: findFirst(['reps', 'rep'], defaults.reps),
+    rir: findFirst(['rir'], defaults.rir),
+    notes: findFirst(['notes', 'note'], defaults.notes),
+  };
+}
+
 async function loadRepRangeByExercise(): Promise<Map<string, RepRange>> {
   const repRangeByExercise = new Map<string, RepRange>();
   const splitsPath = path.join(process.cwd(), 'src', 'data', 'updated Split.csv');
@@ -141,22 +187,24 @@ async function loadRepRangeByExercise(): Promise<Map<string, RepRange>> {
 }
 
 function parseLiftLogRows(rows: unknown[][]): LiftLogRow[] {
-  const dataRows = rows.slice(1);
+  const columns = detectLiftLogColumns(rows[0]);
+  const hasHeader = Array.isArray(rows[0]) && normalizeHeaderKey(rows[0][columns.exercise]) === 'exercise';
+  const dataRows = hasHeader ? rows.slice(1) : rows;
   return dataRows
     .map((row) => {
       const arr = row as unknown[];
-      const dateStr = String(arr[LIFT_LOG_COL.date] ?? '').trim();
+      const dateStr = String(arr[columns.date] ?? '').trim();
       if (!dateStr) return null;
       return {
         date: dateStr,
-        time: String(arr[LIFT_LOG_COL.time] ?? '').trim(),
-        rawExercise: String(arr[LIFT_LOG_COL.exercise] ?? ''),
-        exercise: normalizeExerciseName(arr[LIFT_LOG_COL.exercise]),
-        setNumber: Number(arr[LIFT_LOG_COL.setNumber]) || 0,
-        weight: arr[LIFT_LOG_COL.weight],
-        reps: arr[LIFT_LOG_COL.reps],
-        rir: arr[LIFT_LOG_COL.rir],
-        notes: arr[LIFT_LOG_COL.notes],
+        time: String(arr[columns.time] ?? '').trim(),
+        rawExercise: String(arr[columns.exercise] ?? ''),
+        exercise: normalizeExerciseName(arr[columns.exercise]),
+        setNumber: Number(arr[columns.setNumber]) || 0,
+        weight: arr[columns.weight],
+        reps: arr[columns.reps],
+        rir: arr[columns.rir],
+        notes: arr[columns.notes],
       };
     })
     .filter((r): r is LiftLogRow => r !== null);
