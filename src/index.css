@@ -34,6 +34,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  width: 100%;
   padding: 2rem 1rem;
 }
 
@@ -480,7 +481,7 @@ body {
 
 .plate-inputs {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 0.75rem;
   width: 100%;
 }
@@ -500,6 +501,16 @@ body {
 .plate-fields .input-field {
   width: 100%;
   min-height: 44px;
+}
+
+@media (max-width: 420px) {
+  .page {
+    padding: 1.25rem 0.75rem;
+  }
+
+  .plate-inputs {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .input-label {
