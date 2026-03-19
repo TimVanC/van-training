@@ -20,11 +20,19 @@ export interface RecommendedPlanSet {
   targetRIR: number;
 }
 
+export interface ProgressionMetrics {
+  lastTopSetWeight?: number;
+  lastTopSetReps?: number;
+  estimatedOneRepMax?: number;
+  totalReps?: number;
+}
+
 export interface RecentLiftsResponse {
   lastTrained?: string;
   sets: RecentLift[];
   previousNote?: string;
   recommendedPlan?: RecommendedPlanSet[] | null;
+  progressionMetrics?: ProgressionMetrics;
 }
 
 export interface LoggedSet {

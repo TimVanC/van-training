@@ -46,8 +46,72 @@ interface RecommendedPlanSet {
   targetRIR: number;
 }
 
+interface SessionHistory {
+  date: string;
+  time: string;
+  rows: LiftLogRow[];
+}
+
+interface ProgressionMetrics {
+  lastTopSetWeight?: number;
+  lastTopSetReps?: number;
+  estimatedOneRepMax?: number;
+  totalReps?: number;
+}
+
 function getSessionKey(row: LiftLogRow): string {
   return `${row.date}||${row.time}`;
+}
+
+function roundToIncrement(value: number, increment = 5): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.round(value / increment) * increment);
+}
+
+function computeEstimatedOneRepMax(weight: number, reps: number): number | undefined {
+  if (!Number.isFinite(weight) || weight <= 0 || !Number.isFinite(reps) || reps <= 0) return undefined;
+  const oneRm = weight * (1 + reps / 30);
+  return Number(oneRm.toFixed(1));
+}
+
+function targetForSet(topSetTarget: number, setNumber: number): number {
+  if (setNumber === 2) return Math.max(1, topSetTarget - 1);
+  return topSetTarget;
+}
+
+function weightForSet(topSetWeight: number, setNumber: number): number {
+  if (setNumber <= 2) return roundToIncrement(topSetWeight);
+  if (setNumber === 3) return roundToIncrement(topSetWeight * 0.9);
+  return roundToIncrement(topSetWeight * 0.85);
+}
+
+function buildSetTargets(topSetTarget: number, targetSets: number): number[] {
+  return Array.from({ length: targetSets }, (_, i) => targetForSet(topSetTarget, i + 1));
+}
+
+function buildSessionHistories(rows: LiftLogRow[]): SessionHistory[] {
+  const sessions = new Map<string, SessionHistory>();
+  for (const row of rows) {
+    const key = getSessionKey(row);
+    const existing = sessions.get(key);
+    if (existing) {
+      existing.rows.push(row);
+      continue;
+    }
+    sessions.set(key, { date: row.date, time: row.time, rows: [row] });
+  }
+
+  const ordered = Array.from(sessions.values());
+  for (const session of ordered) {
+    session.rows.sort((a, b) => a.setNumber - b.setNumber);
+  }
+  ordered.sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`));
+  return ordered;
+}
+
+function parseNumeric(value: unknown): number | undefined {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : undefined;
 }
 
 async function loadRepRangeByExercise(): Promise<Map<string, RepRange>> {
@@ -142,6 +206,7 @@ export default async function handler(
     let sets: RecentLiftEntry[] = [];
     let previousNote: string | undefined;
     let recommendedPlan: RecommendedPlanSet[] | null = null;
+    let progressionMetrics: ProgressionMetrics | undefined;
     let repRangeByExercise = new Map<string, RepRange>();
 
     try {
@@ -159,16 +224,12 @@ export default async function handler(
       const parsed = parseLiftLogRows(rawRows);
       const matched = parsed.filter((r) => r.exercise === normalizedExercise);
       matched.sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`));
+      const sessions = buildSessionHistories(matched);
 
-      if (matched.length > 0) {
-        const first = matched[0]!;
-        lastTrained = first.date;
-
-        const mostRecentSessionRows = matched.filter(
-          (r) => r.date === first.date && r.time === first.time,
-        );
-        const uniqueSessionKeys = new Set(matched.map(getSessionKey));
-        const hasEnoughSessions = uniqueSessionKeys.size >= 2;
+      if (sessions.length > 0) {
+        const mostRecentSession = sessions[0]!;
+        lastTrained = mostRecentSession.date;
+        const mostRecentSessionRows = mostRecentSession.rows;
         const lastSetOfSession = mostRecentSessionRows.reduce(
           (acc, r) => (r.setNumber > acc.setNumber ? r : acc),
           mostRecentSessionRows[0]!,
@@ -179,7 +240,7 @@ export default async function handler(
           previousNote = parsedLastSetNote.cleanedNote;
         }
 
-        sets = matched.slice(0, targetSets).map((r) => {
+        sets = mostRecentSessionRows.slice(0, targetSets).map((r) => {
           const parsedNote = extractPlateMetadata(r.notes);
           return {
             weight: r.weight ?? '',
@@ -189,46 +250,73 @@ export default async function handler(
           };
         });
 
-        if (hasEnoughSessions) {
-          const repRange = repRangeByExercise.get(normalizedExercise);
-          if (repRange) {
-            const sortedSessionSets = [...mostRecentSessionRows].sort((a, b) => a.setNumber - b.setNumber);
-            const plannedSets: RecommendedPlanSet[] = [];
-            for (const row of sortedSessionSets) {
-              const lastWeight = Number(row.weight);
-              if (!Number.isFinite(lastWeight)) continue;
-              const lastReps = Number(row.reps);
-              if (!Number.isFinite(lastReps)) continue;
-              const lastRIR = Number(row.rir);
+        const topSetWeight = parseNumeric(mostRecentSessionRows[0]?.weight);
+        const topSetReps = parseNumeric(mostRecentSessionRows[0]?.reps);
+        const totalReps = mostRecentSessionRows
+          .slice(0, targetSets)
+          .reduce((sum, row) => sum + (parseNumeric(row.reps) ?? 0), 0);
+        progressionMetrics = {
+          ...(topSetWeight != null ? { lastTopSetWeight: topSetWeight } : {}),
+          ...(topSetReps != null ? { lastTopSetReps: topSetReps } : {}),
+          ...(topSetWeight != null && topSetReps != null
+            ? { estimatedOneRepMax: computeEstimatedOneRepMax(topSetWeight, topSetReps) }
+            : {}),
+          totalReps,
+        };
 
-              let targetWeight = lastWeight;
-              let targetReps = lastReps;
+        const repRange = repRangeByExercise.get(normalizedExercise);
+        if (repRange) {
+          const baseTarget = repRange.min;
+          const capTarget = repRange.max;
+          const chronological = [...sessions].reverse();
+          let nextTopTarget = baseTarget;
+          let consecutiveAllSetsHit = 0;
+          let nextTopWeight = parseNumeric(chronological[0]?.rows[0]?.weight) ?? 0;
 
-              if (Number.isFinite(lastRIR) && lastRIR === 0) {
-                targetReps = lastReps + 1;
-              } else if (lastReps === repRange.max && Number.isFinite(lastRIR) && lastRIR >= 1) {
-                targetWeight = lastWeight + 5;
-                targetReps = repRange.min;
-              } else if (lastReps < repRange.max) {
-                targetReps = lastReps + 1;
-              }
+          for (const session of chronological) {
+            const sessionRows = session.rows.slice(0, targetSets);
+            const sessionSetTargets = buildSetTargets(nextTopTarget, targetSets);
+            const hasEnoughSets = sessionRows.length >= targetSets;
+            const allSetsHitTarget = hasEnoughSets && sessionSetTargets.every((target, idx) => {
+              const reps = parseNumeric(sessionRows[idx]?.reps);
+              return reps != null && reps >= target;
+            });
 
-              plannedSets.push({
-                setNumber: row.setNumber,
-                weight: targetWeight,
-                targetReps,
-                targetRIR: 1,
-              });
+            if (allSetsHitTarget) consecutiveAllSetsHit += 1;
+            else consecutiveAllSetsHit = 0;
+
+            const performedTopReps = parseNumeric(sessionRows[0]?.reps);
+            if (performedTopReps != null && performedTopReps >= nextTopTarget) {
+              nextTopTarget = Math.min(capTarget, nextTopTarget + 1);
             }
-            recommendedPlan = plannedSets.length > 0 ? plannedSets : null;
+
+            const performedTopWeight = parseNumeric(sessionRows[0]?.weight);
+            if (performedTopWeight != null) {
+              nextTopWeight = roundToIncrement(performedTopWeight);
+            }
+
+            if (nextTopTarget >= capTarget && consecutiveAllSetsHit >= 2) {
+              nextTopWeight = roundToIncrement(nextTopWeight + 5);
+              nextTopTarget = baseTarget;
+              consecutiveAllSetsHit = 0;
+            }
           }
+
+          const plannedSets: RecommendedPlanSet[] = buildSetTargets(nextTopTarget, targetSets)
+            .map((targetReps, idx) => ({
+              setNumber: idx + 1,
+              weight: weightForSet(nextTopWeight, idx + 1),
+              targetReps,
+              targetRIR: 1,
+            }));
+          recommendedPlan = plannedSets.length > 0 ? plannedSets : null;
         }
       }
     } catch {
       // Lift_Log may not exist
     }
 
-    res.status(200).json({ lastTrained, sets, previousNote, recommendedPlan });
+    res.status(200).json({ lastTrained, sets, previousNote, recommendedPlan, progressionMetrics });
   } catch (error) {
     console.error('Error in getRecentLifts:', error);
     res.status(500).json({ error: 'Internal Server Error' });
