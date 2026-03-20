@@ -2,9 +2,6 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { google } from 'googleapis';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { buildSplitsFromCsv } from '../src/data/parseSplitsCsv';
-import { extractPlateMetadata } from '../src/utils/plateNote';
-import { normalizeExerciseName, exerciseNamesMatch } from '../src/utils/normalizeExerciseName';
 
 const LIFT_LOG_SHEET = 'Lift_Log';
 
@@ -59,6 +56,118 @@ interface ProgressionMetrics {
   lastTopSetReps?: number;
   estimatedOneRepMax?: number;
   totalReps?: number;
+}
+
+const ZERO_WIDTH_OR_BOM = /[\u200B-\u200D\uFEFF]/g;
+const PLATE_NOTE_REGEX = /^\[plate_meta p45=(-?\d+(?:\.\d+)?);p35=(-?\d+(?:\.\d+)?);p25=(-?\d+(?:\.\d+)?);p10=(-?\d+(?:\.\d+)?);sled=(-?\d+(?:\.\d+)?)\]\s*/;
+
+function normalizeExerciseName(name: unknown): string {
+  return String(name ?? '')
+    .replace(ZERO_WIDTH_OR_BOM, '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+}
+
+function canonicalExerciseToken(name: unknown): string {
+  return normalizeExerciseName(name).replace(/[^a-z0-9]/g, '');
+}
+
+function tokenizeExerciseName(name: unknown): string[] {
+  return normalizeExerciseName(name)
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(' ')
+    .map((token) => token.trim())
+    .filter((token) => token.length > 0)
+    .map((token) => (token.endsWith('s') && token.length > 3 ? token.slice(0, -1) : token));
+}
+
+function exerciseNamesMatch(left: unknown, right: unknown): boolean {
+  const normalizedLeft = normalizeExerciseName(left);
+  const normalizedRight = normalizeExerciseName(right);
+  if (!normalizedLeft || !normalizedRight) return false;
+  if (normalizedLeft === normalizedRight) return true;
+
+  const canonicalLeft = canonicalExerciseToken(normalizedLeft);
+  const canonicalRight = canonicalExerciseToken(normalizedRight);
+  if (!canonicalLeft || !canonicalRight) return false;
+  if (canonicalLeft === canonicalRight) return true;
+  if (canonicalLeft.endsWith('s') && canonicalLeft.slice(0, -1) === canonicalRight) return true;
+  if (canonicalRight.endsWith('s') && canonicalRight.slice(0, -1) === canonicalLeft) return true;
+  if (canonicalLeft.includes(canonicalRight) && (canonicalLeft.length - canonicalRight.length) <= 6) return true;
+  if (canonicalRight.includes(canonicalLeft) && (canonicalRight.length - canonicalLeft.length) <= 6) return true;
+
+  const leftTokens = new Set(tokenizeExerciseName(left));
+  const rightTokens = new Set(tokenizeExerciseName(right));
+  if (leftTokens.size === 0 || rightTokens.size === 0) return false;
+  let overlap = 0;
+  for (const token of leftTokens) {
+    if (rightTokens.has(token)) overlap += 1;
+  }
+  const minTokenCount = Math.min(leftTokens.size, rightTokens.size);
+  return overlap >= 2 && overlap / minTokenCount >= 0.75;
+}
+
+function parseCsvRow(line: string): string[] {
+  const fields: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+    if (ch === ',' && !inQuotes) {
+      fields.push(current);
+      current = '';
+      continue;
+    }
+    current += ch;
+  }
+  fields.push(current);
+  return fields;
+}
+
+function extractPlateMetadata(noteValue: unknown): {
+  plateBreakdown?: {
+    plate45: number;
+    plate35: number;
+    plate25: number;
+    plate10: number;
+    sled: number;
+  };
+  cleanedNote: string;
+} {
+  const note = String(noteValue ?? '').trim();
+  if (!note) return { cleanedNote: '' };
+  const match = note.match(PLATE_NOTE_REGEX);
+  if (!match) return { cleanedNote: note };
+
+  const plate45 = Number(match[1]);
+  const plate35 = Number(match[2]);
+  const plate25 = Number(match[3]);
+  const plate10 = Number(match[4]);
+  const sled = Number(match[5]);
+  const cleanedNote = note.replace(PLATE_NOTE_REGEX, '').trim();
+  if (![plate45, plate35, plate25, plate10, sled].every(Number.isFinite)) {
+    return { cleanedNote: note };
+  }
+  return {
+    plateBreakdown: {
+      plate45: Math.max(0, Math.trunc(plate45)),
+      plate35: Math.max(0, Math.trunc(plate35)),
+      plate25: Math.max(0, Math.trunc(plate25)),
+      plate10: Math.max(0, Math.trunc(plate10)),
+      sled: Math.max(0, sled),
+    },
+    cleanedNote,
+  };
 }
 
 function getSessionKey(row: LiftLogRow): string {
@@ -166,21 +275,22 @@ async function loadRepRangeByExercise(): Promise<Map<string, RepRange>> {
   const repRangeByExercise = new Map<string, RepRange>();
   const splitsPath = path.join(process.cwd(), 'src', 'data', 'updated Split.csv');
   const csvText = await readFile(splitsPath, 'utf8');
-  const splitItems = buildSplitsFromCsv(csvText);
-
-  for (const splitItem of splitItems) {
-    for (const dayExercises of Object.values(splitItem.days)) {
-      for (const exercise of dayExercises) {
-        const exerciseName = normalizeExerciseName(exercise.exercise);
-        if (!exerciseName || repRangeByExercise.has(exerciseName)) continue;
-        const match = exercise.repRange.match(/(\d+)\s*-\s*(\d+)/);
-        if (!match) continue;
-        const min = Number(match[1]);
-        const max = Number(match[2]);
-        if (!Number.isFinite(min) || !Number.isFinite(max)) continue;
-        repRangeByExercise.set(exerciseName, { min, max });
-      }
-    }
+  const lines = csvText
+    .replace(/^\uFEFF/, '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  for (const line of lines.slice(1)) {
+    const cols = parseCsvRow(line);
+    const exerciseName = normalizeExerciseName(cols[1] ?? '');
+    const repRange = String(cols[3] ?? '').trim();
+    if (!exerciseName || !repRange || repRangeByExercise.has(exerciseName)) continue;
+    const match = repRange.match(/(\d+)\s*-\s*(\d+)/);
+    if (!match) continue;
+    const min = Number(match[1]);
+    const max = Number(match[2]);
+    if (!Number.isFinite(min) || !Number.isFinite(max)) continue;
+    repRangeByExercise.set(exerciseName, { min, max });
   }
 
   return repRangeByExercise;

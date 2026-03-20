@@ -1,9 +1,18 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { google } from 'googleapis';
 import type { sheets_v4 } from 'googleapis';
-import { normalizeExerciseName } from '../src/utils/normalizeExerciseName';
 
 type RowRecord = Record<string, unknown>;
+
+const ZERO_WIDTH_OR_BOM = /[\u200B-\u200D\uFEFF]/g;
+
+function normalizeExerciseName(name: unknown): string {
+  return String(name ?? '')
+    .replace(ZERO_WIDTH_OR_BOM, '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+}
 
 const EXERCISE_MAP_SHEET = 'Exercise_Map';
 /** Exercise_Map columns: A = exercise name, B = equipment_type */
