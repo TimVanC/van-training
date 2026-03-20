@@ -29,6 +29,7 @@ interface SessionJoinRow {
 
 interface LiftSetQueryRow {
   session_id: string;
+  exercise_name?: string;
   weight: unknown;
   reps: unknown;
   rir: unknown;
@@ -101,18 +102,65 @@ export default async function handler(
     let recommendedPlan: RecommendedPlanSet[] | null = null;
     let progressionMetrics: ProgressionMetrics | undefined;
 
-    const queryResult = await supabase
+    const rawRowsResult = await supabase
       .from('lift_sets')
-      .select('session_id,weight,reps,rir,created_at,sessions!inner(id,user_id,date)')
+      .select('session_id,exercise_name,weight,reps,rir,created_at,sessions!inner(id,user_id,date)')
       .eq('exercise_name', exerciseName)
       .eq('sessions.user_id', userId)
-      .order('date', { ascending: false, foreignTable: 'sessions' });
+      .order('date', { ascending: false, foreignTable: 'sessions' })
+      .order('created_at', { ascending: false });
 
-    if (queryResult.error) {
-      throw queryResult.error;
+    if (rawRowsResult.error) {
+      throw rawRowsResult.error;
     }
 
-    const rows = (queryResult.data ?? []) as LiftSetQueryRow[];
+    const rawRows = (rawRowsResult.data ?? []) as LiftSetQueryRow[];
+    if (exerciseName === 'Flat Dumbbell Press' && userId === 'e754e7e9-ff46-4788-a02a-a264db8d396d') {
+      console.log('getRecentLifts raw rows (joined):', rawRows.map((row) => ({
+        session_id: row.session_id,
+        session_date: (Array.isArray(row.sessions) ? row.sessions[0] : row.sessions)?.date,
+        created_at: row.created_at,
+        exercise_name: row.exercise_name,
+        weight: row.weight,
+        reps: row.reps,
+        rir: row.rir,
+      })));
+    }
+
+    const latestSessionResult = await supabase
+      .from('sessions')
+      .select('id,date,lift_sets!inner(exercise_name,created_at)')
+      .eq('user_id', userId)
+      .eq('lift_sets.exercise_name', exerciseName)
+      .order('date', { ascending: false })
+      .limit(1);
+
+    if (latestSessionResult.error) {
+      throw latestSessionResult.error;
+    }
+
+    const latestSession = (latestSessionResult.data ?? [])[0] as
+      | { id: string; date: string }
+      | undefined;
+
+    if (!latestSession) {
+      res.status(200).json({ lastTrained, sets, previousNote, recommendedPlan, progressionMetrics });
+      return;
+    }
+
+    const rowsResult = await supabase
+      .from('lift_sets')
+      .select('session_id,exercise_name,weight,reps,rir,created_at,sessions!inner(id,user_id,date)')
+      .eq('exercise_name', exerciseName)
+      .eq('session_id', latestSession.id)
+      .eq('sessions.user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (rowsResult.error) {
+      throw rowsResult.error;
+    }
+
+    const rows = (rowsResult.data ?? []) as LiftSetQueryRow[];
     if (rows.length > 0) {
       const normalizedRows = rows
         .map((row) => ({
@@ -122,7 +170,7 @@ export default async function handler(
         .filter((row): row is LiftSetQueryRow & { session: SessionJoinRow } => row.session != null);
 
       if (normalizedRows.length > 0) {
-        const latestSessionId = normalizedRows[0].session_id;
+        const latestSessionId = latestSession.id;
         const latestSessionRows = normalizedRows
           .filter((row) => row.session_id === latestSessionId)
           .sort((a, b) => String(a.created_at ?? '').localeCompare(String(b.created_at ?? '')));
@@ -157,6 +205,16 @@ export default async function handler(
     }
     recommendedPlan = null;
     previousNote = undefined;
+
+    if (exerciseName === 'Flat Dumbbell Press' && userId === 'e754e7e9-ff46-4788-a02a-a264db8d396d') {
+      console.log('getRecentLifts final payload:', {
+        selected_session_id: latestSession.id,
+        selected_date: latestSession.date,
+        sets,
+        lastTrained,
+        recommendedPlan,
+      });
+    }
 
     res.status(200).json({ lastTrained, sets, previousNote, recommendedPlan, progressionMetrics });
   } catch (error) {

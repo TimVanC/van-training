@@ -69,10 +69,24 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
           },
         );
         const data: RecentLiftsResponse = response.ok ? await response.json() : { sets: [] };
-        setRecentLifts(Array.isArray(data.sets) ? data.sets : []);
-        setLastTrained(typeof data.lastTrained === 'string' && data.lastTrained ? data.lastTrained : undefined);
-        setPreviousNote(typeof data.previousNote === 'string' && data.previousNote ? data.previousNote : undefined);
-        setRecommendedPlan(Array.isArray(data.recommendedPlan) ? data.recommendedPlan : null);
+        if (exercise.name === 'Flat Dumbbell Press') {
+          console.log('ExerciseLogging raw getRecentLifts response:', data);
+        }
+        const mappedRecentLifts = Array.isArray(data.sets) ? data.sets : [];
+        const mappedLastTrained = typeof data.lastTrained === 'string' && data.lastTrained ? data.lastTrained : undefined;
+        const mappedPreviousNote = typeof data.previousNote === 'string' && data.previousNote ? data.previousNote : undefined;
+        const mappedRecommendedPlan = Array.isArray(data.recommendedPlan) ? data.recommendedPlan : null;
+        if (exercise.name === 'Flat Dumbbell Press') {
+          console.log('ExerciseLogging mapped render data:', {
+            lastTrained: mappedLastTrained,
+            recentLifts: mappedRecentLifts,
+            recommendedPlan: mappedRecommendedPlan,
+          });
+        }
+        setRecentLifts(mappedRecentLifts);
+        setLastTrained(mappedLastTrained);
+        setPreviousNote(mappedPreviousNote);
+        setRecommendedPlan(mappedRecommendedPlan);
       } catch {
       } finally {
         setRecentLiftsLoading(false);
