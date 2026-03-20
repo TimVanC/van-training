@@ -4,7 +4,6 @@ import type { sheets_v4 } from 'googleapis';
 import { createClient } from '@supabase/supabase-js';
 
 type RowRecord = Record<string, unknown>;
-const PLACEHOLDER_USER_ID = '01e3783f-e84f-437c-8a05-2ae386b645d3';
 const PLACEHOLDER_WORKOUT_ID = 'a1771e7b-d6e8-4d9a-ba30-827a5ed0dc75';
 
 const ZERO_WIDTH_OR_BOM = /[\u200B-\u200D\uFEFF]/g;
@@ -282,6 +281,18 @@ export default async function handler(
       }
 
       const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+      const authHeader = req.headers.authorization ?? '';
+      const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+      if (!token) {
+        res.status(401).json({ error: 'Missing Authorization token' });
+        return;
+      }
+      const authResult = await supabase.auth.getUser(token);
+      if (authResult.error || !authResult.data.user) {
+        res.status(401).json({ error: 'Invalid or expired token' });
+        return;
+      }
+      const authenticatedUserId = authResult.data.user.id;
 
       if (sheetName === 'Lift_Log') {
         let exerciseIdToUse: string | null = null;
@@ -311,7 +322,7 @@ export default async function handler(
         const sessionInsert = await supabase
           .from('sessions')
           .insert({
-            user_id: PLACEHOLDER_USER_ID,
+            user_id: authenticatedUserId,
             workout_id: PLACEHOLDER_WORKOUT_ID,
             date: String(firstDate ?? new Date().toISOString()),
           })
@@ -349,7 +360,7 @@ export default async function handler(
           const parsedDistance = Number(r.distance);
           const parsedDuration = Number(r.timeSeconds);
           return {
-            user_id: PLACEHOLDER_USER_ID,
+            user_id: authenticatedUserId,
             type: cardioType,
             distance: Number.isFinite(parsedDistance) ? parsedDistance : 0,
             duration: Number.isFinite(parsedDuration) ? parsedDuration : 0,
