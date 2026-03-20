@@ -21,6 +21,21 @@ interface ProgressionMetrics {
   totalReps?: number;
 }
 
+interface SessionJoinRow {
+  id: string;
+  user_id: string;
+  date: string;
+}
+
+interface LiftSetQueryRow {
+  session_id: string;
+  weight: unknown;
+  reps: unknown;
+  rir: unknown;
+  created_at: unknown;
+  sessions: SessionJoinRow | SessionJoinRow[] | null;
+}
+
 function toDateOnly(isoOrDate: unknown): string | undefined {
   const value = String(isoOrDate ?? '').trim();
   if (!value) return undefined;
@@ -59,8 +74,6 @@ export default async function handler(
       return;
     }
 
-    const rawTarget = req.query.targetSets;
-    const targetSets = typeof rawTarget === 'string' ? Math.max(1, parseInt(rawTarget, 10) || 3) : 3;
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!supabaseUrl || !supabaseServiceRoleKey) {
@@ -90,46 +103,60 @@ export default async function handler(
 
     const queryResult = await supabase
       .from('lift_sets')
-      .select('weight,reps,rir,created_at,sessions!inner(user_id,date)')
+      .select('session_id,weight,reps,rir,created_at,sessions!inner(id,user_id,date)')
       .eq('exercise_name', exerciseName)
       .eq('sessions.user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(20);
+      .order('date', { ascending: false, foreignTable: 'sessions' });
 
     if (queryResult.error) {
       throw queryResult.error;
     }
 
-    const rows = queryResult.data ?? [];
+    const rows = (queryResult.data ?? []) as LiftSetQueryRow[];
     if (rows.length > 0) {
-      const mostRecent = rows[0];
-      const recentSession = Array.isArray(mostRecent.sessions)
-        ? mostRecent.sessions[0]
-        : mostRecent.sessions;
-      lastTrained = toDateOnly(recentSession?.date) ?? toDateOnly(mostRecent.created_at);
+      const normalizedRows = rows
+        .map((row) => ({
+          ...row,
+          session: Array.isArray(row.sessions) ? row.sessions[0] : row.sessions,
+        }))
+        .filter((row): row is LiftSetQueryRow & { session: SessionJoinRow } => row.session != null);
 
-      const selected = rows.slice(0, targetSets);
-      sets = selected.map((row) => ({
+      if (normalizedRows.length > 0) {
+        const latestSessionId = normalizedRows[0].session_id;
+        const latestSessionRows = normalizedRows
+          .filter((row) => row.session_id === latestSessionId)
+          .sort((a, b) => String(a.created_at ?? '').localeCompare(String(b.created_at ?? '')));
+
+        if (latestSessionRows.length > 0) {
+          lastTrained = toDateOnly(latestSessionRows[0].session.date) ?? toDateOnly(latestSessionRows[0].created_at);
+
+          sets = latestSessionRows.map((row) => ({
+            weight: toFiniteNumber(row.weight),
+            reps: toFiniteNumber(row.reps),
+            rir: toFiniteNumber(row.rir),
+          }));
+
+          const topSetWeight = toFiniteNumber(latestSessionRows[0].weight);
+          const topSetReps = toFiniteNumber(latestSessionRows[0].reps);
+          const totalReps = latestSessionRows.reduce((sum, row) => sum + toFiniteNumber(row.reps), 0);
+          progressionMetrics = {
+            ...(topSetWeight > 0 ? { lastTopSetWeight: topSetWeight } : {}),
+            ...(topSetReps > 0 ? { lastTopSetReps: topSetReps } : {}),
+            ...(topSetWeight > 0 && topSetReps > 0
+              ? { estimatedOneRepMax: computeEstimatedOneRepMax(topSetWeight, topSetReps) }
+              : {}),
+            totalReps,
+          };
+        }
+      }
+      sets = sets.map((row) => ({
         weight: toFiniteNumber(row.weight),
         reps: toFiniteNumber(row.reps),
         rir: toFiniteNumber(row.rir),
       }));
-
-      const topSetWeight = toFiniteNumber(selected[0]?.weight);
-      const topSetReps = toFiniteNumber(selected[0]?.reps);
-      const totalReps = selected.reduce((sum, row) => sum + toFiniteNumber(row.reps), 0);
-      progressionMetrics = {
-        ...(topSetWeight > 0 ? { lastTopSetWeight: topSetWeight } : {}),
-        ...(topSetReps > 0 ? { lastTopSetReps: topSetReps } : {}),
-        ...(topSetWeight > 0 && topSetReps > 0
-          ? { estimatedOneRepMax: computeEstimatedOneRepMax(topSetWeight, topSetReps) }
-          : {}),
-        totalReps,
-      };
-
-      recommendedPlan = null;
-      previousNote = undefined;
     }
+    recommendedPlan = null;
+    previousNote = undefined;
 
     res.status(200).json({ lastTrained, sets, previousNote, recommendedPlan, progressionMetrics });
   } catch (error) {
