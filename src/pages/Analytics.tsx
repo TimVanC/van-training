@@ -1,4 +1,14 @@
 import { useState } from 'react';
+import {
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 
 interface ExerciseHistoryRow {
   date: string;
@@ -60,26 +70,56 @@ function Analytics(): React.JSX.Element {
       {loading && <p>Loading...</p>}
       {!loading && rows !== null && rows.length === 0 && <p>No data found</p>}
       {!loading && rows !== null && rows.length > 0 && (
-        <table style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
-          <thead>
-            <tr>
-              <th style={tableCellStyle}>Date</th>
-              <th style={tableCellStyle}>Weight</th>
-              <th style={tableCellStyle}>Reps</th>
-              <th style={tableCellStyle}>Volume</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, i) => (
-              <tr key={`${row.date}-${row.weight}-${row.reps}-${i}`}>
-                <td style={tableCellStyle}>{row.date}</td>
-                <td style={tableCellStyle}>{row.weight}</td>
-                <td style={tableCellStyle}>{row.reps}</td>
-                <td style={tableCellStyle}>{row.volume}</td>
+        <>
+          <div style={{ width: '100%', maxWidth: 560, height: 280 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={rows} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis yAxisId="left" />
+                <YAxis yAxisId="right" orientation="right" />
+                <Tooltip />
+                <Legend />
+                <Line
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey="weight"
+                  name="Weight"
+                  stroke="#8884d8"
+                  dot
+                />
+                <Line
+                  yAxisId="right"
+                  type="monotone"
+                  dataKey="volume"
+                  name="Volume"
+                  stroke="#82ca9d"
+                  dot
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          <table style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
+            <thead>
+              <tr>
+                <th style={tableCellStyle}>Date</th>
+                <th style={tableCellStyle}>Weight</th>
+                <th style={tableCellStyle}>Reps</th>
+                <th style={tableCellStyle}>Volume</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((row, i) => (
+                <tr key={`${row.date}-${row.weight}-${row.reps}-${i}`}>
+                  <td style={tableCellStyle}>{row.date}</td>
+                  <td style={tableCellStyle}>{row.weight}</td>
+                  <td style={tableCellStyle}>{row.reps}</td>
+                  <td style={tableCellStyle}>{row.volume}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
       )}
     </div>
   );
