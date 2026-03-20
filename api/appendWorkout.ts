@@ -4,9 +4,8 @@ import type { sheets_v4 } from 'googleapis';
 import { createClient } from '@supabase/supabase-js';
 
 type RowRecord = Record<string, unknown>;
-const PLACEHOLDER_USER_ID = '00000000-0000-0000-0000-000000000001';
-const PLACEHOLDER_WORKOUT_ID = '00000000-0000-0000-0000-000000000001';
-const PLACEHOLDER_EXERCISE_ID = '00000000-0000-0000-0000-000000000001';
+const PLACEHOLDER_USER_ID = '01e3783f-e84f-437c-8a05-2ae386b645d3';
+const PLACEHOLDER_WORKOUT_ID = 'a1771e7b-d6e8-4d9a-ba30-827a5ed0dc75';
 
 const ZERO_WIDTH_OR_BOM = /[\u200B-\u200D\uFEFF]/g;
 
@@ -285,6 +284,30 @@ export default async function handler(
       const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
       if (sheetName === 'Lift_Log') {
+        let exerciseIdToUse: string | null = null;
+        const exerciseSelect = await supabase
+          .from('exercises')
+          .select('id')
+          .limit(1)
+          .maybeSingle();
+
+        if (exerciseSelect.error) {
+          throw exerciseSelect.error;
+        }
+        if (exerciseSelect.data?.id) {
+          exerciseIdToUse = exerciseSelect.data.id;
+        } else {
+          const exerciseInsert = await supabase
+            .from('exercises')
+            .insert({ name: 'Test Exercise' })
+            .select('id')
+            .single();
+          if (exerciseInsert.error || !exerciseInsert.data?.id) {
+            throw exerciseInsert.error ?? new Error('Failed to create fallback exercise');
+          }
+          exerciseIdToUse = exerciseInsert.data.id;
+        }
+
         const sessionInsert = await supabase
           .from('sessions')
           .insert({
@@ -307,7 +330,7 @@ export default async function handler(
 
           return {
             session_id: sessionId,
-            exercise_id: PLACEHOLDER_EXERCISE_ID,
+            exercise_id: exerciseIdToUse,
             exercise_name: String(r.exercise ?? ''),
             weight: Number.isFinite(parsedWeight) ? parsedWeight : 0,
             reps: Number.isFinite(parsedReps) ? parsedReps : 0,
