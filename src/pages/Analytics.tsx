@@ -7,6 +7,11 @@ interface ExerciseHistoryRow {
   volume: number;
 }
 
+const tableCellStyle: React.CSSProperties = {
+  padding: '0.5rem 0.75rem',
+  textAlign: 'left',
+};
+
 function Analytics(): React.JSX.Element {
   const [exerciseName, setExerciseName] = useState('');
   const [rows, setRows] = useState<ExerciseHistoryRow[] | null>(null);
@@ -55,22 +60,22 @@ function Analytics(): React.JSX.Element {
       {loading && <p>Loading...</p>}
       {!loading && rows !== null && rows.length === 0 && <p>No data found</p>}
       {!loading && rows !== null && rows.length > 0 && (
-        <table>
+        <table style={{ borderCollapse: 'separate', borderSpacing: 0 }}>
           <thead>
             <tr>
-              <th>Date</th>
-              <th>Weight</th>
-              <th>Reps</th>
-              <th>Volume</th>
+              <th style={tableCellStyle}>Date</th>
+              <th style={tableCellStyle}>Weight</th>
+              <th style={tableCellStyle}>Reps</th>
+              <th style={tableCellStyle}>Volume</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row, i) => (
               <tr key={`${row.date}-${row.weight}-${row.reps}-${i}`}>
-                <td>{row.date}</td>
-                <td>{row.weight}</td>
-                <td>{row.reps}</td>
-                <td>{row.volume}</td>
+                <td style={tableCellStyle}>{row.date}</td>
+                <td style={tableCellStyle}>{row.weight}</td>
+                <td style={tableCellStyle}>{row.reps}</td>
+                <td style={tableCellStyle}>{row.volume}</td>
               </tr>
             ))}
           </tbody>
