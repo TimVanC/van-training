@@ -8,6 +8,7 @@ import IncompleteSetModal from '../components/IncompleteSetModal';
 import RecentLiftsSection from '../components/RecentLiftsSection';
 import { exerciseAlternates } from '../data/exerciseAlternates';
 import { validateLiftWeight, validateReps } from '../utils/validateSetInput';
+import { supabase } from '../utils/supabaseClient';
 
 interface ExerciseLoggingProps {
   session: LiftSession;
@@ -56,16 +57,27 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     setPreviousNote(undefined);
     setRecommendedPlan(null);
     const targetSets = exercise.targetSets ?? 3;
-    fetch(`/api/getRecentLifts?exercise=${encodeURIComponent(exercise.name)}&targetSets=${targetSets}`, { cache: 'no-store' })
-      .then((r) => (r.ok ? r.json() : { sets: [] }))
-      .then((data: RecentLiftsResponse) => {
+    (async () => {
+      try {
+        const session = await supabase.auth.getSession();
+        const token = session.data.session?.access_token;
+        const response = await fetch(
+          `/api/getRecentLifts?exercise=${encodeURIComponent(exercise.name)}&targetSets=${targetSets}`,
+          {
+            cache: 'no-store',
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+          },
+        );
+        const data: RecentLiftsResponse = response.ok ? await response.json() : { sets: [] };
         setRecentLifts(Array.isArray(data.sets) ? data.sets : []);
         setLastTrained(typeof data.lastTrained === 'string' && data.lastTrained ? data.lastTrained : undefined);
         setPreviousNote(typeof data.previousNote === 'string' && data.previousNote ? data.previousNote : undefined);
         setRecommendedPlan(Array.isArray(data.recommendedPlan) ? data.recommendedPlan : null);
-      })
-      .catch(() => {})
-      .finally(() => setRecentLiftsLoading(false));
+      } catch {
+      } finally {
+        setRecentLiftsLoading(false);
+      }
+    })();
   }, [exercise?.name, exercise?.targetSets]);
 
   useEffect(() => {
