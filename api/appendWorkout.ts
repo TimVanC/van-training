@@ -1,8 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { google } from 'googleapis';
 import type { sheets_v4 } from 'googleapis';
+import { createClient } from '@supabase/supabase-js';
 
 type RowRecord = Record<string, unknown>;
+const PLACEHOLDER_USER_ID = '00000000-0000-0000-0000-000000000001';
+const PLACEHOLDER_WORKOUT_ID = '00000000-0000-0000-0000-000000000001';
+const PLACEHOLDER_EXERCISE_ID = '00000000-0000-0000-0000-000000000001';
 
 const ZERO_WIDTH_OR_BOM = /[\u200B-\u200D\uFEFF]/g;
 
@@ -268,6 +272,79 @@ export default async function handler(
       return;
     }
 
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const sheetName = getSheetName(rows);
+    const firstDate = rows[0]?.date;
+
+    try {
+      if (!supabaseUrl || !supabaseServiceRoleKey) {
+        throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
+      }
+
+      const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+
+      if (sheetName === 'Lift_Log') {
+        const sessionInsert = await supabase
+          .from('sessions')
+          .insert({
+            user_id: PLACEHOLDER_USER_ID,
+            workout_id: PLACEHOLDER_WORKOUT_ID,
+            date: String(firstDate ?? new Date().toISOString()),
+          })
+          .select('id')
+          .single();
+
+        if (sessionInsert.error || !sessionInsert.data?.id) {
+          throw sessionInsert.error ?? new Error('Failed to create lift session in Supabase');
+        }
+
+        const sessionId = sessionInsert.data.id;
+        const liftSetsPayload = rows.map((r) => {
+          const parsedWeight = Number(r.weight);
+          const parsedReps = Number(r.reps);
+          const parsedRir = Number(r.rir);
+
+          return {
+            session_id: sessionId,
+            exercise_id: PLACEHOLDER_EXERCISE_ID,
+            exercise_name: String(r.exercise ?? ''),
+            weight: Number.isFinite(parsedWeight) ? parsedWeight : 0,
+            reps: Number.isFinite(parsedReps) ? parsedReps : 0,
+            rir: Number.isFinite(parsedRir) ? parsedRir : 0,
+          };
+        });
+
+        const liftSetInsert = await supabase.from('lift_sets').insert(liftSetsPayload);
+        if (liftSetInsert.error) {
+          throw liftSetInsert.error;
+        }
+      } else {
+        const cardioType =
+          sheetName === 'Run_Log' ? 'Run' : sheetName === 'Bike_Log' ? 'Bike' : 'Swim';
+        const cardioPayload = rows.map((r) => {
+          const parsedDistance = Number(r.distance);
+          const parsedDuration = Number(r.timeSeconds);
+          return {
+            user_id: PLACEHOLDER_USER_ID,
+            type: cardioType,
+            distance: Number.isFinite(parsedDistance) ? parsedDistance : 0,
+            duration: Number.isFinite(parsedDuration) ? parsedDuration : 0,
+          };
+        });
+        const cardioInsert = await supabase.from('cardio_sessions').insert(cardioPayload);
+        if (cardioInsert.error) {
+          throw cardioInsert.error;
+        }
+      }
+
+      console.log('Supabase write success');
+      res.status(200).json({ success: true });
+      return;
+    } catch (error) {
+      console.error('Supabase write failed', error);
+    }
+
     const spreadsheetId = process.env.GOOGLE_SHEET_ID;
     if (!spreadsheetId) {
       throw new Error('Missing GOOGLE_SHEET_ID environment variable');
@@ -287,7 +364,6 @@ export default async function handler(
     });
 
     const sheets = google.sheets({ version: 'v4', auth });
-    const sheetName = getSheetName(rows);
     const equipmentMap = await ensureExerciseMapAndGetMap(sheets, spreadsheetId);
 
     if (sheetName === 'Lift_Log') {
