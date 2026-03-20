@@ -50,6 +50,8 @@ interface SetLoggingFormProps {
   onSaveEdit: () => void;
   onCancelEdit: () => void;
   onFinish: () => void;
+  /** Shown when add/edit validation fails (e.g. reps or weight out of range). */
+  inputError?: string | null;
 }
 
 function SetLoggingForm({
@@ -81,6 +83,7 @@ function SetLoggingForm({
   onSaveEdit,
   onCancelEdit,
   onFinish,
+  inputError,
 }: SetLoggingFormProps): React.JSX.Element {
   const dis = isSubmitting;
   const isPlates = inputMode === 'plates';
@@ -174,6 +177,11 @@ function SetLoggingForm({
             onChange={(e) => onRirChange(e.target.value)} disabled={dis} />
         </label>
       </div>
+      {inputError ? (
+        <div className="submit-error" role="alert">
+          {inputError}
+        </div>
+      ) : null}
       <div className="button-list">
         {editingIndex !== null ? (
           <>

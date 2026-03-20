@@ -7,6 +7,7 @@ import LoadingOverlay from '../components/LoadingOverlay';
 import IncompleteSetModal from '../components/IncompleteSetModal';
 import RecentLiftsSection from '../components/RecentLiftsSection';
 import { exerciseAlternates } from '../data/exerciseAlternates';
+import { validateLiftWeight, validateReps } from '../utils/validateSetInput';
 
 interface ExerciseLoggingProps {
   session: LiftSession;
@@ -40,7 +41,12 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   const [recentLiftsLoading, setRecentLiftsLoading] = useState(false);
   const [activeExercise, setActiveExercise] = useState(exercise?.activeName ?? exercise?.name ?? '');
   const [showSwapOptions, setShowSwapOptions] = useState(false);
+  const [setInputError, setSetInputError] = useState<string | null>(null);
   const overlayTimer = useRef<number>(0);
+
+  function clearSetInputError(): void {
+    setSetInputError(null);
+  }
 
   useEffect(() => {
     if (!exercise?.name) return;
@@ -151,6 +157,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
       p10 = Number(plate10);
       s = Number(sled);
       if (!Number.isFinite(p45) || p45 < 0 || !Number.isFinite(p35) || p35 < 0 || !Number.isFinite(p25) || p25 < 0 || !Number.isFinite(p10) || p10 < 0 || !Number.isFinite(s) || s < 0) {
+        clearSetInputError();
         flashOverlay('Plate counts and sled weight must be 0 or greater');
         return undefined;
       }
@@ -158,6 +165,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     } else {
       normalizedWeight = Number(weight);
       if (!Number.isFinite(normalizedWeight)) {
+        clearSetInputError();
         flashOverlay('Weight and Reps are required');
         return undefined;
       }
@@ -165,9 +173,21 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     const normalizedReps = Number(reps);
     const normalizedRir = rir === '' ? 0 : Number(rir);
     if (!Number.isFinite(normalizedReps) || normalizedReps <= 0) {
+      clearSetInputError();
       flashOverlay('Reps are required and must be greater than 0');
       return undefined;
     }
+    const repsCheck = validateReps(normalizedReps);
+    if (!repsCheck.valid) {
+      setSetInputError(repsCheck.message ?? 'Invalid reps.');
+      return undefined;
+    }
+    const weightCheck = validateLiftWeight(normalizedWeight);
+    if (!weightCheck.valid) {
+      setSetInputError(weightCheck.message ?? 'Invalid weight.');
+      return undefined;
+    }
+    setSetInputError(null);
     if (isSubmitting) return undefined;
     setIsSubmitting(true);
     const rid = Number.isFinite(normalizedRir) && normalizedRir >= 0 ? normalizedRir : 0;
@@ -197,8 +217,27 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     if (editingIndex === null) return;
     const w = Number(weight);
     const r = Number(reps);
-    if (!Number.isFinite(w)) { flashOverlay('Weight is required'); return; }
-    if (!Number.isFinite(r) || r <= 0) { flashOverlay('Reps must be greater than 0'); return; }
+    if (!Number.isFinite(w)) {
+      clearSetInputError();
+      flashOverlay('Weight is required');
+      return;
+    }
+    if (!Number.isFinite(r) || r <= 0) {
+      clearSetInputError();
+      flashOverlay('Reps must be greater than 0');
+      return;
+    }
+    const repsCheck = validateReps(r);
+    if (!repsCheck.valid) {
+      setSetInputError(repsCheck.message ?? 'Invalid reps.');
+      return;
+    }
+    const weightCheck = validateLiftWeight(w);
+    if (!weightCheck.valid) {
+      setSetInputError(weightCheck.message ?? 'Invalid weight.');
+      return;
+    }
+    setSetInputError(null);
     if (isSubmitting) return;
     setIsSubmitting(true);
     const updated = exercise.sets.map((s, i) =>
@@ -347,17 +386,19 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         plate25={plate25}
         plate10={plate10}
         sled={sled}
-        onWeightChange={setWeight}
-        onRepsChange={setReps}
-        onRirChange={setRir}
-        onPlate45Change={setPlate45}
-        onPlate35Change={setPlate35}
-        onPlate25Change={setPlate25}
-        onPlate10Change={setPlate10}
-        onSledChange={setSled}
+        onWeightChange={(v) => { clearSetInputError(); setWeight(v); }}
+        onRepsChange={(v) => { clearSetInputError(); setReps(v); }}
+        onRirChange={(v) => { clearSetInputError(); setRir(v); }}
+        onPlate45Change={(v) => { clearSetInputError(); setPlate45(v); }}
+        onPlate35Change={(v) => { clearSetInputError(); setPlate35(v); }}
+        onPlate25Change={(v) => { clearSetInputError(); setPlate25(v); }}
+        onPlate10Change={(v) => { clearSetInputError(); setPlate10(v); }}
+        onSledChange={(v) => { clearSetInputError(); setSled(v); }}
         editingIndex={editingIndex}
         isSubmitting={isSubmitting}
+        inputError={setInputError}
         onEdit={(i) => {
+          clearSetInputError();
           const s = exercise.sets[i];
           setWeight(String(s.weight));
           setReps(String(s.reps));
@@ -372,6 +413,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
           setEditingIndex(i);
         }}
         onDuplicate={(i) => {
+          clearSetInputError();
           const s = exercise.sets[i];
           setWeight(String(s.weight));
           setReps(String(s.reps));
@@ -385,10 +427,27 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
             setSled(s.sled != null ? String(s.sled) : '');
           }
         }}
-        onDelete={(i) => { updateExercise(exercise.sets.filter((_, j) => j !== i)); if (editingIndex === i) { setEditingIndex(null); setWeight(''); setReps(''); setRir(''); if (isPlatesMode) clearPlateState(); } }}
+        onDelete={(i) => {
+          clearSetInputError();
+          updateExercise(exercise.sets.filter((_, j) => j !== i));
+          if (editingIndex === i) {
+            setEditingIndex(null);
+            setWeight('');
+            setReps('');
+            setRir('');
+            if (isPlatesMode) clearPlateState();
+          }
+        }}
         onAddSet={handleAddSet}
         onSaveEdit={handleSaveEdit}
-        onCancelEdit={() => { setEditingIndex(null); setWeight(''); setReps(''); setRir(''); if (isPlatesMode) clearPlateState(); }}
+        onCancelEdit={() => {
+          clearSetInputError();
+          setEditingIndex(null);
+          setWeight('');
+          setReps('');
+          setRir('');
+          if (isPlatesMode) clearPlateState();
+        }}
         onFinish={handleFinish}
       />
       <LoadingOverlay visible={isSubmitting} />
