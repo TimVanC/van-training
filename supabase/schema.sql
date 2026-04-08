@@ -61,10 +61,14 @@ create table if not exists public.sessions (
   user_id uuid not null references auth.users(id) on delete cascade,
   workout_id uuid not null references public.workouts(id) on delete restrict,
   date timestamptz not null,
+  notes text,
   started_at timestamptz not null default now(),
   completed_at timestamptz,
   created_at timestamptz not null default now()
 );
+
+alter table public.sessions
+add column if not exists notes text;
 
 create index if not exists idx_sessions_user_id on public.sessions(user_id);
 create index if not exists idx_sessions_workout_id on public.sessions(workout_id);

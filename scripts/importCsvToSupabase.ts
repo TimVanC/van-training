@@ -12,8 +12,13 @@ type CsvRow = {
 };
 
 const TARGET_USER_ID = 'e754e7e9-ff46-4788-a02a-a264db8d396d';
-const TEST_WORKOUT_ID = 'a1771e7b-d6e8-4d9a-ba30-827a5ed0dc75';
-const DEFAULT_CSV_PATH = 'C:/Users/timmy/Downloads/Van Training - Lift_Log (4).csv';
+const TEST_WORKOUT_ID = '7e720bf6-c1ff-46d5-a287-7f0e19147eab';
+const DEFAULT_CSV_PATH = path.join(
+  process.cwd(),
+  'src',
+  'data',
+  'Van Training - User data.csv',
+);
 const MAX_BATCH = 500;
 
 function parseCsvLine(line: string): string[] {
@@ -63,8 +68,19 @@ function chunk<T>(items: T[], size: number): T[][] {
   return out;
 }
 
+function isMissingColumnError(error: unknown, columnName: string): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const e = error as { message?: unknown; details?: unknown };
+  const message = String(e.message ?? '');
+  const details = String(e.details ?? '');
+  return message.includes(columnName) || details.includes(columnName);
+}
+
 async function main(): Promise<void> {
-  const csvPath = process.argv[2] ? path.resolve(process.argv[2]) : DEFAULT_CSV_PATH;
+  const inputPath = process.argv[2] ?? DEFAULT_CSV_PATH;
+  const csvPath = path.isAbsolute(inputPath)
+    ? inputPath
+    : path.resolve(process.cwd(), inputPath);
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -72,6 +88,7 @@ async function main(): Promise<void> {
     throw new Error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
   }
 
+  console.log(`Reading CSV: ${csvPath}`);
   const csvText = await readFile(csvPath, 'utf8');
   const lines = csvText
     .replace(/^\uFEFF/, '')
@@ -149,18 +166,39 @@ async function main(): Promise<void> {
   const uniqueDates = Array.from(new Set(parsedRows.map((r) => r.date))).sort((a, b) =>
     a.localeCompare(b),
   );
+  const dateToSessionNote = new Map<string, string>();
+  for (const row of parsedRows) {
+    if (!row.notes) continue;
+    const existing = dateToSessionNote.get(row.date);
+    if (!existing) {
+      dateToSessionNote.set(row.date, row.notes);
+    }
+  }
 
   const dateToSessionId = new Map<string, string>();
   for (const date of uniqueDates) {
-    const inserted = await supabase
+    const note = dateToSessionNote.get(date);
+    let inserted = await supabase
       .from('sessions')
       .insert({
         user_id: TARGET_USER_ID,
         workout_id: TEST_WORKOUT_ID,
         date,
+        ...(note ? { notes: note } : {}),
       })
       .select('id')
       .single();
+    if (inserted.error && isMissingColumnError(inserted.error, 'notes')) {
+      inserted = await supabase
+        .from('sessions')
+        .insert({
+          user_id: TARGET_USER_ID,
+          workout_id: TEST_WORKOUT_ID,
+          date,
+        })
+        .select('id')
+        .single();
+    }
 
     if (inserted.error || !inserted.data?.id) {
       throw inserted.error ?? new Error(`Failed to insert session for date ${date}`);
