@@ -44,6 +44,7 @@ export interface LoggedSet {
   plate25?: number;
   plate10?: number;
   sled?: number;
+  plateData?: PlateBreakdown;
   /** Client-generated id for undo; not sent to Sheets */
   clientId?: string;
 }

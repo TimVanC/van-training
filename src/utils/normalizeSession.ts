@@ -1,6 +1,5 @@
 import type { ActiveSession, LiftSession, EnduranceSession } from '../types/session';
 import type { LiftRow, RunRow, BikeRow, SwimRow, SessionRow } from '../types/rows';
-import { formatPlateMetadata } from './plateNote';
 
 function normalizeLift(session: LiftSession): LiftRow[] {
   const date = session.startedAt;
@@ -21,24 +20,32 @@ function normalizeLift(session: LiftSession): LiftRow[] {
         rir: set.rir,
       };
       const isPlatesMode = exercise.inputMode === 'plates';
-      const hasPlateMetadata = isPlatesMode
-        && Number.isFinite(set.plate45)
-        && Number.isFinite(set.plate35)
-        && Number.isFinite(set.plate25)
-        && Number.isFinite(set.plate10)
-        && Number.isFinite(set.sled);
+      const plateData = set.plateData ?? {
+        plate45: Number(set.plate45),
+        plate35: Number(set.plate35),
+        plate25: Number(set.plate25),
+        plate10: Number(set.plate10),
+        sled: Number(set.sled),
+      };
+      const hasPlateData = isPlatesMode
+        && Number.isFinite(plateData.plate45)
+        && Number.isFinite(plateData.plate35)
+        && Number.isFinite(plateData.plate25)
+        && Number.isFinite(plateData.plate10)
+        && Number.isFinite(plateData.sled);
       const sessionNote = session.notes?.trim() ?? '';
 
-      if (hasPlateMetadata) {
-        const metadata = formatPlateMetadata({
-          plate45: set.plate45 as number,
-          plate35: set.plate35 as number,
-          plate25: set.plate25 as number,
-          plate10: set.plate10 as number,
-          sled: set.sled as number,
-        });
-        row.notes = sessionNote ? `${metadata} ${sessionNote}` : metadata;
-      } else if (sessionNote) {
+      if (hasPlateData) {
+        row.plate_data = {
+          plate45: plateData.plate45,
+          plate35: plateData.plate35,
+          plate25: plateData.plate25,
+          plate10: plateData.plate10,
+          sled: plateData.sled,
+        };
+      }
+
+      if (sessionNote) {
         row.notes = sessionNote;
       }
       rows.push(row);

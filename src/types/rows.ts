@@ -1,3 +1,11 @@
+export interface LiftPlateData {
+  plate45: number;
+  plate35: number;
+  plate25: number;
+  plate10: number;
+  sled: number;
+}
+
 export interface LiftRow {
   date: string;
   split: string;
@@ -7,6 +15,7 @@ export interface LiftRow {
   weight: number;
   reps: number;
   rir: number;
+  plate_data?: LiftPlateData;
   notes?: string;
 }
 

@@ -2,11 +2,37 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
 type RowRecord = Record<string, unknown>;
+type PlateData = { plate45: number; plate35: number; plate25: number; plate10: number; sled: number };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function isUuidString(value: string): boolean {
   return UUID_RE.test(value);
+}
+
+function toFiniteNumber(value: unknown): number | null {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+}
+
+function parsePlateData(value: unknown): PlateData | null {
+  if (value === null || typeof value !== 'object') return null;
+  const candidate = value as Record<string, unknown>;
+  const plate45 = toFiniteNumber(candidate.plate45);
+  const plate35 = toFiniteNumber(candidate.plate35);
+  const plate25 = toFiniteNumber(candidate.plate25);
+  const plate10 = toFiniteNumber(candidate.plate10);
+  const sled = toFiniteNumber(candidate.sled);
+  if (
+    plate45 === null ||
+    plate35 === null ||
+    plate25 === null ||
+    plate10 === null ||
+    sled === null
+  ) {
+    return null;
+  }
+  return { plate45, plate35, plate25, plate10, sled };
 }
 
 function parseAppendBody(body: unknown): { rows: RowRecord[]; workout_id?: string; notes?: string } {
@@ -193,6 +219,7 @@ export default async function handler(
             weight: Number.isFinite(parsedWeight) ? parsedWeight : 0,
             reps: Number.isFinite(parsedReps) ? parsedReps : 0,
             rir: Number.isFinite(parsedRir) ? parsedRir : 0,
+            plate_data: parsePlateData(r.plate_data),
           };
         });
 

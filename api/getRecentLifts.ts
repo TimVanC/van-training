@@ -34,6 +34,7 @@ interface LiftSetQueryRow {
   weight: unknown;
   reps: unknown;
   rir: unknown;
+  plate_data: unknown;
   created_at: unknown;
   sessions: SessionJoinRow | SessionJoinRow[] | null;
 }
@@ -54,6 +55,28 @@ function toFiniteNumber(value: unknown): number {
 function computeEstimatedOneRepMax(weight: number, reps: number): number | undefined {
   if (!Number.isFinite(weight) || weight <= 0 || !Number.isFinite(reps) || reps <= 0) return undefined;
   return Number((weight * (1 + reps / 30)).toFixed(1));
+}
+
+function parsePlateData(value: unknown):
+  | { plate45: number; plate35: number; plate25: number; plate10: number; sled: number }
+  | undefined {
+  if (value === null || typeof value !== 'object') return undefined;
+  const o = value as Record<string, unknown>;
+  const plate45 = Number(o.plate45);
+  const plate35 = Number(o.plate35);
+  const plate25 = Number(o.plate25);
+  const plate10 = Number(o.plate10);
+  const sled = Number(o.sled);
+  if (
+    !Number.isFinite(plate45) ||
+    !Number.isFinite(plate35) ||
+    !Number.isFinite(plate25) ||
+    !Number.isFinite(plate10) ||
+    !Number.isFinite(sled)
+  ) {
+    return undefined;
+  }
+  return { plate45, plate35, plate25, plate10, sled };
 }
 
 export default async function handler(
@@ -111,7 +134,7 @@ export default async function handler(
 
     const rawRowsResult = await supabase
       .from('lift_sets')
-      .select('session_id,exercise_name,weight,reps,rir,created_at,sessions!inner(id,user_id,date,notes)')
+      .select('session_id,exercise_name,weight,reps,rir,plate_data,created_at,sessions!inner(id,user_id,date,notes)')
       .eq('exercise_name', exerciseName)
       .eq('sessions.user_id', userId)
       .order('date', { ascending: false, foreignTable: 'sessions' })
@@ -146,6 +169,7 @@ export default async function handler(
               weight: toFiniteNumber(row.weight),
               reps: toFiniteNumber(row.reps),
               rir: toFiniteNumber(row.rir),
+              plateBreakdown: parsePlateData(row.plate_data),
             }))
             .slice(0, targetSets);
 

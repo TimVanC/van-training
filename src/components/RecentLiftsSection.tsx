@@ -21,7 +21,13 @@ interface RecentLiftsSectionProps {
 function formatPlateBreakdown(lift: RecentLift): string | null {
   const plate = lift.plateBreakdown;
   if (!plate) return null;
-  return `45s: ${plate.plate45}/side, 35s: ${plate.plate35}/side, 25s: ${plate.plate25}/side, 10s: ${plate.plate10}/side, sled: ${plate.sled} lbs`;
+  const parts: string[] = [];
+  if (plate.plate45 > 0) parts.push(`45s: ${plate.plate45}/side`);
+  if (plate.plate35 > 0) parts.push(`35s: ${plate.plate35}/side`);
+  if (plate.plate25 > 0) parts.push(`25s: ${plate.plate25}/side`);
+  if (plate.plate10 > 0) parts.push(`10s: ${plate.plate10}/side`);
+  if (plate.sled > 0) parts.push(`sled: ${plate.sled} lbs`);
+  return parts.length > 0 ? parts.join(', ') : null;
 }
 
 function RecentLiftsSection({

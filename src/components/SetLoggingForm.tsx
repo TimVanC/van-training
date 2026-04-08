@@ -90,10 +90,25 @@ function SetLoggingForm({
   const showWeightInput = !isPlates || editingIndex !== null;
 
   function renderSetSummary(set: LoggedSet, index: number): React.JSX.Element {
-    if (isPlates && set.plate45 != null && set.plate35 != null && set.plate25 != null && set.plate10 != null && set.sled != null) {
+    const plateData = set.plateData ?? (
+      set.plate45 != null
+      && set.plate35 != null
+      && set.plate25 != null
+      && set.plate10 != null
+      && set.sled != null
+        ? {
+          plate45: set.plate45,
+          plate35: set.plate35,
+          plate25: set.plate25,
+          plate10: set.plate10,
+          sled: set.sled,
+        }
+        : null
+    );
+    if (isPlates && plateData) {
       return (
         <>
-          Set {index + 1}: 45s {set.plate45}/side, 35s {set.plate35}/side, 25s {set.plate25}/side, 10s {set.plate10}/side, sled {set.sled} lbs &times; {set.reps} @ RIR {set.rir}
+          Set {index + 1}: 45s {plateData.plate45}/side, 35s {plateData.plate35}/side, 25s {plateData.plate25}/side, 10s {plateData.plate10}/side, sled {plateData.sled} lbs &times; {set.reps} @ RIR {set.rir}
         </>
       );
     }

@@ -80,8 +80,12 @@ create table if not exists public.lift_sets (
   reps integer not null check (reps > 0),
   volume numeric generated always as (weight * reps) stored,
   rir numeric not null default 0 check (rir >= 0),
+  plate_data jsonb,
   created_at timestamptz not null default now()
 );
+
+alter table public.lift_sets
+add column if not exists plate_data jsonb;
 
 create index if not exists idx_lift_sets_session_id on public.lift_sets(session_id);
 create index if not exists idx_lift_sets_exercise_id on public.lift_sets(exercise_id);
