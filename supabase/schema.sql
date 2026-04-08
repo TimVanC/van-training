@@ -76,13 +76,16 @@ create table if not exists public.lift_sets (
   session_id uuid not null references public.sessions(id) on delete cascade,
   exercise_id uuid not null references public.exercises(id) on delete restrict,
   exercise_name text not null,
-  weight numeric not null check (weight >= 0),
+  weight numeric not null,
   reps integer not null check (reps > 0),
   volume numeric generated always as (weight * reps) stored,
   rir numeric not null default 0 check (rir >= 0),
   plate_data jsonb,
   created_at timestamptz not null default now()
 );
+
+alter table public.lift_sets
+drop constraint if exists lift_sets_weight_check;
 
 alter table public.lift_sets
 add column if not exists plate_data jsonb;

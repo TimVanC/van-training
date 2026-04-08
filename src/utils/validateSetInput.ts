@@ -29,14 +29,11 @@ export function validateReps(reps: number): SetFieldValidation {
 }
 
 /**
- * Validates total weight (lbs) for a set: finite, non-negative, not above max.
+ * Validates total weight (lbs) for a set: finite and not above max.
  */
 export function validateLiftWeight(weight: number): SetFieldValidation {
   if (!Number.isFinite(weight)) {
     return { valid: false, message: 'Weight must be a valid number.' };
-  }
-  if (weight < 0) {
-    return { valid: false, message: 'Weight cannot be negative.' };
   }
   if (weight > MAX_LIFT_WEIGHT_LBS) {
     return {
