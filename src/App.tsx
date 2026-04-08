@@ -20,20 +20,12 @@ function App(): React.JSX.Element {
   useEffect(() => {
     let mounted = true;
 
-    async function runEnsure(user: User | null): Promise<void> {
-      if (!user) return;
-      try {
-        await ensureUserSetup(supabase, user.id);
-      } catch (e) {
-        console.error('ensureUserSetup failed:', e);
-      }
-    }
-
     getCurrentUser()
-      .then(async (currentUser) => {
+      .then((currentUser) => {
         if (!mounted) return;
-        await runEnsure(currentUser);
-        if (!mounted) return;
+        if (currentUser?.id) {
+          void ensureUserSetup(supabase, currentUser.id);
+        }
         setUser(currentUser);
       })
       .finally(() => {
@@ -41,9 +33,11 @@ function App(): React.JSX.Element {
         setLoadingAuth(false);
       });
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       const nextUser = session?.user ?? null;
-      await runEnsure(nextUser);
+      if (nextUser?.id) {
+        void ensureUserSetup(supabase, nextUser.id);
+      }
       if (!mounted) return;
       setUser(nextUser);
       setLoadingAuth(false);
