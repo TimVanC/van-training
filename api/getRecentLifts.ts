@@ -74,6 +74,12 @@ export default async function handler(
       res.status(400).json({ error: 'Missing exercise query parameter' });
       return;
     }
+    const requestedTargetSets =
+      typeof req.query.targetSets === 'string' ? Number(req.query.targetSets) : Number.NaN;
+    const targetSets =
+      Number.isFinite(requestedTargetSets) && requestedTargetSets > 0
+        ? Math.floor(requestedTargetSets)
+        : 3;
 
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -114,53 +120,7 @@ export default async function handler(
       throw rawRowsResult.error;
     }
 
-    const rawRows = (rawRowsResult.data ?? []) as LiftSetQueryRow[];
-    if (exerciseName === 'Flat Dumbbell Press' && userId === 'e754e7e9-ff46-4788-a02a-a264db8d396d') {
-      console.log('getRecentLifts raw rows (joined):', rawRows.map((row) => ({
-        session_id: row.session_id,
-        session_date: (Array.isArray(row.sessions) ? row.sessions[0] : row.sessions)?.date,
-        created_at: row.created_at,
-        exercise_name: row.exercise_name,
-        weight: row.weight,
-        reps: row.reps,
-        rir: row.rir,
-      })));
-    }
-
-    const latestSessionResult = await supabase
-      .from('sessions')
-      .select('id,date,lift_sets!inner(exercise_name,created_at)')
-      .eq('user_id', userId)
-      .eq('lift_sets.exercise_name', exerciseName)
-      .order('date', { ascending: false })
-      .limit(1);
-
-    if (latestSessionResult.error) {
-      throw latestSessionResult.error;
-    }
-
-    const latestSession = (latestSessionResult.data ?? [])[0] as
-      | { id: string; date: string }
-      | undefined;
-
-    if (!latestSession) {
-      res.status(200).json({ lastTrained, sets, previousNote, recommendedPlan, progressionMetrics });
-      return;
-    }
-
-    const rowsResult = await supabase
-      .from('lift_sets')
-      .select('session_id,exercise_name,weight,reps,rir,created_at,sessions!inner(id,user_id,date)')
-      .eq('exercise_name', exerciseName)
-      .eq('session_id', latestSession.id)
-      .eq('sessions.user_id', userId)
-      .order('created_at', { ascending: false });
-
-    if (rowsResult.error) {
-      throw rowsResult.error;
-    }
-
-    const rows = (rowsResult.data ?? []) as LiftSetQueryRow[];
+    const rows = (rawRowsResult.data ?? []) as LiftSetQueryRow[];
     if (rows.length > 0) {
       const normalizedRows = rows
         .map((row) => ({
@@ -170,7 +130,7 @@ export default async function handler(
         .filter((row): row is LiftSetQueryRow & { session: SessionJoinRow } => row.session != null);
 
       if (normalizedRows.length > 0) {
-        const latestSessionId = latestSession.id;
+        const latestSessionId = normalizedRows[0].session_id;
         const latestSessionRows = normalizedRows
           .filter((row) => row.session_id === latestSessionId)
           .sort((a, b) => String(a.created_at ?? '').localeCompare(String(b.created_at ?? '')));
@@ -178,11 +138,13 @@ export default async function handler(
         if (latestSessionRows.length > 0) {
           lastTrained = toDateOnly(latestSessionRows[0].session.date) ?? toDateOnly(latestSessionRows[0].created_at);
 
-          sets = latestSessionRows.map((row) => ({
-            weight: toFiniteNumber(row.weight),
-            reps: toFiniteNumber(row.reps),
-            rir: toFiniteNumber(row.rir),
-          }));
+          sets = latestSessionRows
+            .map((row) => ({
+              weight: toFiniteNumber(row.weight),
+              reps: toFiniteNumber(row.reps),
+              rir: toFiniteNumber(row.rir),
+            }))
+            .slice(0, targetSets);
 
           const topSetWeight = toFiniteNumber(latestSessionRows[0].weight);
           const topSetReps = toFiniteNumber(latestSessionRows[0].reps);
@@ -205,16 +167,6 @@ export default async function handler(
     }
     recommendedPlan = null;
     previousNote = undefined;
-
-    if (exerciseName === 'Flat Dumbbell Press' && userId === 'e754e7e9-ff46-4788-a02a-a264db8d396d') {
-      console.log('getRecentLifts final payload:', {
-        selected_session_id: latestSession.id,
-        selected_date: latestSession.date,
-        sets,
-        lastTrained,
-        recommendedPlan,
-      });
-    }
 
     res.status(200).json({ lastTrained, sets, previousNote, recommendedPlan, progressionMetrics });
   } catch (error) {
