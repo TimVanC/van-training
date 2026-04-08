@@ -34,7 +34,7 @@ interface LiftSetQueryRow {
   weight: unknown;
   reps: unknown;
   rir: unknown;
-  plate_data: unknown;
+  plate_data?: unknown;
   created_at: unknown;
   sessions: SessionJoinRow | SessionJoinRow[] | null;
 }
@@ -77,6 +77,35 @@ function parsePlateData(value: unknown):
     return undefined;
   }
   return { plate45, plate35, plate25, plate10, sled };
+}
+
+function isMissingPlateDataColumnError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const e = error as { message?: unknown; details?: unknown };
+  const message = String(e.message ?? '');
+  const details = String(e.details ?? '');
+  return message.includes('plate_data') || details.includes('plate_data');
+}
+
+async function fetchLiftRows(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  exerciseName: string,
+  includePlateData: boolean,
+): Promise<{ data: LiftSetQueryRow[] | null; error: unknown }> {
+  const selectCols = includePlateData
+    ? 'session_id,exercise_name,weight,reps,rir,plate_data,created_at,sessions!inner(id,user_id,date,notes)'
+    : 'session_id,exercise_name,weight,reps,rir,created_at,sessions!inner(id,user_id,date,notes)';
+
+  const result = await supabase
+    .from('lift_sets')
+    .select(selectCols)
+    .eq('exercise_name', exerciseName)
+    .eq('sessions.user_id', userId)
+    .order('date', { ascending: false, foreignTable: 'sessions' })
+    .order('created_at', { ascending: false });
+
+  return { data: (result.data ?? null) as LiftSetQueryRow[] | null, error: result.error };
 }
 
 export default async function handler(
@@ -132,19 +161,13 @@ export default async function handler(
     let recommendedPlan: RecommendedPlanSet[] | null = null;
     let progressionMetrics: ProgressionMetrics | undefined;
 
-    const rawRowsResult = await supabase
-      .from('lift_sets')
-      .select('session_id,exercise_name,weight,reps,rir,plate_data,created_at,sessions!inner(id,user_id,date,notes)')
-      .eq('exercise_name', exerciseName)
-      .eq('sessions.user_id', userId)
-      .order('date', { ascending: false, foreignTable: 'sessions' })
-      .order('created_at', { ascending: false });
-
-    if (rawRowsResult.error) {
-      throw rawRowsResult.error;
+    let rawRowsResult = await fetchLiftRows(supabase, userId, exerciseName, true);
+    if (rawRowsResult.error && isMissingPlateDataColumnError(rawRowsResult.error)) {
+      rawRowsResult = await fetchLiftRows(supabase, userId, exerciseName, false);
     }
+    if (rawRowsResult.error) throw rawRowsResult.error;
 
-    const rows = (rawRowsResult.data ?? []) as LiftSetQueryRow[];
+    const rows = rawRowsResult.data ?? [];
     if (rows.length > 0) {
       const normalizedRows = rows
         .map((row) => ({

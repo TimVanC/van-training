@@ -35,6 +35,14 @@ function parsePlateData(value: unknown): PlateData | null {
   return { plate45, plate35, plate25, plate10, sled };
 }
 
+function isMissingPlateDataColumnError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const e = error as { message?: unknown; details?: unknown };
+  const message = String(e.message ?? '');
+  const details = String(e.details ?? '');
+  return message.includes('plate_data') || details.includes('plate_data');
+}
+
 function parseAppendBody(body: unknown): { rows: RowRecord[]; workout_id?: string; notes?: string } {
   if (Array.isArray(body)) {
     return { rows: body as RowRecord[] };
@@ -224,7 +232,18 @@ export default async function handler(
         });
 
         console.log('Inserting lift sets:', rows.length);
-        const liftSetInsert = await supabase.from('lift_sets').insert(liftSetsPayload);
+        let liftSetInsert = await supabase.from('lift_sets').insert(liftSetsPayload);
+        if (liftSetInsert.error && isMissingPlateDataColumnError(liftSetInsert.error)) {
+          const fallbackPayload = liftSetsPayload.map((row) => ({
+            session_id: row.session_id,
+            exercise_id: row.exercise_id,
+            exercise_name: row.exercise_name,
+            weight: row.weight,
+            reps: row.reps,
+            rir: row.rir,
+          }));
+          liftSetInsert = await supabase.from('lift_sets').insert(fallbackPayload);
+        }
         if (liftSetInsert.error) {
           console.error(liftSetInsert.error);
           throw liftSetInsert.error;
