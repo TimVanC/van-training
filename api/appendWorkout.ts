@@ -35,12 +35,12 @@ function parsePlateData(value: unknown): PlateData | null {
   return { plate45, plate35, plate25, plate10, sled };
 }
 
-function isMissingPlateDataColumnError(error: unknown): boolean {
+function isMissingColumnError(error: unknown, columnName: string): boolean {
   if (!error || typeof error !== 'object') return false;
   const e = error as { message?: unknown; details?: unknown };
   const message = String(e.message ?? '');
   const details = String(e.details ?? '');
-  return message.includes('plate_data') || details.includes('plate_data');
+  return message.includes(columnName) || details.includes(columnName);
 }
 
 function parseAppendBody(body: unknown): { rows: RowRecord[]; workout_id?: string; notes?: string } {
@@ -197,7 +197,7 @@ export default async function handler(
           notes: notesFromBody,
         });
 
-        const sessionInsert = await supabase
+        let sessionInsert = await supabase
           .from('sessions')
           .insert({
             user_id: authenticatedUserId,
@@ -207,6 +207,17 @@ export default async function handler(
           })
           .select('id')
           .single();
+        if (sessionInsert.error && isMissingColumnError(sessionInsert.error, 'notes')) {
+          sessionInsert = await supabase
+            .from('sessions')
+            .insert({
+              user_id: authenticatedUserId,
+              workout_id: workoutId,
+              date: sessionDate,
+            })
+            .select('id')
+            .single();
+        }
 
         if (sessionInsert.error || !sessionInsert.data?.id) {
           console.error(sessionInsert.error ?? new Error('Failed to create lift session in Supabase'));
@@ -233,7 +244,7 @@ export default async function handler(
 
         console.log('Inserting lift sets:', rows.length);
         let liftSetInsert = await supabase.from('lift_sets').insert(liftSetsPayload);
-        if (liftSetInsert.error && isMissingPlateDataColumnError(liftSetInsert.error)) {
+        if (liftSetInsert.error && isMissingColumnError(liftSetInsert.error, 'plate_data')) {
           const fallbackPayload = liftSetsPayload.map((row) => ({
             session_id: row.session_id,
             exercise_id: row.exercise_id,

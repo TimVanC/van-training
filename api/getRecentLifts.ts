@@ -79,12 +79,12 @@ function parsePlateData(value: unknown):
   return { plate45, plate35, plate25, plate10, sled };
 }
 
-function isMissingPlateDataColumnError(error: unknown): boolean {
+function isMissingColumnError(error: unknown, columnName: string): boolean {
   if (!error || typeof error !== 'object') return false;
   const e = error as { message?: unknown; details?: unknown };
   const message = String(e.message ?? '');
   const details = String(e.details ?? '');
-  return message.includes('plate_data') || details.includes('plate_data');
+  return message.includes(columnName) || details.includes(columnName);
 }
 
 async function fetchLiftRows(
@@ -92,10 +92,12 @@ async function fetchLiftRows(
   userId: string,
   exerciseName: string,
   includePlateData: boolean,
+  includeSessionNotes: boolean,
 ): Promise<{ data: LiftSetQueryRow[] | null; error: unknown }> {
+  const sessionCols = includeSessionNotes ? 'id,user_id,date,notes' : 'id,user_id,date';
   const selectCols = includePlateData
-    ? 'session_id,exercise_name,weight,reps,rir,plate_data,created_at,sessions!inner(id,user_id,date,notes)'
-    : 'session_id,exercise_name,weight,reps,rir,created_at,sessions!inner(id,user_id,date,notes)';
+    ? `session_id,exercise_name,weight,reps,rir,plate_data,created_at,sessions!inner(${sessionCols})`
+    : `session_id,exercise_name,weight,reps,rir,created_at,sessions!inner(${sessionCols})`;
 
   const result = await supabase
     .from('lift_sets')
@@ -161,9 +163,32 @@ export default async function handler(
     let recommendedPlan: RecommendedPlanSet[] | null = null;
     let progressionMetrics: ProgressionMetrics | undefined;
 
-    let rawRowsResult = await fetchLiftRows(supabase, userId, exerciseName, true);
-    if (rawRowsResult.error && isMissingPlateDataColumnError(rawRowsResult.error)) {
-      rawRowsResult = await fetchLiftRows(supabase, userId, exerciseName, false);
+    const fetchAttempts: Array<{ includePlateData: boolean; includeSessionNotes: boolean }> = [
+      { includePlateData: true, includeSessionNotes: true },
+      { includePlateData: false, includeSessionNotes: true },
+      { includePlateData: true, includeSessionNotes: false },
+      { includePlateData: false, includeSessionNotes: false },
+    ];
+    let rawRowsResult = await fetchLiftRows(
+      supabase,
+      userId,
+      exerciseName,
+      fetchAttempts[0].includePlateData,
+      fetchAttempts[0].includeSessionNotes,
+    );
+    for (let i = 1; i < fetchAttempts.length && rawRowsResult.error; i++) {
+      const err = rawRowsResult.error;
+      const hasKnownSchemaDrift =
+        isMissingColumnError(err, 'plate_data') || isMissingColumnError(err, 'notes');
+      if (!hasKnownSchemaDrift) break;
+      const attempt = fetchAttempts[i];
+      rawRowsResult = await fetchLiftRows(
+        supabase,
+        userId,
+        exerciseName,
+        attempt.includePlateData,
+        attempt.includeSessionNotes,
+      );
     }
     if (rawRowsResult.error) throw rawRowsResult.error;
 
