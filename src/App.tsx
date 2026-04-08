@@ -11,6 +11,7 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import { supabase } from './utils/supabaseClient';
 import { getCurrentUser } from './utils/auth';
+import { ensureUserSetup } from './utils/ensureUserSetup';
 
 function App(): React.JSX.Element {
   const [user, setUser] = useState<User | null>(null);
@@ -19,8 +20,19 @@ function App(): React.JSX.Element {
   useEffect(() => {
     let mounted = true;
 
+    async function runEnsure(user: User | null): Promise<void> {
+      if (!user) return;
+      try {
+        await ensureUserSetup(supabase, user.id);
+      } catch (e) {
+        console.error('ensureUserSetup failed:', e);
+      }
+    }
+
     getCurrentUser()
-      .then((currentUser) => {
+      .then(async (currentUser) => {
+        if (!mounted) return;
+        await runEnsure(currentUser);
         if (!mounted) return;
         setUser(currentUser);
       })
@@ -29,8 +41,11 @@ function App(): React.JSX.Element {
         setLoadingAuth(false);
       });
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const nextUser = session?.user ?? null;
+      await runEnsure(nextUser);
+      if (!mounted) return;
+      setUser(nextUser);
       setLoadingAuth(false);
     });
 
