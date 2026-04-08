@@ -6,6 +6,7 @@ import { loadSession, saveSession, clearSession } from '../utils/storage';
 import { createLiftSession } from '../utils/session';
 import { normalizeSessionToRows } from '../utils/normalizeSession';
 import { submitWorkout } from '../utils/submitWorkout';
+import { resolveWorkoutIdForLiftSession } from '../utils/resolveWorkoutId';
 import SplitSelection from './SplitSelection';
 import DaySelection from './DaySelection';
 import ExerciseList from './ExerciseList';
@@ -71,8 +72,14 @@ function LiftContainer(): React.JSX.Element {
     if (!session || isSubmitting) return;
     setIsSubmitting(true);
     setSubmitError(null);
+    const workoutId = await resolveWorkoutIdForLiftSession(session);
+    if (!workoutId) {
+      setSubmitError('Could not find this workout. Try again or contact support.');
+      setIsSubmitting(false);
+      return;
+    }
     const rows = normalizeSessionToRows(session);
-    const ok = await submitWorkout(rows);
+    const ok = await submitWorkout(rows, workoutId);
     if (!ok) {
       setSubmitError('Submission failed. Please try again.');
       setIsSubmitting(false);

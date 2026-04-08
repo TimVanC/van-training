@@ -2,7 +2,28 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
 type RowRecord = Record<string, unknown>;
-const PLACEHOLDER_WORKOUT_ID = 'a1771e7b-d6e8-4d9a-ba30-827a5ed0dc75';
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isUuidString(value: string): boolean {
+  return UUID_RE.test(value);
+}
+
+function parseAppendBody(body: unknown): { rows: RowRecord[]; workout_id?: string } {
+  if (Array.isArray(body)) {
+    return { rows: body as RowRecord[] };
+  }
+  if (body !== null && typeof body === 'object') {
+    const o = body as { rows?: unknown; workout_id?: unknown };
+    if (Array.isArray(o.rows)) {
+      const wid = o.workout_id;
+      const workout_id =
+        typeof wid === 'string' && wid.trim().length > 0 ? wid.trim() : undefined;
+      return { rows: o.rows as RowRecord[], workout_id };
+    }
+  }
+  return { rows: [] };
+}
 
 function getSheetName(rows: RowRecord[]): string {
   const first = rows[0];
@@ -45,9 +66,9 @@ export default async function handler(
   }
 
   try {
-    const rows = req.body as RowRecord[];
+    const { rows, workout_id: workoutIdFromBody } = parseAppendBody(req.body);
     if (!Array.isArray(rows) || rows.length === 0) {
-      res.status(400).json({ error: 'Invalid body: expected non-empty array' });
+      res.status(400).json({ error: 'Invalid body: expected non-empty rows' });
       return;
     }
 
@@ -81,6 +102,30 @@ export default async function handler(
       console.log('user_id:', authResult.data.user.id);
 
       if (sheetName === 'Lift_Log') {
+        const workoutId =
+          typeof workoutIdFromBody === 'string' ? workoutIdFromBody.trim() : '';
+        if (!workoutId || !isUuidString(workoutId)) {
+          res.status(400).json({ error: 'Missing or invalid workout_id' });
+          return;
+        }
+
+        const { data: workoutOwned, error: workoutCheckError } = await supabase
+          .from('workouts')
+          .select('id, splits!inner(user_id)')
+          .eq('id', workoutId)
+          .maybeSingle();
+
+        if (workoutCheckError || !workoutOwned) {
+          res.status(400).json({ error: 'Invalid workout_id' });
+          return;
+        }
+
+        const ownerId = (workoutOwned as { splits: { user_id: string } }).splits.user_id;
+        if (ownerId !== authenticatedUserId) {
+          res.status(400).json({ error: 'Invalid workout_id' });
+          return;
+        }
+
         let exerciseIdToUse: string | null = null;
         const exerciseSelect = await supabase
           .from('exercises')
@@ -110,7 +155,7 @@ export default async function handler(
         const sessionDate = String(firstDate ?? new Date().toISOString());
         console.log('Inserting session:', {
           user_id: authenticatedUserId,
-          workout_id: PLACEHOLDER_WORKOUT_ID,
+          workout_id: workoutId,
           date: sessionDate,
         });
 
@@ -118,7 +163,7 @@ export default async function handler(
           .from('sessions')
           .insert({
             user_id: authenticatedUserId,
-            workout_id: PLACEHOLDER_WORKOUT_ID,
+            workout_id: workoutId,
             date: sessionDate,
           })
           .select('id')
