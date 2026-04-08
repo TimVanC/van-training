@@ -12,6 +12,7 @@ import Signup from './pages/Signup';
 import { supabase } from './utils/supabaseClient';
 import { getCurrentUser } from './utils/auth';
 import { ensureUserSetup } from './utils/ensureUserSetup';
+import { seedSplitFromCsv } from './utils/seedSplitFromCsv';
 
 function App(): React.JSX.Element {
   const [user, setUser] = useState<User | null>(null);
@@ -19,12 +20,27 @@ function App(): React.JSX.Element {
 
   useEffect(() => {
     let mounted = true;
+    const setupStartedForUser = new Set<string>();
+
+    function runPostAuthSetup(userId: string): void {
+      if (setupStartedForUser.has(userId)) return;
+      setupStartedForUser.add(userId);
+
+      void (async () => {
+        try {
+          await ensureUserSetup(supabase, userId);
+          await seedSplitFromCsv(supabase, userId);
+        } catch (error) {
+          console.error('post-auth setup failed', error);
+        }
+      })();
+    }
 
     getCurrentUser()
       .then((currentUser) => {
         if (!mounted) return;
         if (currentUser?.id) {
-          void ensureUserSetup(supabase, currentUser.id);
+          runPostAuthSetup(currentUser.id);
         }
         setUser(currentUser);
       })
@@ -36,7 +52,7 @@ function App(): React.JSX.Element {
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       const nextUser = session?.user ?? null;
       if (nextUser?.id) {
-        void ensureUserSetup(supabase, nextUser.id);
+        runPostAuthSetup(nextUser.id);
       }
       if (!mounted) return;
       setUser(nextUser);
