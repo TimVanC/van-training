@@ -258,6 +258,8 @@ export default async function handler(
   req: VercelRequest,
   res: VercelResponse,
 ): Promise<void> {
+  console.log('appendWorkout called');
+
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
     return;
@@ -282,17 +284,22 @@ export default async function handler(
 
       const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
       const authHeader = req.headers.authorization ?? '';
+      console.log('Authorization header present:', Boolean(authHeader));
+
       const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
       if (!token) {
+        console.error(new Error('Missing Authorization token'));
         res.status(401).json({ error: 'Missing Authorization token' });
         return;
       }
       const authResult = await supabase.auth.getUser(token);
       if (authResult.error || !authResult.data.user) {
+        console.error(authResult.error ?? new Error('Invalid or expired token'));
         res.status(401).json({ error: 'Invalid or expired token' });
         return;
       }
       const authenticatedUserId = authResult.data.user.id;
+      console.log('user_id:', authResult.data.user.id);
 
       if (sheetName === 'Lift_Log') {
         let exerciseIdToUse: string | null = null;
@@ -303,6 +310,7 @@ export default async function handler(
           .maybeSingle();
 
         if (exerciseSelect.error) {
+          console.error(exerciseSelect.error);
           throw exerciseSelect.error;
         }
         if (exerciseSelect.data?.id) {
@@ -314,24 +322,34 @@ export default async function handler(
             .select('id')
             .single();
           if (exerciseInsert.error || !exerciseInsert.data?.id) {
+            console.error(exerciseInsert.error ?? new Error('Failed to create fallback exercise'));
             throw exerciseInsert.error ?? new Error('Failed to create fallback exercise');
           }
           exerciseIdToUse = exerciseInsert.data.id;
         }
+
+        const sessionDate = String(firstDate ?? new Date().toISOString());
+        console.log('Inserting session:', {
+          user_id: authenticatedUserId,
+          workout_id: PLACEHOLDER_WORKOUT_ID,
+          date: sessionDate,
+        });
 
         const sessionInsert = await supabase
           .from('sessions')
           .insert({
             user_id: authenticatedUserId,
             workout_id: PLACEHOLDER_WORKOUT_ID,
-            date: String(firstDate ?? new Date().toISOString()),
+            date: sessionDate,
           })
           .select('id')
           .single();
 
         if (sessionInsert.error || !sessionInsert.data?.id) {
+          console.error(sessionInsert.error ?? new Error('Failed to create lift session in Supabase'));
           throw sessionInsert.error ?? new Error('Failed to create lift session in Supabase');
         }
+        console.log('Session insert success:', { session_id: sessionInsert.data.id });
 
         const sessionId = sessionInsert.data.id;
         const liftSetsPayload = rows.map((r) => {
@@ -349,10 +367,13 @@ export default async function handler(
           };
         });
 
+        console.log('Inserting lift sets:', rows.length);
         const liftSetInsert = await supabase.from('lift_sets').insert(liftSetsPayload);
         if (liftSetInsert.error) {
+          console.error(liftSetInsert.error);
           throw liftSetInsert.error;
         }
+        console.log('Lift sets insert success');
       } else {
         const cardioType =
           sheetName === 'Run_Log' ? 'Run' : sheetName === 'Bike_Log' ? 'Bike' : 'Swim';
@@ -366,17 +387,21 @@ export default async function handler(
             duration: Number.isFinite(parsedDuration) ? parsedDuration : 0,
           };
         });
+        console.log('Inserting cardio sessions:', cardioPayload.length);
         const cardioInsert = await supabase.from('cardio_sessions').insert(cardioPayload);
         if (cardioInsert.error) {
+          console.error(cardioInsert.error);
           throw cardioInsert.error;
         }
+        console.log('Cardio sessions insert success');
       }
 
       console.log('Supabase write success');
       res.status(200).json({ success: true });
       return;
     } catch (error) {
-      console.error('Supabase write failed', error);
+      console.error(error);
+      console.log('FALLBACK TO GOOGLE SHEETS TRIGGERED');
     }
 
     const spreadsheetId = process.env.GOOGLE_SHEET_ID;
