@@ -36,7 +36,6 @@ interface LiftSetQueryRow {
   rir: unknown;
   plate_data?: unknown;
   created_at: unknown;
-  sessions: SessionJoinRow | SessionJoinRow[] | null;
 }
 
 function toDateOnly(isoOrDate: unknown): string | undefined {
@@ -89,25 +88,43 @@ function isMissingColumnError(error: unknown, columnName: string): boolean {
 
 async function fetchLiftRows(
   supabase: ReturnType<typeof createClient>,
-  userId: string,
+  sessionId: string,
   exerciseName: string,
   includePlateData: boolean,
-  includeSessionNotes: boolean,
 ): Promise<{ data: LiftSetQueryRow[] | null; error: unknown }> {
-  const sessionCols = includeSessionNotes ? 'id,user_id,date,notes' : 'id,user_id,date';
   const selectCols = includePlateData
-    ? `session_id,exercise_name,weight,reps,rir,plate_data,created_at,sessions!inner(${sessionCols})`
-    : `session_id,exercise_name,weight,reps,rir,created_at,sessions!inner(${sessionCols})`;
+    ? 'session_id,exercise_name,weight,reps,rir,plate_data,created_at'
+    : 'session_id,exercise_name,weight,reps,rir,created_at';
 
   const result = await supabase
     .from('lift_sets')
     .select(selectCols)
+    .eq('session_id', sessionId)
     .eq('exercise_name', exerciseName)
-    .eq('sessions.user_id', userId)
-    .order('date', { ascending: false, foreignTable: 'sessions' })
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: true });
 
   return { data: (result.data ?? null) as LiftSetQueryRow[] | null, error: result.error };
+}
+
+async function fetchLatestSession(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  exerciseName: string,
+  includeNotes: boolean,
+): Promise<{ data: SessionJoinRow | null; error: unknown }> {
+  const sessionCols = includeNotes ? 'id,date,notes' : 'id,date';
+  const result = await supabase
+    .from('sessions')
+    .select(`${sessionCols},lift_sets!inner(exercise_name)`)
+    .eq('user_id', userId)
+    .eq('lift_sets.exercise_name', exerciseName)
+    .order('date', { ascending: false })
+    .limit(1);
+
+  return {
+    data: ((result.data ?? [])[0] as SessionJoinRow | undefined) ?? null,
+    error: result.error,
+  };
 }
 
 export default async function handler(
@@ -163,82 +180,47 @@ export default async function handler(
     let recommendedPlan: RecommendedPlanSet[] | null = null;
     let progressionMetrics: ProgressionMetrics | undefined;
 
-    const fetchAttempts: Array<{ includePlateData: boolean; includeSessionNotes: boolean }> = [
-      { includePlateData: true, includeSessionNotes: true },
-      { includePlateData: false, includeSessionNotes: true },
-      { includePlateData: true, includeSessionNotes: false },
-      { includePlateData: false, includeSessionNotes: false },
-    ];
-    let rawRowsResult = await fetchLiftRows(
-      supabase,
-      userId,
-      exerciseName,
-      fetchAttempts[0].includePlateData,
-      fetchAttempts[0].includeSessionNotes,
-    );
-    for (let i = 1; i < fetchAttempts.length && rawRowsResult.error; i++) {
-      const err = rawRowsResult.error;
-      const hasKnownSchemaDrift =
-        isMissingColumnError(err, 'plate_data') || isMissingColumnError(err, 'notes');
-      if (!hasKnownSchemaDrift) break;
-      const attempt = fetchAttempts[i];
-      rawRowsResult = await fetchLiftRows(
-        supabase,
-        userId,
-        exerciseName,
-        attempt.includePlateData,
-        attempt.includeSessionNotes,
-      );
+    let latestSessionResult = await fetchLatestSession(supabase, userId, exerciseName, true);
+    if (latestSessionResult.error && isMissingColumnError(latestSessionResult.error, 'notes')) {
+      latestSessionResult = await fetchLatestSession(supabase, userId, exerciseName, false);
     }
-    if (rawRowsResult.error) throw rawRowsResult.error;
+    if (latestSessionResult.error) throw latestSessionResult.error;
 
-    const rows = rawRowsResult.data ?? [];
-    if (rows.length > 0) {
-      const normalizedRows = rows
-        .map((row) => ({
-          ...row,
-          session: Array.isArray(row.sessions) ? row.sessions[0] : row.sessions,
-        }))
-        .filter((row): row is LiftSetQueryRow & { session: SessionJoinRow } => row.session != null);
+    const latestSession = latestSessionResult.data;
+    if (latestSession) {
+      lastTrained = toDateOnly(latestSession.date);
+      const latestNote = String(latestSession.notes ?? '').trim();
+      previousNote = latestNote || undefined;
 
-      if (normalizedRows.length > 0) {
-        const latestSessionId = normalizedRows[0].session_id;
-        const latestSessionRows = normalizedRows
-          .filter((row) => row.session_id === latestSessionId)
-          .sort((a, b) => String(a.created_at ?? '').localeCompare(String(b.created_at ?? '')));
-
-        if (latestSessionRows.length > 0) {
-          lastTrained = toDateOnly(latestSessionRows[0].session.date) ?? toDateOnly(latestSessionRows[0].created_at);
-          const latestNote = String(latestSessionRows[0].session.notes ?? '').trim();
-          previousNote = latestNote || undefined;
-
-          sets = latestSessionRows
-            .map((row) => ({
-              weight: toFiniteNumber(row.weight),
-              reps: toFiniteNumber(row.reps),
-              rir: toFiniteNumber(row.rir),
-              plateBreakdown: parsePlateData(row.plate_data),
-            }))
-            .slice(0, targetSets);
-
-          const topSetWeight = toFiniteNumber(latestSessionRows[0].weight);
-          const topSetReps = toFiniteNumber(latestSessionRows[0].reps);
-          const totalReps = latestSessionRows.reduce((sum, row) => sum + toFiniteNumber(row.reps), 0);
-          progressionMetrics = {
-            ...(topSetWeight > 0 ? { lastTopSetWeight: topSetWeight } : {}),
-            ...(topSetReps > 0 ? { lastTopSetReps: topSetReps } : {}),
-            ...(topSetWeight > 0 && topSetReps > 0
-              ? { estimatedOneRepMax: computeEstimatedOneRepMax(topSetWeight, topSetReps) }
-              : {}),
-            totalReps,
-          };
-        }
+      let rowsResult = await fetchLiftRows(supabase, latestSession.id, exerciseName, true);
+      if (rowsResult.error && isMissingColumnError(rowsResult.error, 'plate_data')) {
+        rowsResult = await fetchLiftRows(supabase, latestSession.id, exerciseName, false);
       }
-      sets = sets.map((row) => ({
-        weight: toFiniteNumber(row.weight),
-        reps: toFiniteNumber(row.reps),
-        rir: toFiniteNumber(row.rir),
-      }));
+      if (rowsResult.error) throw rowsResult.error;
+
+      const latestSessionRows = rowsResult.data ?? [];
+      if (latestSessionRows.length > 0) {
+        sets = latestSessionRows
+          .map((row) => ({
+            weight: toFiniteNumber(row.weight),
+            reps: toFiniteNumber(row.reps),
+            rir: toFiniteNumber(row.rir),
+            plateBreakdown: parsePlateData(row.plate_data),
+          }))
+          .slice(0, targetSets);
+
+        const topSetWeight = toFiniteNumber(latestSessionRows[0].weight);
+        const topSetReps = toFiniteNumber(latestSessionRows[0].reps);
+        const totalReps = latestSessionRows.reduce((sum, row) => sum + toFiniteNumber(row.reps), 0);
+        progressionMetrics = {
+          ...(topSetWeight > 0 ? { lastTopSetWeight: topSetWeight } : {}),
+          ...(topSetReps > 0 ? { lastTopSetReps: topSetReps } : {}),
+          ...(topSetWeight > 0 && topSetReps > 0
+            ? { estimatedOneRepMax: computeEstimatedOneRepMax(topSetWeight, topSetReps) }
+            : {}),
+          totalReps,
+        };
+      }
     }
     recommendedPlan = null;
 
