@@ -40,7 +40,9 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   const [previousNote, setPreviousNote] = useState<string | undefined>();
   const [recommendedPlan, setRecommendedPlan] = useState<RecommendedPlanSet[] | null>(null);
   const [recentLiftsLoading, setRecentLiftsLoading] = useState(false);
-  const [activeExercise, setActiveExercise] = useState(exercise?.activeName ?? exercise?.name ?? '');
+  const [selectedExerciseName, setSelectedExerciseName] = useState(
+    exercise?.activeName ?? exercise?.name ?? '',
+  );
   const [showSwapOptions, setShowSwapOptions] = useState(false);
   const [setInputError, setSetInputError] = useState<string | null>(null);
   const overlayTimer = useRef<number>(0);
@@ -50,7 +52,8 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   }
 
   useEffect(() => {
-    if (!exercise?.name) return;
+    const queryExerciseName = exercise?.activeName ?? exercise?.name;
+    if (!queryExerciseName) return;
     setRecentLiftsLoading(true);
     setRecentLifts([]);
     setLastTrained(undefined);
@@ -62,27 +65,17 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         const session = await supabase.auth.getSession();
         const token = session.data.session?.access_token;
         const response = await fetch(
-          `/api/getRecentLifts?exercise=${encodeURIComponent(exercise.name)}&targetSets=${targetSets}`,
+          `/api/getRecentLifts?exercise=${encodeURIComponent(queryExerciseName)}&targetSets=${targetSets}`,
           {
             cache: 'no-store',
             headers: token ? { Authorization: `Bearer ${token}` } : {},
           },
         );
         const data: RecentLiftsResponse = response.ok ? await response.json() : { sets: [] };
-        if (exercise.name === 'Flat Dumbbell Press') {
-          console.log('ExerciseLogging raw getRecentLifts response:', data);
-        }
         const mappedRecentLifts = Array.isArray(data.sets) ? data.sets : [];
         const mappedLastTrained = typeof data.lastTrained === 'string' && data.lastTrained ? data.lastTrained : undefined;
         const mappedPreviousNote = typeof data.previousNote === 'string' && data.previousNote ? data.previousNote : undefined;
         const mappedRecommendedPlan = Array.isArray(data.recommendedPlan) ? data.recommendedPlan : null;
-        if (exercise.name === 'Flat Dumbbell Press') {
-          console.log('ExerciseLogging mapped render data:', {
-            lastTrained: mappedLastTrained,
-            recentLifts: mappedRecentLifts,
-            recommendedPlan: mappedRecommendedPlan,
-          });
-        }
         setRecentLifts(mappedRecentLifts);
         setLastTrained(mappedLastTrained);
         setPreviousNote(mappedPreviousNote);
@@ -92,11 +85,11 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         setRecentLiftsLoading(false);
       }
     })();
-  }, [exercise?.name, exercise?.targetSets]);
+  }, [exercise?.name, exercise?.activeName, exercise?.targetSets]);
 
   useEffect(() => {
     if (!exercise?.name) return;
-    setActiveExercise(exercise.activeName ?? exercise.name);
+    setSelectedExerciseName(exercise.activeName ?? exercise.name);
     setShowSwapOptions(false);
   }, [exercise?.name, exercise?.activeName, session.startedAt]);
 
@@ -146,14 +139,19 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   function updateExercise(updatedSets: LoggedSet[], completed?: boolean): void {
     const updated = session.exercises.map((ex, i) =>
       i === index
-        ? { ...ex, activeName: activeExercise, sets: updatedSets, completed: completed ?? ex.completed }
+        ? {
+          ...ex,
+          activeName: selectedExerciseName,
+          sets: updatedSets,
+          completed: completed ?? ex.completed,
+        }
         : ex,
     );
     onUpdateSession({ ...session, exercises: updated });
   }
 
   function handleExerciseSwap(nextExercise: string): void {
-    setActiveExercise(nextExercise);
+    setSelectedExerciseName(nextExercise);
     const updated = session.exercises.map((ex, i) =>
       i === index ? { ...ex, activeName: nextExercise } : ex,
     );
@@ -343,8 +341,8 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
 
   return (
     <div className="page">
-      <h1>{activeExercise}</h1>
-      {activeExercise !== baseExerciseName && (
+      <h1>{selectedExerciseName}</h1>
+      {selectedExerciseName !== baseExerciseName && (
         <p className="exercise-substitute-note">(substitute for {baseExerciseName})</p>
       )}
       <p className="exercise-target">Target: {totalSets} sets &times; {repRange} reps</p>
@@ -363,7 +361,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
               Select exercise
               <select
                 className="input-field exercise-swap-select"
-                value={activeExercise}
+                value={selectedExerciseName}
                 onChange={(e) => handleExerciseSwap(e.target.value)}
                 disabled={isSubmitting}
               >

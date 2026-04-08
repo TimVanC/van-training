@@ -7,13 +7,14 @@ function normalizeLift(session: LiftSession): LiftRow[] {
   const rows: LiftRow[] = [];
 
   for (const exercise of session.exercises) {
+    const selectedExerciseName = exercise.activeName ?? exercise.name;
     for (let i = 0; i < exercise.sets.length; i++) {
       const set = exercise.sets[i];
       const row: LiftRow = {
         date,
         split: session.split,
         day: session.day,
-        exercise: exercise.activeName ?? exercise.name,
+        exercise: selectedExerciseName,
         setNumber: i + 1,
         weight: set.weight,
         reps: set.reps,
