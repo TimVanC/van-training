@@ -5,20 +5,24 @@ export interface SubmitWorkoutPayload {
   rows: SessionRow[];
   /** Required for lift logs; omit for run/bike/swim. */
   workout_id?: string;
+  notes?: string;
 }
 
 export async function submitWorkout(
   rows: SessionRow[],
   workout_id?: string,
+  notes?: string,
 ): Promise<boolean> {
   try {
     const { data } = await supabase.auth.getSession();
     const token = data.session?.access_token;
 
-    const payload: SubmitWorkoutPayload =
-      workout_id !== undefined && workout_id.length > 0
-        ? { rows, workout_id }
-        : { rows };
+    const noteValue = typeof notes === 'string' && notes.trim().length > 0 ? notes.trim() : undefined;
+    const payload: SubmitWorkoutPayload = {
+      rows,
+      ...(workout_id !== undefined && workout_id.length > 0 ? { workout_id } : {}),
+      ...(noteValue ? { notes: noteValue } : {}),
+    };
 
     const res = await fetch('/api/appendWorkout', {
       method: 'POST',

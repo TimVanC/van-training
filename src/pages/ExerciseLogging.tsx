@@ -52,7 +52,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   }
 
   useEffect(() => {
-    const queryExerciseName = exercise?.activeName ?? exercise?.name;
+    const queryExerciseName = selectedExerciseName.trim();
     if (!queryExerciseName) return;
     setRecentLiftsLoading(true);
     setRecentLifts([]);
@@ -85,7 +85,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         setRecentLiftsLoading(false);
       }
     })();
-  }, [exercise?.name, exercise?.activeName, exercise?.targetSets]);
+  }, [selectedExerciseName, exercise?.targetSets]);
 
   useEffect(() => {
     if (!exercise?.name) return;
@@ -384,6 +384,9 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
           'n/a'
         )}
       </p>
+      {previousNote ? (
+        <p className="exercise-last-trained-note">Last note: "{previousNote}"</p>
+      ) : null}
       <div className="progress-bar-container">
         <div className="progress-bar-label">{loggedSets} / {totalSets} sets completed</div>
         <div className="progress-bar-track">
@@ -393,7 +396,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
       <RecentLiftsSection
         recentLifts={recentLifts}
         loading={recentLiftsLoading}
-        previousNote={previousNote}
+        previousNote={undefined}
         recommendedPlan={recommendedPlan}
         targetSets={totalSets}
         inputMode={inputMode}

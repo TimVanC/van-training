@@ -25,6 +25,7 @@ interface SessionJoinRow {
   id: string;
   user_id: string;
   date: string;
+  notes?: string | null;
 }
 
 interface LiftSetQueryRow {
@@ -110,7 +111,7 @@ export default async function handler(
 
     const rawRowsResult = await supabase
       .from('lift_sets')
-      .select('session_id,exercise_name,weight,reps,rir,created_at,sessions!inner(id,user_id,date)')
+      .select('session_id,exercise_name,weight,reps,rir,created_at,sessions!inner(id,user_id,date,notes)')
       .eq('exercise_name', exerciseName)
       .eq('sessions.user_id', userId)
       .order('date', { ascending: false, foreignTable: 'sessions' })
@@ -137,6 +138,8 @@ export default async function handler(
 
         if (latestSessionRows.length > 0) {
           lastTrained = toDateOnly(latestSessionRows[0].session.date) ?? toDateOnly(latestSessionRows[0].created_at);
+          const latestNote = String(latestSessionRows[0].session.notes ?? '').trim();
+          previousNote = latestNote || undefined;
 
           sets = latestSessionRows
             .map((row) => ({
@@ -166,7 +169,6 @@ export default async function handler(
       }));
     }
     recommendedPlan = null;
-    previousNote = undefined;
 
     res.status(200).json({ lastTrained, sets, previousNote, recommendedPlan, progressionMetrics });
   } catch (error) {

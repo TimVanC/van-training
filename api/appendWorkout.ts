@@ -9,17 +9,19 @@ function isUuidString(value: string): boolean {
   return UUID_RE.test(value);
 }
 
-function parseAppendBody(body: unknown): { rows: RowRecord[]; workout_id?: string } {
+function parseAppendBody(body: unknown): { rows: RowRecord[]; workout_id?: string; notes?: string } {
   if (Array.isArray(body)) {
     return { rows: body as RowRecord[] };
   }
   if (body !== null && typeof body === 'object') {
-    const o = body as { rows?: unknown; workout_id?: unknown };
+    const o = body as { rows?: unknown; workout_id?: unknown; notes?: unknown };
     if (Array.isArray(o.rows)) {
       const wid = o.workout_id;
       const workout_id =
         typeof wid === 'string' && wid.trim().length > 0 ? wid.trim() : undefined;
-      return { rows: o.rows as RowRecord[], workout_id };
+      const notesRaw = typeof o.notes === 'string' ? o.notes.trim() : '';
+      const notes = notesRaw.length > 0 ? notesRaw : undefined;
+      return { rows: o.rows as RowRecord[], workout_id, notes };
     }
   }
   return { rows: [] };
@@ -66,7 +68,7 @@ export default async function handler(
   }
 
   try {
-    const { rows, workout_id: workoutIdFromBody } = parseAppendBody(req.body);
+    const { rows, workout_id: workoutIdFromBody, notes: notesFromBody } = parseAppendBody(req.body);
     if (!Array.isArray(rows) || rows.length === 0) {
       res.status(400).json({ error: 'Invalid body: expected non-empty rows' });
       return;
@@ -120,7 +122,8 @@ export default async function handler(
           return;
         }
 
-        const ownerId = (workoutOwned as { splits: { user_id: string } }).splits.user_id;
+        const splitJoin = (workoutOwned as { splits?: { user_id: string } | Array<{ user_id: string }> }).splits;
+        const ownerId = Array.isArray(splitJoin) ? splitJoin[0]?.user_id : splitJoin?.user_id;
         if (ownerId !== authenticatedUserId) {
           res.status(400).json({ error: 'Invalid workout_id' });
           return;
@@ -157,6 +160,7 @@ export default async function handler(
           user_id: authenticatedUserId,
           workout_id: workoutId,
           date: sessionDate,
+          notes: notesFromBody,
         });
 
         const sessionInsert = await supabase
@@ -165,6 +169,7 @@ export default async function handler(
             user_id: authenticatedUserId,
             workout_id: workoutId,
             date: sessionDate,
+            notes: notesFromBody,
           })
           .select('id')
           .single();

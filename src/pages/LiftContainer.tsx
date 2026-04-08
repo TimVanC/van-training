@@ -79,7 +79,7 @@ function LiftContainer(): React.JSX.Element {
       return;
     }
     const rows = normalizeSessionToRows(session);
-    const ok = await submitWorkout(rows, workoutId);
+    const ok = await submitWorkout(rows, workoutId, session.notes);
     if (!ok) {
       setSubmitError('Submission failed. Please try again.');
       setIsSubmitting(false);
