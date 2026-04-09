@@ -163,6 +163,10 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     return rir.trim() === '' ? 0 : (parseInt(rir, 10) || 0);
   }
 
+  function parseWeightInput(value: string): number {
+    return parseFloat(value);
+  }
+
   function doneSave(): void {
     weightRef.current?.focus({ preventScroll: true });
     setTimeout(() => setIsSubmitting(false), 500);
@@ -188,7 +192,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
       }
       normalizedWeight = computePlateWeight();
     } else {
-      normalizedWeight = Number(weight);
+      normalizedWeight = parseWeightInput(weight);
       if (!Number.isFinite(normalizedWeight)) {
         clearSetInputError();
         flashOverlay('Weight and Reps are required');
@@ -247,7 +251,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
 
   function handleSaveEdit(): void {
     if (editingIndex === null) return;
-    const w = Number(weight);
+    const w = parseWeightInput(weight);
     const r = Number(reps);
     if (!Number.isFinite(w)) {
       clearSetInputError();
@@ -303,7 +307,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
       const hasPlates = plate45.trim() !== '' || plate35.trim() !== '' || plate25.trim() !== '' || plate10.trim() !== '' || sled.trim() !== '';
       bothEmpty = !hasReps && !hasPlates;
     } else {
-      const normalizedWeight = Number(weight);
+      const normalizedWeight = parseWeightInput(weight);
       bothValid = Number.isFinite(normalizedWeight) && Number.isFinite(normalizedReps) && normalizedReps > 0;
       const hasWeight = weight.trim() !== '';
       const hasReps = reps.trim() !== '';
