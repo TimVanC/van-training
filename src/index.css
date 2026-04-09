@@ -53,6 +53,17 @@ body {
   max-width: 400px;
 }
 
+.workout-choice {
+  width: 100%;
+}
+
+.workout-choice-last-trained {
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
 .activity-button,
 .nav-button {
   width: 100%;
