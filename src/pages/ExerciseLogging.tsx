@@ -26,12 +26,12 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   const [weight, setWeight] = useState('');
   const [reps, setReps] = useState('');
   const [rir, setRir] = useState('');
-  const [plate45, setPlate45] = useState('0');
-  const [plate35, setPlate35] = useState('0');
-  const [plate25, setPlate25] = useState('0');
-  const [plate10, setPlate10] = useState('0');
-  const [plate5, setPlate5] = useState('0');
-  const [sled, setSled] = useState('0');
+  const [plate45, setPlate45] = useState('');
+  const [plate35, setPlate35] = useState('');
+  const [plate25, setPlate25] = useState('');
+  const [plate10, setPlate10] = useState('');
+  const [plate5, setPlate5] = useState('');
+  const [sled, setSled] = useState('100');
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [overlayMsg, setOverlayMsg] = useState('');
   const [showOverlay, setShowOverlay] = useState(false);
@@ -115,6 +115,14 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   const alternateExercises = exerciseAlternates[baseExerciseName] ?? [];
   const canSwapExercise = alternateExercises.length > 0;
 
+  useEffect(() => {
+    if (!isPlatesMode) return;
+    setSled((current) => {
+      if (!showSledInput) return '';
+      return current.trim() === '' ? '100' : current;
+    });
+  }, [isPlatesMode, showSledInput]);
+
   function computePlateWeight(): number {
     const p45 = Number(plate45);
     const p35 = Number(plate35);
@@ -131,12 +139,12 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   }
 
   function clearPlateState(): void {
-    setPlate45('0');
-    setPlate35('0');
-    setPlate25('0');
-    setPlate10('0');
-    setPlate5('0');
-    setSled(showSledInput ? '0' : '');
+    setPlate45('');
+    setPlate35('');
+    setPlate25('');
+    setPlate10('');
+    setPlate5('');
+    setSled(showSledInput ? '100' : '');
   }
 
   function flashOverlay(msg: string): void {
@@ -318,7 +326,9 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
       const s = showSledInput ? Number(sled) : 0;
       bothValid = Number.isFinite(p45) && p45 >= 0 && Number.isFinite(p35) && p35 >= 0 && Number.isFinite(p25) && p25 >= 0 && Number.isFinite(p10) && p10 >= 0 && Number.isFinite(p5) && p5 >= 0 && (!showSledInput || (Number.isFinite(s) && s >= 0)) && Number.isFinite(normalizedReps) && normalizedReps > 0;
       const hasReps = reps.trim() !== '';
-      const hasPlates = p45 > 0 || p35 > 0 || p25 > 0 || p10 > 0 || p5 > 0 || (showSledInput && s > 0);
+      const hasPlateCounts = p45 > 0 || p35 > 0 || p25 > 0 || p10 > 0 || p5 > 0;
+      const hasSledOverride = showSledInput && sled.trim() !== '' && s > 0 && s !== 100;
+      const hasPlates = hasPlateCounts || hasSledOverride;
       bothEmpty = !hasReps && !hasPlates;
     } else {
       const normalizedWeight = parseWeightInput(weight);
@@ -458,12 +468,12 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
           setRir(String(s.rir));
           if (isPlatesMode) {
             const plateData = s.plateData;
-            setPlate45(s.plate45 != null ? String(s.plate45) : (plateData ? String(plateData.plate45) : '0'));
-            setPlate35(s.plate35 != null ? String(s.plate35) : (plateData ? String(plateData.plate35) : '0'));
-            setPlate25(s.plate25 != null ? String(s.plate25) : (plateData ? String(plateData.plate25) : '0'));
-            setPlate10(s.plate10 != null ? String(s.plate10) : (plateData ? String(plateData.plate10) : '0'));
-            setPlate5(s.plate5 != null ? String(s.plate5) : (plateData ? String(plateData.plate5) : '0'));
-            setSled(showSledInput ? (s.sled != null ? String(s.sled) : (plateData ? String(plateData.sled) : '0')) : '');
+            setPlate45(s.plate45 != null ? String(s.plate45) : (plateData ? String(plateData.plate45) : ''));
+            setPlate35(s.plate35 != null ? String(s.plate35) : (plateData ? String(plateData.plate35) : ''));
+            setPlate25(s.plate25 != null ? String(s.plate25) : (plateData ? String(plateData.plate25) : ''));
+            setPlate10(s.plate10 != null ? String(s.plate10) : (plateData ? String(plateData.plate10) : ''));
+            setPlate5(s.plate5 != null ? String(s.plate5) : (plateData ? String(plateData.plate5) : ''));
+            setSled(showSledInput ? (s.sled != null ? String(s.sled) : (plateData ? String(plateData.sled) : '100')) : '');
           }
           setEditingIndex(i);
         }}
@@ -476,12 +486,12 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
           setEditingIndex(null);
           if (isPlatesMode) {
             const plateData = s.plateData;
-            setPlate45(s.plate45 != null ? String(s.plate45) : (plateData ? String(plateData.plate45) : '0'));
-            setPlate35(s.plate35 != null ? String(s.plate35) : (plateData ? String(plateData.plate35) : '0'));
-            setPlate25(s.plate25 != null ? String(s.plate25) : (plateData ? String(plateData.plate25) : '0'));
-            setPlate10(s.plate10 != null ? String(s.plate10) : (plateData ? String(plateData.plate10) : '0'));
-            setPlate5(s.plate5 != null ? String(s.plate5) : (plateData ? String(plateData.plate5) : '0'));
-            setSled(showSledInput ? (s.sled != null ? String(s.sled) : (plateData ? String(plateData.sled) : '0')) : '');
+            setPlate45(s.plate45 != null ? String(s.plate45) : (plateData ? String(plateData.plate45) : ''));
+            setPlate35(s.plate35 != null ? String(s.plate35) : (plateData ? String(plateData.plate35) : ''));
+            setPlate25(s.plate25 != null ? String(s.plate25) : (plateData ? String(plateData.plate25) : ''));
+            setPlate10(s.plate10 != null ? String(s.plate10) : (plateData ? String(plateData.plate10) : ''));
+            setPlate5(s.plate5 != null ? String(s.plate5) : (plateData ? String(plateData.plate5) : ''));
+            setSled(showSledInput ? (s.sled != null ? String(s.sled) : (plateData ? String(plateData.sled) : '100')) : '');
           }
         }}
         onDelete={(i) => {

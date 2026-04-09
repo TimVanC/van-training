@@ -65,12 +65,12 @@ function SetLoggingForm({
   weightRef,
   inputMode = 'weight',
   showSledInput = false,
-  plate45 = '0',
-  plate35 = '0',
-  plate25 = '0',
-  plate10 = '0',
-  plate5 = '0',
-  sled = '0',
+  plate45 = '',
+  plate35 = '',
+  plate25 = '',
+  plate10 = '',
+  plate5 = '',
+  sled = '',
   onWeightChange,
   onRepsChange,
   onRirChange,
@@ -118,7 +118,6 @@ function SetLoggingForm({
     if (plateData?.plate25 && plateData.plate25 > 0) parts.push(`${plateData.plate25}x25`);
     if (plateData?.plate10 && plateData.plate10 > 0) parts.push(`${plateData.plate10}x10`);
     if (plateData?.plate5 && plateData.plate5 > 0) parts.push(`${plateData.plate5}x5`);
-    if (showSledInput && plateData?.sled && plateData.sled > 0) parts.push(`sled ${plateData.sled}`);
     const plateText = parts.join(' + ');
     if (isPlates && plateData) {
       return (

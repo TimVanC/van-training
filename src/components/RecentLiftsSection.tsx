@@ -27,8 +27,7 @@ function formatPlateBreakdown(lift: RecentLift): string | null {
   if (plate.plate25 > 0) parts.push(`${plate.plate25}x25`);
   if (plate.plate10 > 0) parts.push(`${plate.plate10}x10`);
   if (plate.plate5 > 0) parts.push(`${plate.plate5}x5`);
-  if (plate.sled > 0) parts.push(`sled ${plate.sled}`);
-  return parts.length > 0 ? parts.join(' + ') : null;
+  return parts.length > 0 ? parts.join(', ') : null;
 }
 
 function RecentLiftsSection({
