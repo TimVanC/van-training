@@ -282,9 +282,21 @@ body {
 
 .recent-lifts-previous-note {
   font-size: 0.8125rem;
-  color: var(--text-secondary);
-  margin: 0.75rem 0 0;
-  text-align: center;
+  color: var(--text-muted);
+  margin: 0.25rem 0 0;
+  text-align: left;
+  line-height: 1.35;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.recent-lifts-previous-note--expanded {
+  overflow: visible;
+  display: block;
+  -webkit-line-clamp: unset;
+  -webkit-box-orient: unset;
 }
 
 .recent-lifts-header {
@@ -307,6 +319,62 @@ body {
 .recent-lifts-header--suggestion {
   margin-top: 0.25rem;
   font-size: 0.875rem;
+}
+
+.recent-lifts-note {
+  margin-top: 0.5rem;
+}
+
+.recent-lifts-header--note {
+  justify-content: space-between;
+  text-align: left;
+  gap: 0.25rem;
+  padding: 0.25rem 0;
+  color: var(--text-secondary);
+}
+
+.recent-lifts-note-label {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  flex: 1;
+  min-width: 0;
+}
+
+.recent-lifts-note-caret {
+  margin-left: 0.5rem;
+  flex-shrink: 0;
+  transform: rotate(-90deg);
+  transition: transform 0.16s ease;
+}
+
+.recent-lifts-note-caret--open {
+  transform: rotate(0deg);
+}
+
+.recent-lifts-note-panel {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-height 0.16s ease, opacity 0.12s ease;
+}
+
+.recent-lifts-note-panel--expanded {
+  max-height: 280px;
+  opacity: 1;
+}
+
+.recent-lifts-note-more {
+  margin-top: 0.2rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.recent-lifts-note-more:hover {
+  color: var(--text-primary);
 }
 
 .recent-lifts-header:hover {

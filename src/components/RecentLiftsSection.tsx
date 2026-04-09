@@ -41,11 +41,13 @@ function RecentLiftsSection({
   const [isExpanded, setIsExpanded] = useState(false);
   const [isSuggestionExpanded, setIsSuggestionExpanded] = useState(false);
   const [isNoteExpanded, setIsNoteExpanded] = useState(false);
+  const [isNoteFullExpanded, setIsNoteFullExpanded] = useState(false);
   const noteText = String(previousNote ?? '').trim();
-  const previewMax = 44;
+  const previewMax = 62;
   const notePreview =
     noteText.length > previewMax ? `${noteText.slice(0, previewMax).trimEnd()}...` : noteText;
   const shouldRenderNote = noteText.length > 0;
+  const shouldShowMoreToggle = noteText.length > 240;
 
   return (
     <div className="recent-lifts">
@@ -91,32 +93,33 @@ function RecentLiftsSection({
                 <button
                   type="button"
                   className="recent-lifts-header recent-lifts-header--note"
-                  onClick={() => setIsNoteExpanded((v) => !v)}
+                  onClick={() => {
+                    setIsNoteExpanded((v) => !v);
+                    if (isNoteExpanded) setIsNoteFullExpanded(false);
+                  }}
                   aria-expanded={isNoteExpanded}
                 >
-                  <span className="recent-lifts-header-text">
-                    {isNoteExpanded ? 'Last note' : `Last note${notePreview ? `: "${notePreview}"` : ''}`}
+                  <span className="recent-lifts-note-label">
+                    {isNoteExpanded ? 'Note' : `Note: "${notePreview}"`}
                   </span>
-                  <span
-                    className="recent-lifts-caret"
-                    style={{
-                      transform: isNoteExpanded ? 'rotate(0deg)' : 'rotate(-90deg)',
-                      transition: 'transform 140ms ease',
-                    }}
-                  >
+                  <span className={`recent-lifts-caret recent-lifts-note-caret ${isNoteExpanded ? 'recent-lifts-note-caret--open' : ''}`}>
                     <IconCaretDown />
                   </span>
                 </button>
                 <div
+                  className={`recent-lifts-note-panel ${isNoteExpanded ? 'recent-lifts-note-panel--expanded' : ''}`}
                   aria-hidden={!isNoteExpanded}
-                  style={{
-                    maxHeight: isNoteExpanded ? '320px' : '0px',
-                    opacity: isNoteExpanded ? 1 : 0,
-                    overflow: 'hidden',
-                    transition: 'max-height 160ms ease, opacity 120ms ease',
-                  }}
                 >
-                  <p className="recent-lifts-previous-note">&quot;{noteText}&quot;</p>
+                  <p className={`recent-lifts-previous-note ${isNoteFullExpanded ? 'recent-lifts-previous-note--expanded' : ''}`}>&quot;{noteText}&quot;</p>
+                  {shouldShowMoreToggle && (
+                    <button
+                      type="button"
+                      className="recent-lifts-note-more"
+                      onClick={() => setIsNoteFullExpanded((v) => !v)}
+                    >
+                      {isNoteFullExpanded ? 'Show less' : 'Show more'}
+                    </button>
+                  )}
                 </div>
               </div>
             )}
