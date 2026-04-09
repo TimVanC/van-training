@@ -89,6 +89,12 @@ const tooltipBodyStyle: React.CSSProperties = {
 const tooltipLabelStyle: React.CSSProperties = {
   color: '#9ca3af',
 };
+const chartContainerStyle: React.CSSProperties = {
+  width: '100%',
+  maxWidth: 1080,
+  height: 'clamp(220px, 42vw, 300px)',
+};
+const chartLineMargin = { top: 8, right: 4, left: 4, bottom: 18 };
 
 function formatDateLabel(dateValue: string): string {
   const parsed = new Date(dateValue);
@@ -103,6 +109,14 @@ function formatRir(rir: number): string {
 function getRepDotRadius(reps: number): number {
   const safeReps = Number.isFinite(reps) ? reps : 0;
   return Math.max(4, Math.min(10, 3 + safeReps * 0.4));
+}
+
+function getAxisUpperBound(maxValue: number): number {
+  if (!Number.isFinite(maxValue) || maxValue <= 0) return 10;
+  const target = maxValue + 10;
+  const magnitude = 10 ** Math.max(0, Math.floor(Math.log10(target)) - 1);
+  const step = Math.max(5, magnitude);
+  return Math.ceil(target / step) * step;
 }
 
 function getRangeWeeks(range: DateRangeKey, sessions: SessionAnalyticsRow[]): number {
@@ -218,6 +232,16 @@ function Analytics(): React.JSX.Element {
     const weeks = getRangeWeeks(dateRange, sessions ?? []);
     return sessionCount / weeks;
   }, [dateRange, sessions]);
+  const topSetAxisUpper = useMemo(() => {
+    if (chartRows.length === 0) return 10;
+    const maxStrength = Math.max(...chartRows.map((row) => row.topSetStrength));
+    return getAxisUpperBound(maxStrength);
+  }, [chartRows]);
+  const volumeAxisUpper = useMemo(() => {
+    if (chartRows.length === 0) return 10;
+    const maxVolume = Math.max(...chartRows.map((row) => row.totalVolume));
+    return getAxisUpperBound(maxVolume);
+  }, [chartRows]);
 
   useEffect(() => {
     function handleOutsideClick(event: MouseEvent): void {
@@ -466,12 +490,12 @@ function Analytics(): React.JSX.Element {
               </div>
             )}
           </div>
-          <div style={{ width: '100%', maxWidth: 560, height: 280 }}>
+          <div style={chartContainerStyle}>
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartRows} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+              <LineChart data={chartRows} margin={chartLineMargin}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="shortDate" />
-                <YAxis />
+                <XAxis dataKey="shortDate" interval="preserveStartEnd" minTickGap={28} tickMargin={10} height={36} />
+                <YAxis domain={[0, topSetAxisUpper]} width={50} />
                 <Tooltip
                   cursor={{ stroke: '#374151', strokeWidth: 1 }}
                   content={({ active, payload }: ChartTooltipProps) => {
@@ -587,12 +611,12 @@ function Analytics(): React.JSX.Element {
               </div>
             )}
           </div>
-          <div style={{ width: '100%', maxWidth: 560, height: 280 }}>
+          <div style={chartContainerStyle}>
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartRows} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
+              <LineChart data={chartRows} margin={chartLineMargin}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="shortDate" />
-                <YAxis />
+                <XAxis dataKey="shortDate" interval="preserveStartEnd" minTickGap={28} tickMargin={10} height={36} />
+                <YAxis domain={[0, volumeAxisUpper]} width={50} />
                 <Tooltip
                   cursor={{ stroke: '#374151', strokeWidth: 1 }}
                   content={({ active, payload }: ChartTooltipProps) => {

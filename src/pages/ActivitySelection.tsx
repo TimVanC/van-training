@@ -10,6 +10,10 @@ function ActivitySelection(): React.JSX.Element {
     navigate(`/${activity.toLowerCase()}`);
   }
 
+  function handleOpenAnalytics(): void {
+    navigate('/analytics');
+  }
+
   return (
     <div className="page">
       <h1>Van Training</h1>
@@ -23,6 +27,9 @@ function ActivitySelection(): React.JSX.Element {
             {activity}
           </button>
         ))}
+        <button type="button" className="nav-button" onClick={handleOpenAnalytics}>
+          📊 Analytics
+        </button>
       </div>
     </div>
   );
