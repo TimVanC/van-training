@@ -68,8 +68,18 @@ function computeEstimatedOneRepMax(weight: number, reps: number): number | undef
 function parsePlateData(value: unknown):
   | { plate45: number; plate35: number; plate25: number; plate10: number; plate5: number; sled: number }
   | undefined {
-  if (value === null || typeof value !== 'object') return undefined;
-  const o = value as Record<string, unknown>;
+  let source: unknown = value;
+  if (typeof source === 'string') {
+    const trimmed = source.trim();
+    if (!trimmed) return undefined;
+    try {
+      source = JSON.parse(trimmed);
+    } catch {
+      return undefined;
+    }
+  }
+  if (source === null || typeof source !== 'object') return undefined;
+  const o = source as Record<string, unknown>;
   const plate45 = Number(o['45'] ?? o.plate45 ?? 0);
   const plate35 = Number(o['35'] ?? o.plate35 ?? 0);
   const plate25 = Number(o['25'] ?? o.plate25 ?? 0);
