@@ -12,6 +12,7 @@ type CsvRow = {
 type SessionWithWorkout = {
   id: string;
   date: string;
+  workout_id?: string | null;
   workouts: { name: string } | Array<{ name: string }> | null;
 };
 
@@ -148,7 +149,7 @@ async function main(): Promise<void> {
   const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
   const sessionsQuery = await supabase
     .from('sessions')
-    .select('id,date,workouts!inner(name)')
+    .select('id,date,workout_id,workouts(name)')
     .eq('user_id', TARGET_USER_ID);
 
   if (sessionsQuery.error) throw sessionsQuery.error;
@@ -198,12 +199,18 @@ async function main(): Promise<void> {
       .filter((s) => s.workoutName === row.day && s.date === row.date)
       .sort((a, b) => b.sessionIso.localeCompare(a.sessionIso));
 
-    const best = matching[0];
+    const fallbackDateMatches = candidates
+      .filter((s) => s.date === row.date)
+      .sort((a, b) => b.sessionIso.localeCompare(a.sessionIso));
+
+    const best = matching[0] ?? fallbackDateMatches[0];
     if (!best) {
       skipped += 1;
       if (shouldLogSkipDebug) {
-        if (workoutCandidates.length === 0) {
+        if (workoutCandidates.length === 0 && fallbackDateMatches.length === 0) {
           console.log('NO SESSIONS FOUND FOR WORKOUT');
+        } else if (workoutCandidates.length === 0 && fallbackDateMatches.length > 0) {
+          console.log('NO SESSIONS FOUND FOR WORKOUT (DATE FALLBACK ALSO MISSING WORKOUT LINK)');
         } else {
           console.log('FOUND SESSIONS BUT DATE MISMATCH');
         }
@@ -218,6 +225,14 @@ async function main(): Promise<void> {
         skippedLogCount += 1;
       }
       continue;
+    }
+
+    if (shouldLogSkipDebug && matching.length === 0 && fallbackDateMatches.length > 0) {
+      console.log('USING DATE-ONLY FALLBACK MATCH:', {
+        id: best.id,
+        date: best.date,
+        sessionIso: best.sessionIso,
+      });
     }
 
     const update = await supabase
