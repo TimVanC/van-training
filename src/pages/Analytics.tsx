@@ -111,6 +111,14 @@ function getRepDotRadius(reps: number): number {
   return Math.max(4, Math.min(10, 3 + safeReps * 0.4));
 }
 
+function getTopSetStrength(weight: number, reps: number, rir: number): number {
+  const safeWeight = Number.isFinite(weight) ? weight : 0;
+  const safeReps = Number.isFinite(reps) ? reps : 0;
+  const safeRir = Number.isFinite(rir) ? rir : 0;
+  const effectiveReps = safeReps + safeRir;
+  return safeWeight * (1 + effectiveReps / 30);
+}
+
 function getAxisUpperBound(maxValue: number): number {
   if (!Number.isFinite(maxValue) || maxValue <= 0) return 10;
   const target = maxValue + 10;
@@ -202,7 +210,11 @@ function Analytics(): React.JSX.Element {
       const ordered = [...(sessions ?? [])].sort((a, b) => a.date.localeCompare(b.date));
       let bestSoFar = Number.NEGATIVE_INFINITY;
       return ordered.map((session) => {
-        const topSetStrength = session.topSetWeight * (1 + session.topSetReps / 30);
+        const topSetStrength = getTopSetStrength(
+          session.topSetWeight,
+          session.topSetReps,
+          session.topSetRir,
+        );
         const isPr = topSetStrength > bestSoFar;
         if (isPr) bestSoFar = topSetStrength;
         return {
