@@ -69,7 +69,7 @@ function Analytics(): React.JSX.Element {
     if (plateData['25'] > 0) parts.push(`${plateData['25']}x25`);
     if (plateData['10'] > 0) parts.push(`${plateData['10']}x10`);
     if (plateData['5'] > 0) parts.push(`${plateData['5']}x5`);
-    if (plateData.sled > 0) parts.push(`sled ${plateData.sled}`);
+    if ((plateData.sled ?? 0) > 0) parts.push(`sled ${plateData.sled}`);
     return parts.length > 0 ? parts.join(' + ') : null;
   }
 
