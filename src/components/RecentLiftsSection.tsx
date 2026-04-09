@@ -48,6 +48,8 @@ function RecentLiftsSection({
     noteText.length > previewMax ? `${noteText.slice(0, previewMax).trimEnd()}...` : noteText;
   const shouldRenderNote = noteText.length > 0;
   const shouldShowMoreToggle = noteText.length > 240;
+  const hasMissingPlateData =
+    inputMode === 'plates' && recentLifts.some((lift) => lift.plateBreakdown == null);
 
   return (
     <div className="recent-lifts">
@@ -72,13 +74,16 @@ function RecentLiftsSection({
                 const rir = lift.rir == null || String(lift.rir).trim() === '' ? 0 : lift.rir;
                 const plateText = formatPlateBreakdown(lift);
                 const hasPlateData = lift.plateBreakdown != null;
-                const displayPlates = hasPlateData ? (plateText && plateText.length > 0 ? plateText : '-') : `${lift.weight} lbs`;
                 return (
                   <div key={i} className="recent-lifts-item">
                     <strong>Set {i + 1}</strong> - {inputMode === 'plates' ? (
-                      <>
-                        <strong>Plates:</strong> {displayPlates}, <strong>Reps:</strong> {lift.reps}, <strong>RIR:</strong> {rir}
-                      </>
+                      hasPlateData ? (
+                        <>
+                          <strong>Plates:</strong> {plateText && plateText.length > 0 ? plateText : '-'}, <strong>Reps:</strong> {lift.reps}, <strong>RIR:</strong> {rir}
+                        </>
+                      ) : (
+                        <span className="recent-lifts-error">Plate data missing for this set. Re-log to capture breakdown.</span>
+                      )
                     ) : (
                       <>
                         <strong>Weight:</strong> {lift.weight} lbs, <strong>Reps:</strong> {lift.reps}, <strong>RIR:</strong> {rir}
@@ -89,6 +94,11 @@ function RecentLiftsSection({
               })
             ) : (
               <p className="recent-lifts-empty">No data available</p>
+            )}
+            {hasMissingPlateData && (
+              <p className="recent-lifts-error">
+                One or more recent plate-based sets are missing plate data.
+              </p>
             )}
             {shouldRenderNote && (
               <div className="recent-lifts-note">
