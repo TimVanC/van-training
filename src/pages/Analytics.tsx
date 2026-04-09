@@ -49,6 +49,11 @@ interface DotRendererProps {
   payload?: TopSetChartRow;
 }
 
+interface ChartTooltipProps {
+  active?: boolean;
+  payload?: ReadonlyArray<{ payload?: TopSetChartRow }>;
+}
+
 const tableCellStyle: React.CSSProperties = {
   padding: '0.5rem 0.75rem',
   textAlign: 'left',
@@ -62,6 +67,27 @@ const dateRangeOptions: Array<{ value: DateRangeKey; label: string }> = [
   { value: '1Y', label: '1Y' },
   { value: 'ALL', label: 'All' },
 ];
+const tooltipPanelStyle: React.CSSProperties = {
+  background: '#111827',
+  border: '1px solid #1f2937',
+  borderRadius: 8,
+  padding: '0.75rem',
+  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
+  lineHeight: 1.5,
+};
+const tooltipTitleStyle: React.CSSProperties = {
+  margin: 0,
+  color: '#ffffff',
+  fontWeight: 600,
+};
+const tooltipBodyStyle: React.CSSProperties = {
+  margin: '0.5rem 0 0',
+  color: '#d1d5db',
+  lineHeight: 1.5,
+};
+const tooltipLabelStyle: React.CSSProperties = {
+  color: '#9ca3af',
+};
 
 function formatDateLabel(dateValue: string): string {
   const parsed = new Date(dateValue);
@@ -383,24 +409,20 @@ function Analytics(): React.JSX.Element {
                   zIndex: 20,
                   width: 300,
                   maxWidth: '90vw',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: 8,
-                  background: '#fff',
-                  padding: '0.75rem',
-                  boxShadow: '0 8px 24px rgba(15, 23, 42, 0.12)',
+                  ...tooltipPanelStyle,
                 }}
               >
-                <p style={{ margin: 0, fontWeight: 600 }}>What is this?</p>
-                <p style={{ margin: '0.5rem 0 0', color: '#334155' }}>
+                <p style={tooltipTitleStyle}>What is this?</p>
+                <p style={tooltipBodyStyle}>
                   We estimate your strength from your best set.
                 </p>
-                <p style={{ margin: '0.5rem 0 0', color: '#334155' }}>
+                <p style={tooltipBodyStyle}>
                   More reps at the same weight = stronger.
                 </p>
-                <p style={{ margin: '0.5rem 0 0', color: '#334155' }}>
+                <p style={tooltipBodyStyle}>
                   Example: 90 x 10 is stronger than 90 x 8.
                 </p>
-                <p style={{ margin: '0.5rem 0 0', color: '#334155' }}>
+                <p style={tooltipBodyStyle}>
                   We convert that into one number so your progress is easy to see.
                 </p>
               </div>
@@ -413,18 +435,24 @@ function Analytics(): React.JSX.Element {
                 <XAxis dataKey="shortDate" />
                 <YAxis />
                 <Tooltip
-                  formatter={(value, name, item) => {
-                    const row = (item?.payload ?? null) as TopSetChartRow | null;
-                    if (!row) return [numberFormatter.format(Number(value)), 'Top Set Strength'];
-                    if (name === 'Top Set Strength') {
-                      return [numberFormatter.format(Number(row.topSetStrength.toFixed(1))), 'Top Set Strength'];
-                    }
-                    return [numberFormatter.format(Number(value)), String(name)];
-                  }}
-                  labelFormatter={(_label, payload) => {
-                    const row = payload?.[0]?.payload as TopSetChartRow | undefined;
-                    if (!row) return '';
-                    return `${row.date} | ${numberFormatter.format(row.topSetWeight)} x ${row.topSetReps} @ RIR ${formatRir(row.topSetRir)} | e1RM: ${numberFormatter.format(Number(row.topSetStrength.toFixed(1)))}`;
+                  cursor={{ stroke: '#374151', strokeWidth: 1 }}
+                  content={({ active, payload }: ChartTooltipProps) => {
+                    if (!active || !payload || payload.length === 0) return null;
+                    const row = payload[0]?.payload;
+                    if (!row) return null;
+                    return (
+                      <div style={tooltipPanelStyle}>
+                        <p style={tooltipTitleStyle}>{row.date}</p>
+                        <p style={tooltipBodyStyle}>
+                          <span style={tooltipLabelStyle}>Top Set:</span> {numberFormatter.format(row.topSetWeight)} x {row.topSetReps}{' '}
+                          <span style={tooltipLabelStyle}>@ RIR</span> {formatRir(row.topSetRir)}
+                        </p>
+                        <p style={tooltipBodyStyle}>
+                          <span style={tooltipLabelStyle}>Strength:</span>{' '}
+                          {numberFormatter.format(Number(row.topSetStrength.toFixed(1)))}
+                        </p>
+                      </div>
+                    );
                   }}
                 />
                 <Line
@@ -502,21 +530,17 @@ function Analytics(): React.JSX.Element {
                   zIndex: 20,
                   width: 300,
                   maxWidth: '90vw',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: 8,
-                  background: '#fff',
-                  padding: '0.75rem',
-                  boxShadow: '0 8px 24px rgba(15, 23, 42, 0.12)',
+                  ...tooltipPanelStyle,
                 }}
               >
-                <p style={{ margin: 0, fontWeight: 600 }}>What is volume?</p>
-                <p style={{ margin: '0.5rem 0 0', color: '#334155' }}>
+                <p style={tooltipTitleStyle}>What is volume?</p>
+                <p style={tooltipBodyStyle}>
                   Volume is the total work you did in a workout.
                 </p>
-                <p style={{ margin: '0.5rem 0 0', color: '#334155' }}>
+                <p style={tooltipBodyStyle}>
                   We calculate it as: weight x reps for every set.
                 </p>
-                <p style={{ margin: '0.5rem 0 0', color: '#334155' }}>
+                <p style={tooltipBodyStyle}>
                   Higher volume means more total workload.
                 </p>
               </div>
@@ -529,10 +553,21 @@ function Analytics(): React.JSX.Element {
                 <XAxis dataKey="shortDate" />
                 <YAxis />
                 <Tooltip
-                  formatter={(value) => [numberFormatter.format(Number(value)), 'Total Volume']}
-                  labelFormatter={(_label, payload) =>
-                    String((payload?.[0]?.payload as SessionAnalyticsRow | undefined)?.date ?? '')
-                  }
+                  cursor={{ stroke: '#374151', strokeWidth: 1 }}
+                  content={({ active, payload }: ChartTooltipProps) => {
+                    if (!active || !payload || payload.length === 0) return null;
+                    const row = payload[0]?.payload;
+                    if (!row) return null;
+                    return (
+                      <div style={tooltipPanelStyle}>
+                        <p style={tooltipTitleStyle}>{row.date}</p>
+                        <p style={tooltipBodyStyle}>
+                          <span style={tooltipLabelStyle}>Total Volume:</span>{' '}
+                          {numberFormatter.format(Math.round(row.totalVolume))}
+                        </p>
+                      </div>
+                    );
+                  }}
                 />
                 <Line
                   type="monotone"
