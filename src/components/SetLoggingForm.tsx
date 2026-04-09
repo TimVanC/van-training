@@ -28,6 +28,7 @@ interface SetLoggingFormProps {
   rir: string;
   weightRef: React.RefObject<HTMLInputElement | null>;
   inputMode?: 'weight' | 'plates';
+  showSledInput?: boolean;
   plate45?: string;
   plate35?: string;
   plate25?: string;
@@ -63,6 +64,7 @@ function SetLoggingForm({
   rir,
   weightRef,
   inputMode = 'weight',
+  showSledInput = false,
   plate45 = '0',
   plate35 = '0',
   plate25 = '0',
@@ -100,14 +102,13 @@ function SetLoggingForm({
       && set.plate25 != null
       && set.plate10 != null
       && set.plate5 != null
-      && set.sled != null
         ? {
           plate45: set.plate45,
           plate35: set.plate35,
           plate25: set.plate25,
           plate10: set.plate10,
           plate5: set.plate5,
-          sled: set.sled,
+          sled: set.sled ?? 0,
         }
         : null
     );
@@ -117,7 +118,7 @@ function SetLoggingForm({
     if (plateData?.plate25 && plateData.plate25 > 0) parts.push(`${plateData.plate25}x25`);
     if (plateData?.plate10 && plateData.plate10 > 0) parts.push(`${plateData.plate10}x10`);
     if (plateData?.plate5 && plateData.plate5 > 0) parts.push(`${plateData.plate5}x5`);
-    if (plateData?.sled && plateData.sled > 0) parts.push(`sled ${plateData.sled}`);
+    if (showSledInput && plateData?.sled && plateData.sled > 0) parts.push(`sled ${plateData.sled}`);
     const plateText = parts.join(' + ');
     if (isPlates && plateData) {
       return (
@@ -193,11 +194,13 @@ function SetLoggingForm({
                   onChange={(e) => onPlate5Change?.(e.target.value)} disabled={dis} />
               </label>
             </div>
-            <label className="input-label">
-              Sled weight (lbs)
-              <input className="input-field" type="number" inputMode="numeric" min={0} value={sled}
-                onChange={(e) => onSledChange?.(e.target.value)} disabled={dis} />
-            </label>
+            {showSledInput && (
+              <label className="input-label">
+                Sled weight (lbs)
+                <input className="input-field" type="number" inputMode="numeric" min={0} value={sled}
+                  onChange={(e) => onSledChange?.(e.target.value)} disabled={dis} />
+              </label>
+            )}
           </div>
         )}
         <label className="input-label">

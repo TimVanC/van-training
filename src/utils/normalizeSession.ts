@@ -1,5 +1,6 @@
 import type { ActiveSession, LiftSession, EnduranceSession } from '../types/session';
 import type { LiftRow, RunRow, BikeRow, SwimRow, SessionRow } from '../types/rows';
+import { isSledExercise } from '../data/plateModeExercises';
 
 function normalizeLift(session: LiftSession): LiftRow[] {
   const date = session.startedAt;
@@ -20,13 +21,14 @@ function normalizeLift(session: LiftSession): LiftRow[] {
         rir: set.rir,
       };
       const isPlatesMode = exercise.inputMode === 'plates';
+      const includeSled = isSledExercise(selectedExerciseName);
       const plateData = set.plateData ?? {
         plate45: Number(set.plate45),
         plate35: Number(set.plate35),
         plate25: Number(set.plate25),
         plate10: Number(set.plate10),
         plate5: Number(set.plate5),
-        sled: Number(set.sled),
+        sled: Number(set.sled ?? 0),
       };
       const hasPlateData = isPlatesMode
         && Number.isFinite(plateData.plate45)
@@ -34,7 +36,7 @@ function normalizeLift(session: LiftSession): LiftRow[] {
         && Number.isFinite(plateData.plate25)
         && Number.isFinite(plateData.plate10)
         && Number.isFinite(plateData.plate5)
-        && Number.isFinite(plateData.sled);
+        && (includeSled ? Number.isFinite(plateData.sled) : true);
       const sessionNote = session.notes?.trim() ?? '';
 
       if (hasPlateData) {
@@ -44,7 +46,7 @@ function normalizeLift(session: LiftSession): LiftRow[] {
           '25': plateData.plate25,
           '10': plateData.plate10,
           '5': plateData.plate5,
-          sled: plateData.sled,
+          ...(includeSled ? { sled: plateData.sled } : {}),
         };
       }
 

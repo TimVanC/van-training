@@ -21,7 +21,7 @@ interface ExerciseHistoryRow {
     '25': number;
     '10': number;
     '5': number;
-    sled: number;
+    sled?: number;
   };
 }
 

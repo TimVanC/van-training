@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
 type RowRecord = Record<string, unknown>;
-type PlateData = { '45': number; '35': number; '25': number; '10': number; '5': number; sled: number };
+type PlateData = { '45': number; '35': number; '25': number; '10': number; '5': number; sled?: number };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -23,18 +23,32 @@ function parsePlateData(value: unknown): PlateData | null {
   const plate25 = toFiniteNumber(candidate['25'] ?? candidate.plate25);
   const plate10 = toFiniteNumber(candidate['10'] ?? candidate.plate10);
   const plate5 = toFiniteNumber(candidate['5'] ?? candidate.plate5 ?? 0);
-  const sled = toFiniteNumber(candidate.sled);
+  const hasSled = 'sled' in candidate && candidate.sled !== null && String(candidate.sled).trim() !== '';
+  const sled = hasSled ? toFiniteNumber(candidate.sled) : null;
   if (
     plate45 === null ||
     plate35 === null ||
     plate25 === null ||
     plate10 === null ||
     plate5 === null ||
-    sled === null
+    (hasSled && sled === null) ||
+    plate45 < 0 ||
+    plate35 < 0 ||
+    plate25 < 0 ||
+    plate10 < 0 ||
+    plate5 < 0 ||
+    (hasSled && (sled as number) < 0)
   ) {
     return null;
   }
-  return { '45': plate45, '35': plate35, '25': plate25, '10': plate10, '5': plate5, sled };
+  return {
+    '45': plate45,
+    '35': plate35,
+    '25': plate25,
+    '10': plate10,
+    '5': plate5,
+    ...(hasSled ? { sled: sled as number } : {}),
+  };
 }
 
 function isMissingColumnError(error: unknown, columnName: string): boolean {

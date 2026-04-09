@@ -7,6 +7,7 @@ import LoadingOverlay from '../components/LoadingOverlay';
 import IncompleteSetModal from '../components/IncompleteSetModal';
 import RecentLiftsSection from '../components/RecentLiftsSection';
 import { exerciseAlternates } from '../data/exerciseAlternates';
+import { isSledExercise } from '../data/plateModeExercises';
 import { validateLiftWeight, validateReps } from '../utils/validateSetInput';
 import { supabase } from '../utils/supabaseClient';
 
@@ -109,6 +110,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   const repRange = exercise.targetRepRange ?? (exercise.targetReps != null ? String(exercise.targetReps) : '-');
   const inputMode = exercise.inputMode ?? 'weight';
   const isPlatesMode = inputMode === 'plates';
+  const showSledInput = isPlatesMode && isSledExercise(selectedExerciseName);
   const baseExerciseName = exercise.name;
   const alternateExercises = exerciseAlternates[baseExerciseName] ?? [];
   const canSwapExercise = alternateExercises.length > 0;
@@ -119,13 +121,13 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     const p25 = Number(plate25);
     const p10 = Number(plate10);
     const p5 = Number(plate5);
-    const s = Number(sled);
+    const s = showSledInput ? Number(sled) : 0;
     const perSide = (45 * (Number.isFinite(p45) ? p45 : 0))
       + (35 * (Number.isFinite(p35) ? p35 : 0))
       + (25 * (Number.isFinite(p25) ? p25 : 0))
       + (10 * (Number.isFinite(p10) ? p10 : 0))
       + (5 * (Number.isFinite(p5) ? p5 : 0));
-    return perSide * 2 + (Number.isFinite(s) ? s : 0);
+    return perSide * 2 + (showSledInput && Number.isFinite(s) ? s : 0);
   }
 
   function clearPlateState(): void {
@@ -134,7 +136,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     setPlate25('0');
     setPlate10('0');
     setPlate5('0');
-    setSled('0');
+    setSled(showSledInput ? '0' : '');
   }
 
   function flashOverlay(msg: string): void {
@@ -193,8 +195,8 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
       p25 = Number(plate25);
       p10 = Number(plate10);
       p5 = Number(plate5);
-      s = Number(sled);
-      if (!Number.isFinite(p45) || p45 < 0 || !Number.isFinite(p35) || p35 < 0 || !Number.isFinite(p25) || p25 < 0 || !Number.isFinite(p10) || p10 < 0 || !Number.isFinite(p5) || p5 < 0 || !Number.isFinite(s) || s < 0) {
+      s = showSledInput ? Number(sled) : 0;
+      if (!Number.isFinite(p45) || p45 < 0 || !Number.isFinite(p35) || p35 < 0 || !Number.isFinite(p25) || p25 < 0 || !Number.isFinite(p10) || p10 < 0 || !Number.isFinite(p5) || p5 < 0 || (showSledInput && (!Number.isFinite(s) || s < 0))) {
         clearSetInputError();
         flashOverlay('Plate counts and sled weight must be 0 or greater');
         return undefined;
@@ -239,14 +241,14 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         plate25: Math.trunc(p25),
         plate10: Math.trunc(p10),
         plate5: Math.trunc(p5),
-        sled: s,
+        ...(showSledInput ? { sled: s } : {}),
         plateData: {
           plate45: Math.trunc(p45),
           plate35: Math.trunc(p35),
           plate25: Math.trunc(p25),
           plate10: Math.trunc(p10),
           plate5: Math.trunc(p5),
-          sled: s,
+          sled: showSledInput ? s : 0,
         },
       }
       : { weight: normalizedWeight, reps: normalizedReps, rir: rid };
@@ -313,10 +315,10 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
       const p25 = Number(plate25);
       const p10 = Number(plate10);
       const p5 = Number(plate5);
-      const s = Number(sled);
-      bothValid = Number.isFinite(p45) && p45 >= 0 && Number.isFinite(p35) && p35 >= 0 && Number.isFinite(p25) && p25 >= 0 && Number.isFinite(p10) && p10 >= 0 && Number.isFinite(p5) && p5 >= 0 && Number.isFinite(s) && s >= 0 && Number.isFinite(normalizedReps) && normalizedReps > 0;
+      const s = showSledInput ? Number(sled) : 0;
+      bothValid = Number.isFinite(p45) && p45 >= 0 && Number.isFinite(p35) && p35 >= 0 && Number.isFinite(p25) && p25 >= 0 && Number.isFinite(p10) && p10 >= 0 && Number.isFinite(p5) && p5 >= 0 && (!showSledInput || (Number.isFinite(s) && s >= 0)) && Number.isFinite(normalizedReps) && normalizedReps > 0;
       const hasReps = reps.trim() !== '';
-      const hasPlates = p45 > 0 || p35 > 0 || p25 > 0 || p10 > 0 || p5 > 0 || s > 0;
+      const hasPlates = p45 > 0 || p35 > 0 || p25 > 0 || p10 > 0 || p5 > 0 || (showSledInput && s > 0);
       bothEmpty = !hasReps && !hasPlates;
     } else {
       const normalizedWeight = parseWeightInput(weight);
@@ -429,6 +431,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         rir={rir}
         weightRef={weightRef}
         inputMode={inputMode}
+        showSledInput={showSledInput}
         plate45={plate45}
         plate35={plate35}
         plate25={plate25}
@@ -460,7 +463,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
             setPlate25(s.plate25 != null ? String(s.plate25) : (plateData ? String(plateData.plate25) : '0'));
             setPlate10(s.plate10 != null ? String(s.plate10) : (plateData ? String(plateData.plate10) : '0'));
             setPlate5(s.plate5 != null ? String(s.plate5) : (plateData ? String(plateData.plate5) : '0'));
-            setSled(s.sled != null ? String(s.sled) : (plateData ? String(plateData.sled) : '0'));
+            setSled(showSledInput ? (s.sled != null ? String(s.sled) : (plateData ? String(plateData.sled) : '0')) : '');
           }
           setEditingIndex(i);
         }}
@@ -478,7 +481,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
             setPlate25(s.plate25 != null ? String(s.plate25) : (plateData ? String(plateData.plate25) : '0'));
             setPlate10(s.plate10 != null ? String(s.plate10) : (plateData ? String(plateData.plate10) : '0'));
             setPlate5(s.plate5 != null ? String(s.plate5) : (plateData ? String(plateData.plate5) : '0'));
-            setSled(s.sled != null ? String(s.sled) : (plateData ? String(plateData.sled) : '0'));
+            setSled(showSledInput ? (s.sled != null ? String(s.sled) : (plateData ? String(plateData.sled) : '0')) : '');
           }
         }}
         onDelete={(i) => {

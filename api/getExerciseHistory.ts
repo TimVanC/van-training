@@ -12,7 +12,7 @@ interface ExerciseHistoryRow {
     '25': number;
     '10': number;
     '5': number;
-    sled: number;
+    sled?: number;
   };
 }
 
@@ -67,7 +67,11 @@ export default async function handler(
               '25': Number((row.plate_data as Record<string, unknown>)['25'] ?? (row.plate_data as Record<string, unknown>).plate25 ?? 0),
               '10': Number((row.plate_data as Record<string, unknown>)['10'] ?? (row.plate_data as Record<string, unknown>).plate10 ?? 0),
               '5': Number((row.plate_data as Record<string, unknown>)['5'] ?? (row.plate_data as Record<string, unknown>).plate5 ?? 0),
-              sled: Number((row.plate_data as Record<string, unknown>).sled ?? 0),
+              ...(
+                (row.plate_data as Record<string, unknown>).sled != null
+                  ? { sled: Number((row.plate_data as Record<string, unknown>).sled ?? 0) }
+                  : {}
+              ),
             }
             : undefined,
       };

@@ -75,14 +75,20 @@ function parsePlateData(value: unknown):
   const plate25 = Number(o['25'] ?? o.plate25);
   const plate10 = Number(o['10'] ?? o.plate10);
   const plate5 = Number(o['5'] ?? o.plate5 ?? 0);
-  const sled = Number(o.sled);
+  const sled = Number(o.sled ?? 0);
   if (
     !Number.isFinite(plate45) ||
     !Number.isFinite(plate35) ||
     !Number.isFinite(plate25) ||
     !Number.isFinite(plate10) ||
     !Number.isFinite(plate5) ||
-    !Number.isFinite(sled)
+    !Number.isFinite(sled) ||
+    plate45 < 0 ||
+    plate35 < 0 ||
+    plate25 < 0 ||
+    plate10 < 0 ||
+    plate5 < 0 ||
+    sled < 0
   ) {
     return undefined;
   }
