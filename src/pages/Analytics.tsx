@@ -30,12 +30,21 @@ interface ExerciseAnalyticsResponse {
   repPrs: RepPrEntry[];
 }
 
+type DateRangeKey = '30D' | '90D' | '6M' | '1Y' | 'ALL';
+
+interface TopSetSummary {
+  current: SessionAnalyticsRow | null;
+  previous: SessionAnalyticsRow | null;
+  changeText: string;
+}
+
 const tableCellStyle: React.CSSProperties = {
   padding: '0.5rem 0.75rem',
   textAlign: 'left',
 };
 
 const numberFormatter = new Intl.NumberFormat('en-US');
+const dateRangeOptions: DateRangeKey[] = ['30D', '90D', '6M', '1Y', 'ALL'];
 
 function formatDateLabel(dateValue: string): string {
   const parsed = new Date(dateValue);
@@ -47,6 +56,50 @@ function formatRir(rir: number): string {
   return Number.isInteger(rir) ? String(rir) : rir.toFixed(1);
 }
 
+function getTopSetSummary(sessions: SessionAnalyticsRow[]): TopSetSummary {
+  if (sessions.length === 0) {
+    return {
+      current: null,
+      previous: null,
+      changeText: '-',
+    };
+  }
+  const ordered = [...sessions].sort((a, b) => a.date.localeCompare(b.date));
+  const current = ordered[ordered.length - 1] ?? null;
+  const previous = ordered.length > 1 ? (ordered[ordered.length - 2] ?? null) : null;
+  if (!current || !previous) {
+    return {
+      current,
+      previous,
+      changeText: 'No previous top set in range',
+    };
+  }
+
+  const weightDelta = current.topSetWeight - previous.topSetWeight;
+  const repsDelta = current.topSetReps - previous.topSetReps;
+  if (weightDelta !== 0) {
+    const sign = weightDelta > 0 ? '+' : '';
+    return {
+      current,
+      previous,
+      changeText: `${sign}${weightDelta} lbs`,
+    };
+  }
+  if (repsDelta !== 0) {
+    const sign = repsDelta > 0 ? '+' : '';
+    return {
+      current,
+      previous,
+      changeText: `${sign}${repsDelta} reps`,
+    };
+  }
+  return {
+    current,
+    previous,
+    changeText: 'No change',
+  };
+}
+
 function Analytics(): React.JSX.Element {
   const [allExercises, setAllExercises] = useState<string[]>([]);
   const [searchText, setSearchText] = useState('');
@@ -56,6 +109,7 @@ function Analytics(): React.JSX.Element {
   const [loadingExercises, setLoadingExercises] = useState(false);
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [dateRange, setDateRange] = useState<DateRangeKey>('30D');
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const filteredExercises = useMemo(() => {
@@ -69,11 +123,13 @@ function Analytics(): React.JSX.Element {
       (sessions ?? []).map((session) => ({
         ...session,
         shortDate: formatDateLabel(session.date),
+        topSetScore: session.topSetWeight * (1 + session.topSetReps / 30),
       })),
     [sessions],
   );
 
   const tableRows = useMemo(() => [...(sessions ?? [])].reverse(), [sessions]);
+  const topSetSummary = useMemo(() => getTopSetSummary(sessions ?? []), [sessions]);
 
   useEffect(() => {
     function handleOutsideClick(event: MouseEvent): void {
@@ -124,7 +180,7 @@ function Analytics(): React.JSX.Element {
         const session = await getSession();
         const token = session?.access_token;
         const res = await fetch(
-          `/api/getExerciseHistory?exercise_name=${encodeURIComponent(selectedExercise)}`,
+          `/api/getExerciseHistory?exercise_name=${encodeURIComponent(selectedExercise)}&range=${dateRange}`,
           {
             cache: 'no-store',
             headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -145,7 +201,7 @@ function Analytics(): React.JSX.Element {
         setLoadingAnalytics(false);
       }
     })();
-  }, [selectedExercise]);
+  }, [selectedExercise, dateRange]);
 
   function handleSelectExercise(exercise: string): void {
     setSelectedExercise(exercise);
@@ -220,6 +276,22 @@ function Analytics(): React.JSX.Element {
         )}
       </div>
 
+      <div style={{ width: '100%', maxWidth: 560 }}>
+        <label htmlFor="analytics-date-range">Date range</label>
+        <select
+          id="analytics-date-range"
+          value={dateRange}
+          onChange={(e) => setDateRange(e.target.value as DateRangeKey)}
+          disabled={loadingAnalytics}
+        >
+          {dateRangeOptions.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {!selectedExercise && <p>Select an exercise to view progression.</p>}
       {loadingAnalytics && <p>Loading...</p>}
       {!loadingAnalytics && selectedExercise && sessions !== null && sessions.length === 0 && (
@@ -227,6 +299,23 @@ function Analytics(): React.JSX.Element {
       )}
       {!loadingAnalytics && sessions !== null && sessions.length > 0 && (
         <>
+          <h2>Top Set Summary</h2>
+          <div style={{ width: '100%', maxWidth: 720 }}>
+            <p style={{ margin: '0.25rem 0' }}>
+              Current top set:{' '}
+              {topSetSummary.current
+                ? `${numberFormatter.format(topSetSummary.current.topSetWeight)} x ${topSetSummary.current.topSetReps} @ RIR ${formatRir(topSetSummary.current.topSetRir)}`
+                : '-'}
+            </p>
+            <p style={{ margin: '0.25rem 0' }}>
+              Previous top set:{' '}
+              {topSetSummary.previous
+                ? `${numberFormatter.format(topSetSummary.previous.topSetWeight)} x ${topSetSummary.previous.topSetReps} @ RIR ${formatRir(topSetSummary.previous.topSetRir)}`
+                : '-'}
+            </p>
+            <p style={{ margin: '0.25rem 0' }}>Change: {topSetSummary.changeText}</p>
+          </div>
+
           <h2>Top Set Progression</h2>
           <div style={{ width: '100%', maxWidth: 560, height: 280 }}>
             <ResponsiveContainer width="100%" height="100%">
@@ -235,17 +324,17 @@ function Analytics(): React.JSX.Element {
                 <XAxis dataKey="shortDate" />
                 <YAxis />
                 <Tooltip
-                  formatter={(value) => [`${numberFormatter.format(Number(value))} lbs`, 'Weight']}
+                  formatter={(value) => [numberFormatter.format(Number(value)), 'Score']}
                   labelFormatter={(_label, payload) => {
                     const row = payload?.[0]?.payload as SessionAnalyticsRow | undefined;
                     if (!row) return '';
-                    return `${row.date} | ${row.topSetReps} reps @ RIR ${formatRir(row.topSetRir)}`;
+                    return `${row.date} | ${numberFormatter.format(row.topSetWeight)} x ${row.topSetReps} @ RIR ${formatRir(row.topSetRir)}`;
                   }}
                 />
                 <Line
                   type="monotone"
-                  dataKey="topSetWeight"
-                  name="Top Set Weight"
+                  dataKey="topSetScore"
+                  name="Top Set Score"
                   stroke="#8884d8"
                   dot
                 />
