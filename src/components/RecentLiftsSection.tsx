@@ -40,6 +40,12 @@ function RecentLiftsSection({
 }: RecentLiftsSectionProps): React.JSX.Element {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isSuggestionExpanded, setIsSuggestionExpanded] = useState(false);
+  const [isNoteExpanded, setIsNoteExpanded] = useState(false);
+  const noteText = String(previousNote ?? '').trim();
+  const previewMax = 44;
+  const notePreview =
+    noteText.length > previewMax ? `${noteText.slice(0, previewMax).trimEnd()}...` : noteText;
+  const shouldRenderNote = noteText.length > 0;
 
   return (
     <div className="recent-lifts">
@@ -80,8 +86,39 @@ function RecentLiftsSection({
             ) : (
               <p className="recent-lifts-empty">No data available</p>
             )}
-            {previousNote && (
-              <p className="recent-lifts-previous-note">Previous note: &quot;{previousNote}&quot;</p>
+            {shouldRenderNote && (
+              <div className="recent-lifts-note">
+                <button
+                  type="button"
+                  className="recent-lifts-header recent-lifts-header--note"
+                  onClick={() => setIsNoteExpanded((v) => !v)}
+                  aria-expanded={isNoteExpanded}
+                >
+                  <span className="recent-lifts-header-text">
+                    {isNoteExpanded ? 'Last note' : `Last note${notePreview ? `: "${notePreview}"` : ''}`}
+                  </span>
+                  <span
+                    className="recent-lifts-caret"
+                    style={{
+                      transform: isNoteExpanded ? 'rotate(0deg)' : 'rotate(-90deg)',
+                      transition: 'transform 140ms ease',
+                    }}
+                  >
+                    <IconCaretDown />
+                  </span>
+                </button>
+                <div
+                  aria-hidden={!isNoteExpanded}
+                  style={{
+                    maxHeight: isNoteExpanded ? '320px' : '0px',
+                    opacity: isNoteExpanded ? 1 : 0,
+                    overflow: 'hidden',
+                    transition: 'max-height 160ms ease, opacity 120ms ease',
+                  }}
+                >
+                  <p className="recent-lifts-previous-note">&quot;{noteText}&quot;</p>
+                </div>
+              </div>
             )}
           </div>
         </div>

@@ -392,9 +392,6 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
           'n/a'
         )}
       </p>
-      {previousNote ? (
-        <p className="exercise-last-trained-note">Last note: "{previousNote}"</p>
-      ) : null}
       <div className="progress-bar-container">
         <div className="progress-bar-label">{loggedSets} / {totalSets} sets completed</div>
         <div className="progress-bar-track">
@@ -404,7 +401,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
       <RecentLiftsSection
         recentLifts={recentLifts}
         loading={recentLiftsLoading}
-        previousNote={undefined}
+        previousNote={previousNote}
         recommendedPlan={recommendedPlan}
         targetSets={totalSets}
         inputMode={inputMode}
