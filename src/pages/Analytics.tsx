@@ -41,6 +41,7 @@ interface TopSetSummary {
 interface TopSetChartRow extends SessionAnalyticsRow {
   shortDate: string;
   topSetStrength: number;
+  isPr: boolean;
 }
 
 interface DotRendererProps {
@@ -102,6 +103,20 @@ function formatRir(rir: number): string {
 function getRepDotRadius(reps: number): number {
   const safeReps = Number.isFinite(reps) ? reps : 0;
   return Math.max(4, Math.min(10, 3 + safeReps * 0.4));
+}
+
+function getRangeWeeks(range: DateRangeKey, sessions: SessionAnalyticsRow[]): number {
+  if (range === '30D') return 30 / 7;
+  if (range === '90D') return 90 / 7;
+  if (range === '6M') return 26;
+  if (range === '1Y') return 52;
+  if (sessions.length < 2) return 1;
+  const ordered = [...sessions].sort((a, b) => a.date.localeCompare(b.date));
+  const first = new Date(ordered[0]?.date ?? '');
+  const last = new Date(ordered[ordered.length - 1]?.date ?? '');
+  if (Number.isNaN(first.getTime()) || Number.isNaN(last.getTime())) return 1;
+  const diffDays = Math.max(1, Math.ceil((last.getTime() - first.getTime()) / (1000 * 60 * 60 * 24)));
+  return Math.max(1, diffDays / 7);
 }
 
 function getTopSetSummary(sessions: SessionAnalyticsRow[]): TopSetSummary {
@@ -169,17 +184,40 @@ function Analytics(): React.JSX.Element {
   }, [allExercises, searchText]);
 
   const chartRows = useMemo(
-    () =>
-      (sessions ?? []).map((session) => ({
-        ...session,
-        shortDate: formatDateLabel(session.date),
-        topSetStrength: session.topSetWeight * (1 + session.topSetReps / 30),
-      })),
+    () => {
+      const ordered = [...(sessions ?? [])].sort((a, b) => a.date.localeCompare(b.date));
+      let bestSoFar = Number.NEGATIVE_INFINITY;
+      return ordered.map((session) => {
+        const topSetStrength = session.topSetWeight * (1 + session.topSetReps / 30);
+        const isPr = topSetStrength > bestSoFar;
+        if (isPr) bestSoFar = topSetStrength;
+        return {
+          ...session,
+          shortDate: formatDateLabel(session.date),
+          topSetStrength,
+          isPr,
+        };
+      });
+    },
     [sessions],
   );
 
   const tableRows = useMemo(() => [...(sessions ?? [])].reverse(), [sessions]);
   const topSetSummary = useMemo(() => getTopSetSummary(sessions ?? []), [sessions]);
+  const filteredRepPrs = useMemo(
+    () =>
+      [...repPrs]
+        .filter((entry) => entry.weight > 0 && entry.maxReps > 0)
+        .sort((a, b) => b.weight - a.weight)
+        .slice(0, 8),
+    [repPrs],
+  );
+  const frequencyPerWeek = useMemo(() => {
+    const sessionCount = sessions?.length ?? 0;
+    if (sessionCount === 0) return 0;
+    const weeks = getRangeWeeks(dateRange, sessions ?? []);
+    return sessionCount / weeks;
+  }, [dateRange, sessions]);
 
   useEffect(() => {
     function handleOutsideClick(event: MouseEvent): void {
@@ -451,6 +489,7 @@ function Analytics(): React.JSX.Element {
                           <span style={tooltipLabelStyle}>Strength:</span>{' '}
                           {numberFormatter.format(Number(row.topSetStrength.toFixed(1)))}
                         </p>
+                        {row.isPr && <p style={tooltipBodyStyle}>PR ✔</p>}
                       </div>
                     );
                   }}
@@ -462,14 +501,16 @@ function Analytics(): React.JSX.Element {
                   stroke="#8884d8"
                   dot={(props: DotRendererProps) => {
                     if (props.cx == null || props.cy == null || !props.payload) return null;
+                    const isPr = props.payload.isPr;
                     return (
                       <circle
                         cx={props.cx}
                         cy={props.cy}
-                        r={getRepDotRadius(props.payload.topSetReps)}
-                        fill="#8884d8"
-                        stroke="#ffffff"
-                        strokeWidth={1.5}
+                        r={getRepDotRadius(props.payload.topSetReps) + (isPr ? 1.5 : 0)}
+                        fill={isPr ? '#22c55e' : '#8884d8'}
+                        stroke={isPr ? '#86efac' : '#ffffff'}
+                        strokeWidth={isPr ? 2 : 1.5}
+                        style={isPr ? { filter: 'drop-shadow(0 0 6px rgba(34, 197, 94, 0.55))' } : undefined}
                       />
                     );
                   }}
@@ -478,11 +519,11 @@ function Analytics(): React.JSX.Element {
             </ResponsiveContainer>
           </div>
 
-          <h2>Rep PR Tracking</h2>
+          <h2>Rep PR by Weight</h2>
           <ul style={{ marginTop: 0, paddingLeft: '1.25rem' }}>
-            {repPrs.map((entry) => (
+            {filteredRepPrs.map((entry) => (
               <li key={`${entry.weight}-${entry.maxReps}`}>
-                {numberFormatter.format(entry.weight)} lbs: {entry.maxReps} reps
+                {numberFormatter.format(entry.weight)} lbs {'->'} {entry.maxReps} reps
               </li>
             ))}
           </ul>
@@ -579,6 +620,10 @@ function Analytics(): React.JSX.Element {
               </LineChart>
             </ResponsiveContainer>
           </div>
+
+          <p style={{ margin: '0.5rem 0 1rem', color: '#475569' }}>
+            Frequency: {frequencyPerWeek.toFixed(1)}x per week
+          </p>
 
           <h2>Recent Sessions</h2>
           <table style={{ borderCollapse: 'separate', borderSpacing: 0, width: '100%', maxWidth: 720 }}>

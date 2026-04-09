@@ -223,10 +223,13 @@ export default async function handler(
     sessionSummaries.sort((a, b) => a.date.localeCompare(b.date));
 
     const repPrMap = new Map<number, number>();
-    for (const session of sessionSummaries) {
-      const currentMax = repPrMap.get(session.topSetWeight) ?? 0;
-      if (session.topSetReps > currentMax) {
-        repPrMap.set(session.topSetWeight, session.topSetReps);
+    for (const row of rows) {
+      const weight = toFiniteNumber(row.weight);
+      const reps = toFiniteNumber(row.reps);
+      if (weight <= 0 || reps <= 0) continue;
+      const currentMax = repPrMap.get(weight) ?? 0;
+      if (reps > currentMax) {
+        repPrMap.set(weight, reps);
       }
     }
     const repPrs: RepPrEntry[] = Array.from(repPrMap.entries())
