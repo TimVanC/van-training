@@ -135,6 +135,7 @@ create table if not exists public.exercise_swaps (
   user_id uuid not null references auth.users(id) on delete cascade,
   base_exercise_name text not null,
   swap_exercise_name text not null,
+  updated_at timestamptz not null default now(),
   created_at timestamptz not null default now()
 );
 
@@ -143,6 +144,9 @@ add column if not exists base_exercise_name text;
 
 alter table public.exercise_swaps
 add column if not exists swap_exercise_name text;
+
+alter table public.exercise_swaps
+add column if not exists updated_at timestamptz;
 
 do $$
 begin
@@ -173,11 +177,37 @@ begin
 end
 $$;
 
+update public.exercise_swaps
+set updated_at = coalesce(updated_at, created_at, now())
+where updated_at is null;
+
+alter table public.exercise_swaps
+alter column updated_at set default now();
+
+alter table public.exercise_swaps
+alter column updated_at set not null;
+
 create index if not exists idx_exercise_swaps_user_id on public.exercise_swaps(user_id);
 create index if not exists idx_exercise_swaps_user_base_name on public.exercise_swaps(user_id, base_exercise_name);
 drop index if exists idx_exercise_swaps_unique_pair;
-create unique index if not exists idx_exercise_swaps_unique_pair_ci
-on public.exercise_swaps(user_id, lower(base_exercise_name), lower(swap_exercise_name));
+drop index if exists idx_exercise_swaps_unique_pair_ci;
+
+with ranked_swaps as (
+  select
+    id,
+    row_number() over (
+      partition by user_id, lower(base_exercise_name)
+      order by coalesce(updated_at, created_at) desc, created_at desc, id desc
+    ) as rn
+  from public.exercise_swaps
+)
+delete from public.exercise_swaps s
+using ranked_swaps r
+where s.id = r.id
+  and r.rn > 1;
+
+create unique index if not exists idx_exercise_swaps_user_base_unique_ci
+on public.exercise_swaps(user_id, lower(base_exercise_name));
 
 -- Row Level Security
 alter table public.profiles enable row level security;

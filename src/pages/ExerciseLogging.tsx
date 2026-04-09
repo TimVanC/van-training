@@ -22,6 +22,21 @@ function normalizeSwapName(name: string): string {
   return name.trim().toLocaleLowerCase();
 }
 
+function isMissingColumnError(error: unknown, columnName: string): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const e = error as { code?: unknown; message?: unknown; details?: unknown };
+  if (String(e.code ?? '') === '42703') return true;
+  const message = String(e.message ?? '');
+  const details = String(e.details ?? '');
+  return message.includes(columnName) || details.includes(columnName);
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const e = error as { code?: unknown };
+  return String(e.code ?? '') === '23505';
+}
+
 function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): React.JSX.Element {
   const { exerciseIndex } = useParams<{ exerciseIndex: string }>();
   const navigate = useNavigate();
@@ -119,23 +134,96 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         if (!cancelled) setCustomSwapOptions([]);
         return;
       }
-      const { data, error } = await supabase
+      const primaryResult = await supabase
         .from('exercise_swaps')
-        .select('swap_exercise_name')
+        .select('swap_exercise_name,updated_at,created_at')
         .eq('user_id', userId)
         .eq('base_exercise_name', exercise.name)
-        .order('created_at', { ascending: true });
+        .order('updated_at', { ascending: false })
+        .order('created_at', { ascending: false });
+      let data: Array<{ swap_exercise_name?: unknown }> | null = primaryResult.data as Array<{ swap_exercise_name?: unknown }> | null;
+      let error: unknown = primaryResult.error;
+      if (error && isMissingColumnError(error, 'updated_at')) {
+        const fallbackResult = await supabase
+          .from('exercise_swaps')
+          .select('swap_exercise_name,created_at')
+          .eq('user_id', userId)
+          .eq('base_exercise_name', exercise.name)
+          .order('created_at', { ascending: false });
+        data = fallbackResult.data as Array<{ swap_exercise_name?: unknown }> | null;
+        error = fallbackResult.error;
+      }
       if (cancelled) return;
-      if (error || !Array.isArray(data)) {
+
+      if (!error && Array.isArray(data)) {
+        const deduped = new Map<string, string>();
+        for (const row of data) {
+          const candidate = typeof row.swap_exercise_name === 'string' ? row.swap_exercise_name.trim() : '';
+          if (!candidate) continue;
+          const key = normalizeSwapName(candidate);
+          if (!deduped.has(key)) deduped.set(key, candidate);
+        }
+        setCustomSwapOptions(Array.from(deduped.values()));
+        return;
+      }
+
+      if (!isMissingColumnError(error, 'swap_exercise_name')) {
         setCustomSwapOptions([]);
         return;
       }
+
+      const baseExerciseLookup = await supabase
+        .from('exercises')
+        .select('id')
+        .eq('name', exercise.name)
+        .maybeSingle();
+      const baseExerciseId = baseExerciseLookup.data?.id ? String(baseExerciseLookup.data.id) : '';
+      if (!baseExerciseId) {
+        setCustomSwapOptions([]);
+        return;
+      }
+
+      const legacyRows = await supabase
+        .from('exercise_swaps')
+        .select('substitute_exercise_id')
+        .eq('user_id', userId)
+        .eq('original_exercise_id', baseExerciseId)
+        .order('created_at', { ascending: true });
+      if (legacyRows.error || !Array.isArray(legacyRows.data)) {
+        setCustomSwapOptions([]);
+        return;
+      }
+
+      const substituteIds = legacyRows.data
+        .map((row) => String(row.substitute_exercise_id ?? '').trim())
+        .filter((id) => id.length > 0);
+      if (substituteIds.length === 0) {
+        setCustomSwapOptions([]);
+        return;
+      }
+
+      const exerciseRows = await supabase
+        .from('exercises')
+        .select('id,name')
+        .in('id', substituteIds);
+      if (exerciseRows.error || !Array.isArray(exerciseRows.data)) {
+        setCustomSwapOptions([]);
+        return;
+      }
+
+      const idToName = new Map<string, string>();
+      for (const row of exerciseRows.data) {
+        const id = String(row.id ?? '').trim();
+        const name = typeof row.name === 'string' ? row.name.trim() : '';
+        if (id && name) idToName.set(id, name);
+      }
+
       const deduped = new Map<string, string>();
-      for (const row of data) {
-        const candidate = typeof row.swap_exercise_name === 'string' ? row.swap_exercise_name.trim() : '';
-        if (!candidate) continue;
-        const key = normalizeSwapName(candidate);
-        if (!deduped.has(key)) deduped.set(key, candidate);
+      for (const id of substituteIds) {
+        const name = idToName.get(id);
+        if (!name) continue;
+        const key = normalizeSwapName(name);
+        if (!deduped.has(key)) deduped.set(key, name);
       }
       setCustomSwapOptions(Array.from(deduped.values()));
     })();
@@ -232,6 +320,122 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     onUpdateSession({ ...session, exercises: updated });
   }
 
+  async function persistSwapPreference(nextExercise: string): Promise<void> {
+    const authResult = await supabase.auth.getUser();
+    const userId = authResult.data.user?.id;
+    if (!userId) return;
+
+    if (normalizeSwapName(nextExercise) === normalizeSwapName(baseExerciseName)) {
+      const removed = await supabase
+        .from('exercise_swaps')
+        .delete()
+        .eq('user_id', userId)
+        .eq('base_exercise_name', baseExerciseName);
+
+      if (removed.error && isMissingColumnError(removed.error, 'base_exercise_name')) {
+        const baseExerciseId = await ensureExerciseIdByName(baseExerciseName);
+        if (!baseExerciseId) return;
+        await supabase
+          .from('exercise_swaps')
+          .delete()
+          .eq('user_id', userId)
+          .eq('original_exercise_id', baseExerciseId);
+      }
+      return;
+    }
+
+    const upsertError = await upsertNamedSwapPreference({
+      userId,
+      baseExerciseName,
+      swapExerciseName: nextExercise,
+    });
+    if (!upsertError) return;
+    if (!isMissingColumnError(upsertError, 'swap_exercise_name')) return;
+
+    const baseExerciseId = await ensureExerciseIdByName(baseExerciseName);
+    const swapExerciseId = await ensureExerciseIdByName(nextExercise);
+    if (!baseExerciseId || !swapExerciseId) return;
+
+    // Keep legacy schema behavior as latest-only preference.
+    await supabase
+      .from('exercise_swaps')
+      .delete()
+      .eq('user_id', userId)
+      .eq('original_exercise_id', baseExerciseId);
+
+    const legacyInsert = await supabase
+      .from('exercise_swaps')
+      .insert({
+        user_id: userId,
+        original_exercise_id: baseExerciseId,
+        substitute_exercise_id: swapExerciseId,
+      });
+    if (legacyInsert.error && !isUniqueViolation(legacyInsert.error)) {
+      // swallow; UI already updated
+    }
+  }
+
+  async function ensureExerciseIdByName(exerciseName: string): Promise<string | null> {
+    const trimmedName = exerciseName.trim();
+    if (!trimmedName) return null;
+
+    const existing = await supabase
+      .from('exercises')
+      .select('id')
+      .eq('name', trimmedName)
+      .maybeSingle();
+    if (existing.data?.id) return String(existing.data.id);
+
+    const inserted = await supabase
+      .from('exercises')
+      .insert({ name: trimmedName })
+      .select('id')
+      .single();
+    if (inserted.data?.id) return String(inserted.data.id);
+
+    // If another request inserted the row first, read it again.
+    const retry = await supabase
+      .from('exercises')
+      .select('id')
+      .eq('name', trimmedName)
+      .maybeSingle();
+    if (retry.data?.id) return String(retry.data.id);
+
+    return null;
+  }
+
+  async function upsertNamedSwapPreference(params: {
+    userId: string;
+    baseExerciseName: string;
+    swapExerciseName: string;
+  }): Promise<unknown> {
+    const withUpdatedAt = await supabase
+      .from('exercise_swaps')
+      .upsert(
+        {
+          user_id: params.userId,
+          base_exercise_name: params.baseExerciseName,
+          swap_exercise_name: params.swapExerciseName,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'user_id,base_exercise_name' },
+      );
+    if (!withUpdatedAt.error) return null;
+    if (!isMissingColumnError(withUpdatedAt.error, 'updated_at')) return withUpdatedAt.error;
+
+    const withoutUpdatedAt = await supabase
+      .from('exercise_swaps')
+      .upsert(
+        {
+          user_id: params.userId,
+          base_exercise_name: params.baseExerciseName,
+          swap_exercise_name: params.swapExerciseName,
+        },
+        { onConflict: 'user_id,base_exercise_name' },
+      );
+    return withoutUpdatedAt.error;
+  }
+
   async function handleSaveCustomSwap(): Promise<void> {
     const trimmedSwapName = customSwapName.trim();
     if (!trimmedSwapName) {
@@ -253,17 +457,44 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         flashOverlay('You must be logged in to save swaps');
         return;
       }
-      const { error } = await supabase
-        .from('exercise_swaps')
-        .insert({
-          user_id: userId,
-          base_exercise_name: baseExerciseName,
-          swap_exercise_name: trimmedSwapName,
-        });
-      if (error) {
+      const error = await upsertNamedSwapPreference({
+        userId,
+        baseExerciseName,
+        swapExerciseName: trimmedSwapName,
+      });
+
+      if (error && !isMissingColumnError(error, 'swap_exercise_name')) {
         flashOverlay('Could not save swap');
         return;
       }
+
+      if (error && isMissingColumnError(error, 'swap_exercise_name')) {
+        const baseExerciseId = await ensureExerciseIdByName(baseExerciseName);
+        const swapExerciseId = await ensureExerciseIdByName(trimmedSwapName);
+        if (!baseExerciseId || !swapExerciseId) {
+          flashOverlay('Could not save swap');
+          return;
+        }
+
+        await supabase
+          .from('exercise_swaps')
+          .delete()
+          .eq('user_id', userId)
+          .eq('original_exercise_id', baseExerciseId);
+
+        const legacyInsert = await supabase
+          .from('exercise_swaps')
+          .insert({
+            user_id: userId,
+            original_exercise_id: baseExerciseId,
+            substitute_exercise_id: swapExerciseId,
+          });
+        if (legacyInsert.error && !isUniqueViolation(legacyInsert.error)) {
+          flashOverlay('Could not save swap');
+          return;
+        }
+      }
+
       setCustomSwapOptions((current) => {
         const hasName = current.some((name) => normalizeSwapName(name) === normalizeSwapName(trimmedSwapName));
         return hasName ? current : [...current, trimmedSwapName];
@@ -505,6 +736,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
                     return;
                   }
                   handleExerciseSwap(nextValue);
+                  void persistSwapPreference(nextValue);
                 }}
                 disabled={isSubmitting || isSavingSwap}
               >

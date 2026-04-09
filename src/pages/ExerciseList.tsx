@@ -63,7 +63,7 @@ function ExerciseList({
           >
             <div className="exercise-card-header">
               <span className="exercise-name">
-                {ex.completed ? '\u2713 ' : ''}{ex.name}
+                {ex.completed ? '\u2713 ' : ''}{ex.activeName ?? ex.name}
               </span>
               {!ex.completed && (
                 <button className="skip-button" onClick={(e) => handleSkip(e, index)}>
