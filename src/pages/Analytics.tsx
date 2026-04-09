@@ -132,6 +132,7 @@ function Analytics(): React.JSX.Element {
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showStrengthInfo, setShowStrengthInfo] = useState(false);
+  const [showVolumeInfo, setShowVolumeInfo] = useState(false);
   const [dateRange, setDateRange] = useState<DateRangeKey>('30D');
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -458,7 +459,69 @@ function Analytics(): React.JSX.Element {
             ))}
           </ul>
 
-          <h2>Volume Trend</h2>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              position: 'relative',
+              width: 'fit-content',
+            }}
+          >
+            <h2 style={{ margin: 0 }}>Volume Trend</h2>
+            <button
+              type="button"
+              aria-label="What is volume?"
+              onMouseEnter={() => setShowVolumeInfo(true)}
+              onMouseLeave={() => setShowVolumeInfo(false)}
+              onFocus={() => setShowVolumeInfo(true)}
+              onBlur={() => setShowVolumeInfo(false)}
+              onClick={() => setShowVolumeInfo((prev) => !prev)}
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: '50%',
+                border: '1px solid #cbd5e1',
+                background: '#fff',
+                color: '#334155',
+                fontSize: '0.85rem',
+                lineHeight: 1,
+                cursor: 'pointer',
+                padding: 0,
+              }}
+            >
+              i
+            </button>
+            {showVolumeInfo && (
+              <div
+                role="tooltip"
+                style={{
+                  position: 'absolute',
+                  top: '110%',
+                  left: 0,
+                  zIndex: 20,
+                  width: 300,
+                  maxWidth: '90vw',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 8,
+                  background: '#fff',
+                  padding: '0.75rem',
+                  boxShadow: '0 8px 24px rgba(15, 23, 42, 0.12)',
+                }}
+              >
+                <p style={{ margin: 0, fontWeight: 600 }}>What is volume?</p>
+                <p style={{ margin: '0.5rem 0 0', color: '#334155' }}>
+                  Volume is the total work you did in a workout.
+                </p>
+                <p style={{ margin: '0.5rem 0 0', color: '#334155' }}>
+                  We calculate it as: weight x reps for every set.
+                </p>
+                <p style={{ margin: '0.5rem 0 0', color: '#334155' }}>
+                  Higher volume means more total workload.
+                </p>
+              </div>
+            )}
+          </div>
           <div style={{ width: '100%', maxWidth: 560, height: 280 }}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartRows} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
