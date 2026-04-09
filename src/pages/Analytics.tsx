@@ -40,6 +40,7 @@ interface TopSetSummary {
 
 interface TopSetChartRow extends SessionAnalyticsRow {
   shortDate: string;
+  topSetStrength: number;
 }
 
 interface DotRendererProps {
@@ -144,6 +145,7 @@ function Analytics(): React.JSX.Element {
       (sessions ?? []).map((session) => ({
         ...session,
         shortDate: formatDateLabel(session.date),
+        topSetStrength: session.topSetWeight * (1 + session.topSetReps / 30),
       })),
     [sessions],
   );
@@ -336,7 +338,7 @@ function Analytics(): React.JSX.Element {
             <p style={{ margin: '0.25rem 0' }}>Change: {topSetSummary.changeText}</p>
           </div>
 
-          <h2>Top Set Progression</h2>
+          <h2>Top Set Strength</h2>
           <div style={{ width: '100%', maxWidth: 560, height: 280 }}>
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={chartRows} margin={{ top: 8, right: 8, left: 8, bottom: 8 }}>
@@ -346,20 +348,22 @@ function Analytics(): React.JSX.Element {
                 <Tooltip
                   formatter={(value, name, item) => {
                     const row = (item?.payload ?? null) as TopSetChartRow | null;
-                    if (!row) return [numberFormatter.format(Number(value)), 'Weight'];
-                    if (name === 'Top Set Weight') return [`${numberFormatter.format(row.topSetWeight)} lbs`, 'Weight'];
+                    if (!row) return [numberFormatter.format(Number(value)), 'Top Set Strength'];
+                    if (name === 'Top Set Strength') {
+                      return [numberFormatter.format(Number(row.topSetStrength.toFixed(1))), 'Top Set Strength'];
+                    }
                     return [numberFormatter.format(Number(value)), String(name)];
                   }}
                   labelFormatter={(_label, payload) => {
-                    const row = payload?.[0]?.payload as SessionAnalyticsRow | undefined;
+                    const row = payload?.[0]?.payload as TopSetChartRow | undefined;
                     if (!row) return '';
-                    return `${row.date} | ${numberFormatter.format(row.topSetWeight)} x ${row.topSetReps} @ RIR ${formatRir(row.topSetRir)}`;
+                    return `${row.date} | ${numberFormatter.format(row.topSetWeight)} x ${row.topSetReps} @ RIR ${formatRir(row.topSetRir)} | e1RM: ${numberFormatter.format(Number(row.topSetStrength.toFixed(1)))}`;
                   }}
                 />
                 <Line
                   type="monotone"
-                  dataKey="topSetWeight"
-                  name="Top Set Weight"
+                  dataKey="topSetStrength"
+                  name="Top Set Strength"
                   stroke="#8884d8"
                   dot={(props: DotRendererProps) => {
                     if (props.cx == null || props.cy == null || !props.payload) return null;
