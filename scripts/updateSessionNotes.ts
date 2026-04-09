@@ -4,7 +4,6 @@ import { createClient } from '@supabase/supabase-js';
 
 type CsvRow = {
   date: string;
-  time: string;
   split: string;
   day: string;
   notes: string;
@@ -24,7 +23,6 @@ const DEFAULT_CSV_PATH = path.join(
 );
 const TARGET_USER_ID =
   process.env.SESSION_NOTES_USER_ID ?? 'e754e7e9-ff46-4788-a02a-a264db8d396d';
-const MATCH_TOLERANCE_MINUTES = 2;
 const NEW_YORK_TZ = 'America/New_York';
 
 function parseCsvLine(line: string): string[] {
@@ -67,18 +65,7 @@ function findColumnIndex(headers: string[], candidates: string[]): number {
   return -1;
 }
 
-function parseTimeToMinutes(timeRaw: string): number | null {
-  const trimmed = timeRaw.trim();
-  const match = /^(\d{1,2}):(\d{2})$/.exec(trimmed);
-  if (!match) return null;
-  const hh = Number(match[1]);
-  const mm = Number(match[2]);
-  if (!Number.isInteger(hh) || !Number.isInteger(mm)) return null;
-  if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
-  return hh * 60 + mm;
-}
-
-function formatSessionInNy(iso: string): { date: string; minutes: number } | null {
+function formatSessionDateInNy(iso: string): string | null {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return null;
 
@@ -87,19 +74,13 @@ function formatSessionInNy(iso: string): { date: string; minutes: number } | nul
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
   });
   const parts = formatter.formatToParts(date);
   const year = parts.find((p) => p.type === 'year')?.value ?? '';
   const month = parts.find((p) => p.type === 'month')?.value ?? '';
   const day = parts.find((p) => p.type === 'day')?.value ?? '';
-  const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? '');
-  const minute = Number(parts.find((p) => p.type === 'minute')?.value ?? '');
   if (!year || !month || !day) return null;
-  if (!Number.isInteger(hour) || !Number.isInteger(minute)) return null;
-  return { date: `${year}-${month}-${day}`, minutes: hour * 60 + minute };
+  return `${year}-${month}-${day}`;
 }
 
 function toWorkoutName(value: SessionWithWorkout['workouts']): string {
@@ -119,7 +100,6 @@ function parseCsvRows(csvText: string): CsvRow[] {
 
   const headers = parseCsvLine(lines[0] ?? '');
   const dateIdx = findColumnIndex(headers, ['date']);
-  const timeIdx = findColumnIndex(headers, ['time']);
   const splitIdx = findColumnIndex(headers, ['split']);
   const dayIdx = findColumnIndex(headers, ['day']);
   let notesIdx = findColumnIndex(headers, ['notes', 'note']);
@@ -128,20 +108,19 @@ function parseCsvRows(csvText: string): CsvRow[] {
     if (!lastHeader || lastHeader.startsWith('unnamed')) notesIdx = headers.length - 1;
   }
 
-  if (dateIdx < 0 || timeIdx < 0 || dayIdx < 0 || notesIdx < 0) {
-    throw new Error('CSV header must include date,time,day,notes');
+  if (dateIdx < 0 || dayIdx < 0 || notesIdx < 0) {
+    throw new Error('CSV header must include date,day,notes');
   }
 
   const rows: CsvRow[] = [];
   for (const line of lines.slice(1)) {
     const cols = parseCsvLine(line);
     const date = String(cols[dateIdx] ?? '').trim();
-    const time = String(cols[timeIdx] ?? '').trim();
     const split = splitIdx >= 0 ? String(cols[splitIdx] ?? '').trim() : '';
     const day = String(cols[dayIdx] ?? '').trim();
     const notes = String(cols[notesIdx] ?? '').trim();
-    if (!date || !time || !day || !notes) continue;
-    rows.push({ date, time, split, day, notes });
+    if (!date || !day || !notes) continue;
+    rows.push({ date, split, day, notes });
   }
   return rows;
 }
@@ -177,32 +156,24 @@ async function main(): Promise<void> {
 
   const candidates = sessions
     .map((s) => {
-      const ny = formatSessionInNy(s.date);
-      if (!ny) return null;
+      const dateOnly = formatSessionDateInNy(s.date);
+      if (!dateOnly) return null;
       return {
         id: s.id,
+        sessionIso: s.date,
         workoutName: toWorkoutName(s.workouts),
-        date: ny.date,
-        minutes: ny.minutes,
+        date: dateOnly,
       };
     })
-    .filter((s): s is { id: string; workoutName: string; date: string; minutes: number } => s !== null);
+    .filter((s): s is { id: string; sessionIso: string; workoutName: string; date: string } => s !== null);
 
   let updated = 0;
   let skipped = 0;
 
   for (const row of csvRows) {
-    const targetMinutes = parseTimeToMinutes(row.time);
-    if (targetMinutes === null) {
-      skipped += 1;
-      continue;
-    }
-
     const matching = candidates
       .filter((s) => s.workoutName === row.day && s.date === row.date)
-      .map((s) => ({ ...s, diff: Math.abs(s.minutes - targetMinutes) }))
-      .filter((s) => s.diff <= MATCH_TOLERANCE_MINUTES)
-      .sort((a, b) => a.diff - b.diff);
+      .sort((a, b) => b.sessionIso.localeCompare(a.sessionIso));
 
     const best = matching[0];
     if (!best) {
