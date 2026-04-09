@@ -32,6 +32,7 @@ interface SetLoggingFormProps {
   plate35?: string;
   plate25?: string;
   plate10?: string;
+  plate5?: string;
   sled?: string;
   onWeightChange: (v: string) => void;
   onRepsChange: (v: string) => void;
@@ -40,6 +41,7 @@ interface SetLoggingFormProps {
   onPlate35Change?: (v: string) => void;
   onPlate25Change?: (v: string) => void;
   onPlate10Change?: (v: string) => void;
+  onPlate5Change?: (v: string) => void;
   onSledChange?: (v: string) => void;
   editingIndex: number | null;
   isSubmitting: boolean;
@@ -61,11 +63,12 @@ function SetLoggingForm({
   rir,
   weightRef,
   inputMode = 'weight',
-  plate45 = '',
-  plate35 = '',
-  plate25 = '',
-  plate10 = '',
-  sled = '',
+  plate45 = '0',
+  plate35 = '0',
+  plate25 = '0',
+  plate10 = '0',
+  plate5 = '0',
+  sled = '0',
   onWeightChange,
   onRepsChange,
   onRirChange,
@@ -73,6 +76,7 @@ function SetLoggingForm({
   onPlate35Change,
   onPlate25Change,
   onPlate10Change,
+  onPlate5Change,
   onSledChange,
   editingIndex,
   isSubmitting,
@@ -95,20 +99,30 @@ function SetLoggingForm({
       && set.plate35 != null
       && set.plate25 != null
       && set.plate10 != null
+      && set.plate5 != null
       && set.sled != null
         ? {
           plate45: set.plate45,
           plate35: set.plate35,
           plate25: set.plate25,
           plate10: set.plate10,
+          plate5: set.plate5,
           sled: set.sled,
         }
         : null
     );
+    const parts: string[] = [];
+    if (plateData?.plate45 && plateData.plate45 > 0) parts.push(`${plateData.plate45}x45`);
+    if (plateData?.plate35 && plateData.plate35 > 0) parts.push(`${plateData.plate35}x35`);
+    if (plateData?.plate25 && plateData.plate25 > 0) parts.push(`${plateData.plate25}x25`);
+    if (plateData?.plate10 && plateData.plate10 > 0) parts.push(`${plateData.plate10}x10`);
+    if (plateData?.plate5 && plateData.plate5 > 0) parts.push(`${plateData.plate5}x5`);
+    if (plateData?.sled && plateData.sled > 0) parts.push(`sled ${plateData.sled}`);
+    const plateText = parts.join(' + ');
     if (isPlates && plateData) {
       return (
         <>
-          Set {index + 1}: 45s {plateData.plate45}/side, 35s {plateData.plate35}/side, 25s {plateData.plate25}/side, 10s {plateData.plate10}/side, sled {plateData.sled} lbs &times; {set.reps} @ RIR {set.rir}
+          Set {index + 1}: {plateText || `${set.weight} lbs`} &times; {set.reps} @ RIR {set.rir}
         </>
       );
     }
@@ -172,6 +186,11 @@ function SetLoggingForm({
                 10 lb plates (per side)
                 <input className="input-field" type="number" inputMode="numeric" min={0} value={plate10}
                   onChange={(e) => onPlate10Change?.(e.target.value)} disabled={dis} />
+              </label>
+              <label className="input-label">
+                5 lb plates (per side)
+                <input className="input-field" type="number" inputMode="numeric" min={0} value={plate5}
+                  onChange={(e) => onPlate5Change?.(e.target.value)} disabled={dis} />
               </label>
             </div>
             <label className="input-label">

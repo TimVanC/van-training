@@ -6,6 +6,14 @@ interface ExerciseHistoryRow {
   weight: number;
   reps: number;
   volume: number;
+  plate_data?: {
+    '45': number;
+    '35': number;
+    '25': number;
+    '10': number;
+    '5': number;
+    sled: number;
+  };
 }
 
 export default async function handler(
@@ -35,7 +43,7 @@ export default async function handler(
 
     const query = await supabase
       .from('lift_sets')
-      .select('weight,reps,volume,created_at')
+      .select('weight,reps,volume,plate_data,created_at')
       .eq('exercise_name', exerciseName)
       .order('created_at', { ascending: true });
 
@@ -51,6 +59,17 @@ export default async function handler(
         weight: Number(row.weight) || 0,
         reps: Number(row.reps) || 0,
         volume: Number(row.volume) || 0,
+        plate_data:
+          row.plate_data && typeof row.plate_data === 'object'
+            ? {
+              '45': Number((row.plate_data as Record<string, unknown>)['45'] ?? (row.plate_data as Record<string, unknown>).plate45 ?? 0),
+              '35': Number((row.plate_data as Record<string, unknown>)['35'] ?? (row.plate_data as Record<string, unknown>).plate35 ?? 0),
+              '25': Number((row.plate_data as Record<string, unknown>)['25'] ?? (row.plate_data as Record<string, unknown>).plate25 ?? 0),
+              '10': Number((row.plate_data as Record<string, unknown>)['10'] ?? (row.plate_data as Record<string, unknown>).plate10 ?? 0),
+              '5': Number((row.plate_data as Record<string, unknown>)['5'] ?? (row.plate_data as Record<string, unknown>).plate5 ?? 0),
+              sled: Number((row.plate_data as Record<string, unknown>).sled ?? 0),
+            }
+            : undefined,
       };
     }) satisfies ExerciseHistoryRow[];
 

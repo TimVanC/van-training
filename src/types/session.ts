@@ -3,6 +3,7 @@ export interface PlateBreakdown {
   plate35: number;
   plate25: number;
   plate10: number;
+  plate5: number;
   sled: number;
 }
 
@@ -43,6 +44,7 @@ export interface LoggedSet {
   plate35?: number;
   plate25?: number;
   plate10?: number;
+  plate5?: number;
   sled?: number;
   plateData?: PlateBreakdown;
   /** Client-generated id for undo; not sent to Sheets */

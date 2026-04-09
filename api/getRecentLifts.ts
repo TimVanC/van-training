@@ -44,7 +44,7 @@ interface NormalizedLiftSet {
   weight: number;
   reps: number;
   rir: number;
-  plateBreakdown?: { plate45: number; plate35: number; plate25: number; plate10: number; sled: number };
+  plateBreakdown?: { plate45: number; plate35: number; plate25: number; plate10: number; plate5: number; sled: number };
 }
 
 function toDateOnly(isoOrDate: unknown): string | undefined {
@@ -66,25 +66,27 @@ function computeEstimatedOneRepMax(weight: number, reps: number): number | undef
 }
 
 function parsePlateData(value: unknown):
-  | { plate45: number; plate35: number; plate25: number; plate10: number; sled: number }
+  | { plate45: number; plate35: number; plate25: number; plate10: number; plate5: number; sled: number }
   | undefined {
   if (value === null || typeof value !== 'object') return undefined;
   const o = value as Record<string, unknown>;
-  const plate45 = Number(o.plate45);
-  const plate35 = Number(o.plate35);
-  const plate25 = Number(o.plate25);
-  const plate10 = Number(o.plate10);
+  const plate45 = Number(o['45'] ?? o.plate45);
+  const plate35 = Number(o['35'] ?? o.plate35);
+  const plate25 = Number(o['25'] ?? o.plate25);
+  const plate10 = Number(o['10'] ?? o.plate10);
+  const plate5 = Number(o['5'] ?? o.plate5 ?? 0);
   const sled = Number(o.sled);
   if (
     !Number.isFinite(plate45) ||
     !Number.isFinite(plate35) ||
     !Number.isFinite(plate25) ||
     !Number.isFinite(plate10) ||
+    !Number.isFinite(plate5) ||
     !Number.isFinite(sled)
   ) {
     return undefined;
   }
-  return { plate45, plate35, plate25, plate10, sled };
+  return { plate45, plate35, plate25, plate10, plate5, sled };
 }
 
 function isMissingColumnError(error: unknown, columnName: string): boolean {

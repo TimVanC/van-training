@@ -1,8 +1,9 @@
 export interface LiftPlateData {
-  plate45: number;
-  plate35: number;
-  plate25: number;
-  plate10: number;
+  '45': number;
+  '35': number;
+  '25': number;
+  '10': number;
+  '5': number;
   sled: number;
 }
 

@@ -22,12 +22,13 @@ function formatPlateBreakdown(lift: RecentLift): string | null {
   const plate = lift.plateBreakdown;
   if (!plate) return null;
   const parts: string[] = [];
-  if (plate.plate45 > 0) parts.push(`45s: ${plate.plate45}/side`);
-  if (plate.plate35 > 0) parts.push(`35s: ${plate.plate35}/side`);
-  if (plate.plate25 > 0) parts.push(`25s: ${plate.plate25}/side`);
-  if (plate.plate10 > 0) parts.push(`10s: ${plate.plate10}/side`);
-  if (plate.sled > 0) parts.push(`sled: ${plate.sled} lbs`);
-  return parts.length > 0 ? parts.join(', ') : null;
+  if (plate.plate45 > 0) parts.push(`${plate.plate45}x45`);
+  if (plate.plate35 > 0) parts.push(`${plate.plate35}x35`);
+  if (plate.plate25 > 0) parts.push(`${plate.plate25}x25`);
+  if (plate.plate10 > 0) parts.push(`${plate.plate10}x10`);
+  if (plate.plate5 > 0) parts.push(`${plate.plate5}x5`);
+  if (plate.sled > 0) parts.push(`sled ${plate.sled}`);
+  return parts.length > 0 ? parts.join(' + ') : null;
 }
 
 function RecentLiftsSection({
@@ -75,7 +76,7 @@ function RecentLiftsSection({
                   <div key={i} className="recent-lifts-item">
                     <strong>Set {i + 1}</strong> - {inputMode === 'plates' ? (
                       <>
-                        <strong>Plates:</strong> {plateText ?? `unavailable (logged as ${lift.weight} lbs)`}, <strong>Reps:</strong> {lift.reps}, <strong>RIR:</strong> {rir}
+                        <strong>Plates:</strong> {plateText ?? `${lift.weight} lbs`}, <strong>Reps:</strong> {lift.reps}, <strong>RIR:</strong> {rir}
                       </>
                     ) : (
                       <>

@@ -15,6 +15,14 @@ interface ExerciseHistoryRow {
   weight: number;
   reps: number;
   volume: number;
+  plate_data?: {
+    '45': number;
+    '35': number;
+    '25': number;
+    '10': number;
+    '5': number;
+    sled: number;
+  };
 }
 
 const tableCellStyle: React.CSSProperties = {
@@ -50,6 +58,19 @@ function Analytics(): React.JSX.Element {
     } finally {
       setLoading(false);
     }
+  }
+
+  function formatPlateDisplay(row: ExerciseHistoryRow): string | null {
+    const plateData = row.plate_data;
+    if (!plateData) return null;
+    const parts: string[] = [];
+    if (plateData['45'] > 0) parts.push(`${plateData['45']}x45`);
+    if (plateData['35'] > 0) parts.push(`${plateData['35']}x35`);
+    if (plateData['25'] > 0) parts.push(`${plateData['25']}x25`);
+    if (plateData['10'] > 0) parts.push(`${plateData['10']}x10`);
+    if (plateData['5'] > 0) parts.push(`${plateData['5']}x5`);
+    if (plateData.sled > 0) parts.push(`sled ${plateData.sled}`);
+    return parts.length > 0 ? parts.join(' + ') : null;
   }
 
   return (
@@ -112,7 +133,7 @@ function Analytics(): React.JSX.Element {
               {rows.map((row, i) => (
                 <tr key={`${row.date}-${row.weight}-${row.reps}-${i}`}>
                   <td style={tableCellStyle}>{row.date}</td>
-                  <td style={tableCellStyle}>{row.weight}</td>
+                  <td style={tableCellStyle}>{formatPlateDisplay(row) ?? row.weight}</td>
                   <td style={tableCellStyle}>{row.reps}</td>
                   <td style={tableCellStyle}>{row.volume}</td>
                 </tr>

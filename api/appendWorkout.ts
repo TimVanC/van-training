@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
 type RowRecord = Record<string, unknown>;
-type PlateData = { plate45: number; plate35: number; plate25: number; plate10: number; sled: number };
+type PlateData = { '45': number; '35': number; '25': number; '10': number; '5': number; sled: number };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -18,21 +18,23 @@ function toFiniteNumber(value: unknown): number | null {
 function parsePlateData(value: unknown): PlateData | null {
   if (value === null || typeof value !== 'object') return null;
   const candidate = value as Record<string, unknown>;
-  const plate45 = toFiniteNumber(candidate.plate45);
-  const plate35 = toFiniteNumber(candidate.plate35);
-  const plate25 = toFiniteNumber(candidate.plate25);
-  const plate10 = toFiniteNumber(candidate.plate10);
+  const plate45 = toFiniteNumber(candidate['45'] ?? candidate.plate45);
+  const plate35 = toFiniteNumber(candidate['35'] ?? candidate.plate35);
+  const plate25 = toFiniteNumber(candidate['25'] ?? candidate.plate25);
+  const plate10 = toFiniteNumber(candidate['10'] ?? candidate.plate10);
+  const plate5 = toFiniteNumber(candidate['5'] ?? candidate.plate5 ?? 0);
   const sled = toFiniteNumber(candidate.sled);
   if (
     plate45 === null ||
     plate35 === null ||
     plate25 === null ||
     plate10 === null ||
+    plate5 === null ||
     sled === null
   ) {
     return null;
   }
-  return { plate45, plate35, plate25, plate10, sled };
+  return { '45': plate45, '35': plate35, '25': plate25, '10': plate10, '5': plate5, sled };
 }
 
 function isMissingColumnError(error: unknown, columnName: string): boolean {
