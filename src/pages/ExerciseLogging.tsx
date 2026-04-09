@@ -320,61 +320,6 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     onUpdateSession({ ...session, exercises: updated });
   }
 
-  async function persistSwapPreference(nextExercise: string): Promise<void> {
-    const authResult = await supabase.auth.getUser();
-    const userId = authResult.data.user?.id;
-    if (!userId) return;
-
-    if (normalizeSwapName(nextExercise) === normalizeSwapName(baseExerciseName)) {
-      const removed = await supabase
-        .from('exercise_swaps')
-        .delete()
-        .eq('user_id', userId)
-        .eq('base_exercise_name', baseExerciseName);
-
-      if (removed.error && isMissingColumnError(removed.error, 'base_exercise_name')) {
-        const baseExerciseId = await ensureExerciseIdByName(baseExerciseName);
-        if (!baseExerciseId) return;
-        await supabase
-          .from('exercise_swaps')
-          .delete()
-          .eq('user_id', userId)
-          .eq('original_exercise_id', baseExerciseId);
-      }
-      return;
-    }
-
-    const upsertError = await upsertNamedSwapPreference({
-      userId,
-      baseExerciseName,
-      swapExerciseName: nextExercise,
-    });
-    if (!upsertError) return;
-    if (!isMissingColumnError(upsertError, 'swap_exercise_name')) return;
-
-    const baseExerciseId = await ensureExerciseIdByName(baseExerciseName);
-    const swapExerciseId = await ensureExerciseIdByName(nextExercise);
-    if (!baseExerciseId || !swapExerciseId) return;
-
-    // Keep legacy schema behavior as latest-only preference.
-    await supabase
-      .from('exercise_swaps')
-      .delete()
-      .eq('user_id', userId)
-      .eq('original_exercise_id', baseExerciseId);
-
-    const legacyInsert = await supabase
-      .from('exercise_swaps')
-      .insert({
-        user_id: userId,
-        original_exercise_id: baseExerciseId,
-        substitute_exercise_id: swapExerciseId,
-      });
-    if (legacyInsert.error && !isUniqueViolation(legacyInsert.error)) {
-      // swallow; UI already updated
-    }
-  }
-
   async function ensureExerciseIdByName(exerciseName: string): Promise<string | null> {
     const trimmedName = exerciseName.trim();
     if (!trimmedName) return null;
@@ -404,38 +349,6 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     return null;
   }
 
-  async function upsertNamedSwapPreference(params: {
-    userId: string;
-    baseExerciseName: string;
-    swapExerciseName: string;
-  }): Promise<unknown> {
-    const withUpdatedAt = await supabase
-      .from('exercise_swaps')
-      .upsert(
-        {
-          user_id: params.userId,
-          base_exercise_name: params.baseExerciseName,
-          swap_exercise_name: params.swapExerciseName,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'user_id,base_exercise_name' },
-      );
-    if (!withUpdatedAt.error) return null;
-    if (!isMissingColumnError(withUpdatedAt.error, 'updated_at')) return withUpdatedAt.error;
-
-    const withoutUpdatedAt = await supabase
-      .from('exercise_swaps')
-      .upsert(
-        {
-          user_id: params.userId,
-          base_exercise_name: params.baseExerciseName,
-          swap_exercise_name: params.swapExerciseName,
-        },
-        { onConflict: 'user_id,base_exercise_name' },
-      );
-    return withoutUpdatedAt.error;
-  }
-
   async function handleSaveCustomSwap(): Promise<void> {
     const trimmedSwapName = customSwapName.trim();
     if (!trimmedSwapName) {
@@ -457,13 +370,20 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         flashOverlay('You must be logged in to save swaps');
         return;
       }
-      const error = await upsertNamedSwapPreference({
-        userId,
-        baseExerciseName,
-        swapExerciseName: trimmedSwapName,
-      });
+      const { error } = await supabase
+        .from('exercise_swaps')
+        .insert({
+          user_id: userId,
+          base_exercise_name: baseExerciseName,
+          swap_exercise_name: trimmedSwapName,
+          updated_at: new Date().toISOString(),
+        });
 
       if (error && !isMissingColumnError(error, 'swap_exercise_name')) {
+        if (isUniqueViolation(error)) {
+          flashOverlay('Swap already exists for this exercise');
+          return;
+        }
         flashOverlay('Could not save swap');
         return;
       }
@@ -476,12 +396,6 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
           return;
         }
 
-        await supabase
-          .from('exercise_swaps')
-          .delete()
-          .eq('user_id', userId)
-          .eq('original_exercise_id', baseExerciseId);
-
         const legacyInsert = await supabase
           .from('exercise_swaps')
           .insert({
@@ -489,7 +403,11 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
             original_exercise_id: baseExerciseId,
             substitute_exercise_id: swapExerciseId,
           });
-        if (legacyInsert.error && !isUniqueViolation(legacyInsert.error)) {
+        if (legacyInsert.error) {
+          if (isUniqueViolation(legacyInsert.error)) {
+            flashOverlay('Swap already exists for this exercise');
+            return;
+          }
           flashOverlay('Could not save swap');
           return;
         }
@@ -736,7 +654,6 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
                     return;
                   }
                   handleExerciseSwap(nextValue);
-                  void persistSwapPreference(nextValue);
                 }}
                 disabled={isSubmitting || isSavingSwap}
               >
