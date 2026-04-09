@@ -84,6 +84,12 @@ function formatSessionDateInNy(iso: string): string | null {
   return `${year}-${month}-${day}`;
 }
 
+function extractUtcDatePart(iso: string): string | null {
+  const trimmed = String(iso ?? '').trim();
+  const m = /^(\d{4}-\d{2}-\d{2})/.exec(trimmed);
+  return m ? m[1] : null;
+}
+
 function toWorkoutName(value: SessionWithWorkout['workouts']): string {
   if (!value) return '';
   if (Array.isArray(value)) return value[0]?.name ?? '';
@@ -163,10 +169,17 @@ async function main(): Promise<void> {
         id: s.id,
         sessionIso: s.date,
         workoutName: toWorkoutName(s.workouts),
-        date: dateOnly,
+        dateNy: dateOnly,
+        dateUtc: extractUtcDatePart(s.date) ?? dateOnly,
       };
     })
-    .filter((s): s is { id: string; sessionIso: string; workoutName: string; date: string } => s !== null);
+    .filter((s): s is {
+      id: string;
+      sessionIso: string;
+      workoutName: string;
+      dateNy: string;
+      dateUtc: string;
+    } => s !== null);
 
   let updated = 0;
   let skipped = 0;
@@ -189,18 +202,23 @@ async function main(): Promise<void> {
         workoutCandidates.map((s) => ({
           id: s.id,
           workout: s.workoutName,
-          date: s.date,
+          dateUtc: s.dateUtc,
+          dateNy: s.dateNy,
           sessionIso: s.sessionIso,
         })),
       );
     }
 
     const matching = candidates
-      .filter((s) => s.workoutName === row.day && s.date === row.date)
+      .filter(
+        (s) =>
+          s.workoutName === row.day &&
+          (s.dateUtc === row.date || s.dateNy === row.date),
+      )
       .sort((a, b) => b.sessionIso.localeCompare(a.sessionIso));
 
     const fallbackDateMatches = candidates
-      .filter((s) => s.date === row.date)
+      .filter((s) => s.dateUtc === row.date || s.dateNy === row.date)
       .sort((a, b) => b.sessionIso.localeCompare(a.sessionIso));
 
     const best = matching[0] ?? fallbackDateMatches[0];
@@ -230,7 +248,8 @@ async function main(): Promise<void> {
     if (shouldLogSkipDebug && matching.length === 0 && fallbackDateMatches.length > 0) {
       console.log('USING DATE-ONLY FALLBACK MATCH:', {
         id: best.id,
-        date: best.date,
+        dateUtc: best.dateUtc,
+        dateNy: best.dateNy,
         sessionIso: best.sessionIso,
       });
     }
