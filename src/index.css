@@ -244,6 +244,24 @@ body {
   width: 100%;
 }
 
+.exercise-swap-add {
+  width: 100%;
+}
+
+.exercise-swap-add-input {
+  width: 100%;
+}
+
+.exercise-swap-add-actions {
+  margin-top: 0.5rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.exercise-swap-add-actions .skip-button {
+  flex: 1;
+}
+
 .exercise-last-trained {
   font-size: 0.9rem;
   color: var(--text-secondary);

@@ -133,14 +133,51 @@ create index if not exists idx_cardio_sessions_created_at on public.cardio_sessi
 create table if not exists public.exercise_swaps (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
-  original_exercise_id uuid not null references public.exercises(id) on delete cascade,
-  substitute_exercise_id uuid not null references public.exercises(id) on delete cascade,
-  created_at timestamptz not null default now(),
-  check (original_exercise_id <> substitute_exercise_id)
+  base_exercise_name text not null,
+  swap_exercise_name text not null,
+  created_at timestamptz not null default now()
 );
 
+alter table public.exercise_swaps
+add column if not exists base_exercise_name text;
+
+alter table public.exercise_swaps
+add column if not exists swap_exercise_name text;
+
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'exercise_swaps'
+      and column_name = 'original_exercise_id'
+  ) and exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'exercise_swaps'
+      and column_name = 'substitute_exercise_id'
+  ) then
+    update public.exercise_swaps s
+    set
+      base_exercise_name = coalesce(s.base_exercise_name, e1.name),
+      swap_exercise_name = coalesce(s.swap_exercise_name, e2.name)
+    from public.exercises e1, public.exercises e2
+    where s.original_exercise_id = e1.id
+      and s.substitute_exercise_id = e2.id;
+
+    alter table public.exercise_swaps alter column original_exercise_id drop not null;
+    alter table public.exercise_swaps alter column substitute_exercise_id drop not null;
+  end if;
+end
+$$;
+
 create index if not exists idx_exercise_swaps_user_id on public.exercise_swaps(user_id);
-create unique index if not exists idx_exercise_swaps_unique_pair on public.exercise_swaps(user_id, original_exercise_id, substitute_exercise_id);
+create index if not exists idx_exercise_swaps_user_base_name on public.exercise_swaps(user_id, base_exercise_name);
+drop index if exists idx_exercise_swaps_unique_pair;
+create unique index if not exists idx_exercise_swaps_unique_pair_ci
+on public.exercise_swaps(user_id, lower(base_exercise_name), lower(swap_exercise_name));
 
 -- Row Level Security
 alter table public.profiles enable row level security;

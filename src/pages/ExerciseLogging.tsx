@@ -16,6 +16,12 @@ interface ExerciseLoggingProps {
   onUpdateSession: (session: LiftSession) => void;
 }
 
+const ADD_SWAP_OPTION_VALUE = '__add_custom_swap__';
+
+function normalizeSwapName(name: string): string {
+  return name.trim().toLocaleLowerCase();
+}
+
 function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): React.JSX.Element {
   const { exerciseIndex } = useParams<{ exerciseIndex: string }>();
   const navigate = useNavigate();
@@ -46,6 +52,10 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     exercise?.activeName ?? exercise?.name ?? '',
   );
   const [showSwapOptions, setShowSwapOptions] = useState(false);
+  const [showAddSwapInput, setShowAddSwapInput] = useState(false);
+  const [customSwapName, setCustomSwapName] = useState('');
+  const [customSwapOptions, setCustomSwapOptions] = useState<string[]>([]);
+  const [isSavingSwap, setIsSavingSwap] = useState(false);
   const [setInputError, setSetInputError] = useState<string | null>(null);
   const overlayTimer = useRef<number>(0);
 
@@ -61,8 +71,8 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     setLastTrained(undefined);
     setPreviousNote(undefined);
     setRecommendedPlan(null);
-    const targetSets = exercise.targetSets ?? 3;
-    const repRangeQuery = exercise.targetRepRange ?? (exercise.targetReps != null ? String(exercise.targetReps) : '');
+    const targetSets = exercise?.targetSets ?? 3;
+    const repRangeQuery = exercise?.targetRepRange ?? (exercise?.targetReps != null ? String(exercise.targetReps) : '');
     (async () => {
       try {
         const session = await supabase.auth.getSession();
@@ -84,17 +94,77 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         setPreviousNote(mappedPreviousNote);
         setRecommendedPlan(mappedRecommendedPlan);
       } catch {
+        setRecentLifts([]);
       } finally {
         setRecentLiftsLoading(false);
       }
     })();
-  }, [selectedExerciseName, exercise?.targetSets]);
+  }, [selectedExerciseName, exercise?.targetSets, exercise?.targetRepRange, exercise?.targetReps]);
 
   useEffect(() => {
     if (!exercise?.name) return;
     setSelectedExerciseName(exercise.activeName ?? exercise.name);
     setShowSwapOptions(false);
+    setShowAddSwapInput(false);
+    setCustomSwapName('');
   }, [exercise?.name, exercise?.activeName, session.startedAt]);
+
+  useEffect(() => {
+    if (!exercise?.name) return;
+    let cancelled = false;
+    (async () => {
+      const authResult = await supabase.auth.getUser();
+      const userId = authResult.data.user?.id;
+      if (!userId) {
+        if (!cancelled) setCustomSwapOptions([]);
+        return;
+      }
+      const { data, error } = await supabase
+        .from('exercise_swaps')
+        .select('swap_exercise_name')
+        .eq('user_id', userId)
+        .eq('base_exercise_name', exercise.name)
+        .order('created_at', { ascending: true });
+      if (cancelled) return;
+      if (error || !Array.isArray(data)) {
+        setCustomSwapOptions([]);
+        return;
+      }
+      const deduped = new Map<string, string>();
+      for (const row of data) {
+        const candidate = typeof row.swap_exercise_name === 'string' ? row.swap_exercise_name.trim() : '';
+        if (!candidate) continue;
+        const key = normalizeSwapName(candidate);
+        if (!deduped.has(key)) deduped.set(key, candidate);
+      }
+      setCustomSwapOptions(Array.from(deduped.values()));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [exercise?.name, session.startedAt]);
+
+  const inputMode = exercise?.inputMode ?? 'weight';
+  const isPlatesMode = inputMode === 'plates';
+  const showSledInput = isPlatesMode && isSledExercise(selectedExerciseName);
+  const baseExerciseName = exercise?.name ?? '';
+  const defaultAlternateExercises = exerciseAlternates[baseExerciseName] ?? [];
+  const allAlternateExercises = Array.from(
+    new Map(
+      [...defaultAlternateExercises, ...customSwapOptions]
+        .map((name) => name.trim())
+        .filter((name) => name.length > 0)
+        .map((name) => [normalizeSwapName(name), name] as const),
+    ).values(),
+  );
+
+  useEffect(() => {
+    if (!isPlatesMode) return;
+    setSled((current) => {
+      if (!showSledInput) return '';
+      return current.trim() === '' ? '100' : current;
+    });
+  }, [isPlatesMode, showSledInput]);
 
   if (!exercise) {
     return (
@@ -108,20 +178,6 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   const loggedSets = exercise.sets.length;
   const totalSets = exercise.targetSets;
   const repRange = exercise.targetRepRange ?? (exercise.targetReps != null ? String(exercise.targetReps) : '-');
-  const inputMode = exercise.inputMode ?? 'weight';
-  const isPlatesMode = inputMode === 'plates';
-  const showSledInput = isPlatesMode && isSledExercise(selectedExerciseName);
-  const baseExerciseName = exercise.name;
-  const alternateExercises = exerciseAlternates[baseExerciseName] ?? [];
-  const canSwapExercise = alternateExercises.length > 0;
-
-  useEffect(() => {
-    if (!isPlatesMode) return;
-    setSled((current) => {
-      if (!showSledInput) return '';
-      return current.trim() === '' ? '100' : current;
-    });
-  }, [isPlatesMode, showSledInput]);
 
   function computePlateWeight(): number {
     const p45 = Number(plate45);
@@ -174,6 +230,50 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
       i === index ? { ...ex, activeName: nextExercise } : ex,
     );
     onUpdateSession({ ...session, exercises: updated });
+  }
+
+  async function handleSaveCustomSwap(): Promise<void> {
+    const trimmedSwapName = customSwapName.trim();
+    if (!trimmedSwapName) {
+      flashOverlay('Enter exercise name');
+      return;
+    }
+    const duplicateExists = [baseExerciseName, ...allAlternateExercises]
+      .some((name) => normalizeSwapName(name) === normalizeSwapName(trimmedSwapName));
+    if (duplicateExists) {
+      flashOverlay('Swap already exists for this exercise');
+      return;
+    }
+    if (isSavingSwap) return;
+    setIsSavingSwap(true);
+    try {
+      const authResult = await supabase.auth.getUser();
+      const userId = authResult.data.user?.id;
+      if (!userId) {
+        flashOverlay('You must be logged in to save swaps');
+        return;
+      }
+      const { error } = await supabase
+        .from('exercise_swaps')
+        .insert({
+          user_id: userId,
+          base_exercise_name: baseExerciseName,
+          swap_exercise_name: trimmedSwapName,
+        });
+      if (error) {
+        flashOverlay('Could not save swap');
+        return;
+      }
+      setCustomSwapOptions((current) => {
+        const hasName = current.some((name) => normalizeSwapName(name) === normalizeSwapName(trimmedSwapName));
+        return hasName ? current : [...current, trimmedSwapName];
+      });
+      setCustomSwapName('');
+      setShowAddSwapInput(false);
+      handleExerciseSwap(trimmedSwapName);
+    } finally {
+      setIsSavingSwap(false);
+    }
   }
 
   function parseRir(): number {
@@ -382,34 +482,75 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         <p className="exercise-substitute-note">(substitute for {baseExerciseName})</p>
       )}
       <p className="exercise-target">Target: {totalSets} sets &times; {repRange} reps</p>
-      {canSwapExercise && (
-        <div className="exercise-swap">
-          <button
-            type="button"
-            className="swap-button"
-            onClick={() => setShowSwapOptions((prev) => !prev)}
-            disabled={isSubmitting}
-          >
-            Swap Exercise
-          </button>
-          {showSwapOptions && (
+      <div className="exercise-swap">
+        <button
+          type="button"
+          className="swap-button"
+          onClick={() => setShowSwapOptions((prev) => !prev)}
+          disabled={isSubmitting || isSavingSwap}
+        >
+          Swap Exercise
+        </button>
+        {showSwapOptions && (
+          <>
             <label className="input-label exercise-swap-label">
               Select exercise
               <select
                 className="input-field exercise-swap-select"
                 value={selectedExerciseName}
-                onChange={(e) => handleExerciseSwap(e.target.value)}
-                disabled={isSubmitting}
+                onChange={(e) => {
+                  const nextValue = e.target.value;
+                  if (nextValue === ADD_SWAP_OPTION_VALUE) {
+                    setShowAddSwapInput(true);
+                    return;
+                  }
+                  handleExerciseSwap(nextValue);
+                }}
+                disabled={isSubmitting || isSavingSwap}
               >
                 <option value={baseExerciseName}>{baseExerciseName}</option>
-                {alternateExercises.map((alt) => (
+                {allAlternateExercises.map((alt) => (
                   <option key={alt} value={alt}>{alt}</option>
                 ))}
+                <option value={ADD_SWAP_OPTION_VALUE}>Add Swap</option>
               </select>
             </label>
-          )}
-        </div>
-      )}
+            {showAddSwapInput && (
+              <div className="exercise-swap-add">
+                <input
+                  className="input-field exercise-swap-add-input"
+                  type="text"
+                  value={customSwapName}
+                  onChange={(e) => setCustomSwapName(e.target.value)}
+                  placeholder="Enter exercise name"
+                  disabled={isSubmitting || isSavingSwap}
+                />
+                <div className="exercise-swap-add-actions">
+                  <button
+                    type="button"
+                    className="skip-button"
+                    onClick={handleSaveCustomSwap}
+                    disabled={isSubmitting || isSavingSwap}
+                  >
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    className="skip-button"
+                    onClick={() => {
+                      setShowAddSwapInput(false);
+                      setCustomSwapName('');
+                    }}
+                    disabled={isSubmitting || isSavingSwap}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
       <p className="exercise-last-trained">
         <span className="exercise-last-trained-label">Last trained: </span>
         {recentLiftsLoading ? (
