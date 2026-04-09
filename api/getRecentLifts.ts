@@ -70,10 +70,10 @@ function parsePlateData(value: unknown):
   | undefined {
   if (value === null || typeof value !== 'object') return undefined;
   const o = value as Record<string, unknown>;
-  const plate45 = Number(o['45'] ?? o.plate45);
-  const plate35 = Number(o['35'] ?? o.plate35);
-  const plate25 = Number(o['25'] ?? o.plate25);
-  const plate10 = Number(o['10'] ?? o.plate10);
+  const plate45 = Number(o['45'] ?? o.plate45 ?? 0);
+  const plate35 = Number(o['35'] ?? o.plate35 ?? 0);
+  const plate25 = Number(o['25'] ?? o.plate25 ?? 0);
+  const plate10 = Number(o['10'] ?? o.plate10 ?? 0);
   const plate5 = Number(o['5'] ?? o.plate5 ?? 0);
   const sled = Number(o.sled ?? 0);
   if (

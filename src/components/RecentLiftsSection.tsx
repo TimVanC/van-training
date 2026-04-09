@@ -27,7 +27,7 @@ function formatPlateBreakdown(lift: RecentLift): string | null {
   if (plate.plate25 > 0) parts.push(`${plate.plate25}x25`);
   if (plate.plate10 > 0) parts.push(`${plate.plate10}x10`);
   if (plate.plate5 > 0) parts.push(`${plate.plate5}x5`);
-  return parts.length > 0 ? parts.join(', ') : null;
+  return parts.length > 0 ? parts.join(', ') : '';
 }
 
 function RecentLiftsSection({
@@ -71,11 +71,13 @@ function RecentLiftsSection({
               recentLifts.map((lift, i) => {
                 const rir = lift.rir == null || String(lift.rir).trim() === '' ? 0 : lift.rir;
                 const plateText = formatPlateBreakdown(lift);
+                const hasPlateData = lift.plateBreakdown != null;
+                const displayPlates = hasPlateData ? (plateText && plateText.length > 0 ? plateText : '-') : `${lift.weight} lbs`;
                 return (
                   <div key={i} className="recent-lifts-item">
                     <strong>Set {i + 1}</strong> - {inputMode === 'plates' ? (
                       <>
-                        <strong>Plates:</strong> {plateText ?? `${lift.weight} lbs`}, <strong>Reps:</strong> {lift.reps}, <strong>RIR:</strong> {rir}
+                        <strong>Plates:</strong> {displayPlates}, <strong>Reps:</strong> {lift.reps}, <strong>RIR:</strong> {rir}
                       </>
                     ) : (
                       <>
