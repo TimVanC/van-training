@@ -48,6 +48,19 @@ function parseCsvLine(line: string): string[] {
   return fields;
 }
 
+function normalizeHeader(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function findColumnIndex(headers: string[], candidates: string[]): number {
+  const normalizedCandidates = candidates.map((c) => normalizeHeader(c));
+  for (let i = 0; i < headers.length; i++) {
+    const h = normalizeHeader(headers[i] ?? '');
+    if (normalizedCandidates.includes(h)) return i;
+  }
+  return -1;
+}
+
 function toPositiveFiniteNumber(value: string): number | null {
   const n = Number(value);
   if (!Number.isFinite(n)) return null;
@@ -127,15 +140,31 @@ async function main(): Promise<void> {
 
   const parsedRows: CsvRow[] = [];
   let skipped = 0;
+  const headerCols = parseCsvLine(lines[0] ?? '');
+  const dateIdx = findColumnIndex(headerCols, ['date']);
+  const exerciseIdx = findColumnIndex(headerCols, ['exercise', 'exercise name']);
+  const weightIdx = findColumnIndex(headerCols, ['weight']);
+  const repsIdx = findColumnIndex(headerCols, ['reps']);
+  const rirIdx = findColumnIndex(headerCols, ['rir']);
+  let notesIdx = findColumnIndex(headerCols, ['notes', 'note']);
+  if (notesIdx < 0 && headerCols.length > 0) {
+    const lastHeader = normalizeHeader(headerCols[headerCols.length - 1] ?? '');
+    if (!lastHeader || lastHeader.startsWith('unnamed')) {
+      notesIdx = headerCols.length - 1;
+    }
+  }
+  if (dateIdx < 0 || exerciseIdx < 0 || weightIdx < 0 || repsIdx < 0 || rirIdx < 0) {
+    throw new Error('CSV header is missing one or more required columns (date, exercise, weight, reps, rir).');
+  }
 
   for (const line of lines.slice(1)) {
     const cols = parseCsvLine(line);
-    const dateRaw = String(cols[0] ?? '').trim();
-    const exerciseName = String(cols[4] ?? '').trim();
-    const weightRaw = String(cols[6] ?? '').trim();
-    const repsRaw = String(cols[7] ?? '').trim();
-    const rirRaw = String(cols[8] ?? '').trim();
-    const notesRaw = String(cols[9] ?? '').trim();
+    const dateRaw = String(cols[dateIdx] ?? '').trim();
+    const exerciseName = String(cols[exerciseIdx] ?? '').trim();
+    const weightRaw = String(cols[weightIdx] ?? '').trim();
+    const repsRaw = String(cols[repsIdx] ?? '').trim();
+    const rirRaw = String(cols[rirIdx] ?? '').trim();
+    const notesRaw = notesIdx >= 0 ? String(cols[notesIdx] ?? '').trim() : '';
 
     const date = toDateIso(dateRaw);
     const weight = toPositiveFiniteNumber(weightRaw);

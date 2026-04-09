@@ -71,6 +71,16 @@ function getSheetName(rows: RowRecord[]): string {
   return 'Lift_Log';
 }
 
+function getRowNotes(rows: RowRecord[]): string | undefined {
+  for (const row of rows) {
+    const value = row.notes;
+    if (typeof value !== 'string') continue;
+    const trimmed = value.trim();
+    if (trimmed.length > 0) return trimmed;
+  }
+  return undefined;
+}
+
 /** Ensures API JSON includes message/code for Postgrest and Error instances. */
 function errorToJsonDetails(error: unknown): unknown {
   if (error !== null && typeof error === 'object') {
@@ -112,6 +122,7 @@ export default async function handler(
     const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const sheetName = getSheetName(rows);
     const firstDate = rows[0]?.date;
+    const sessionNotes = notesFromBody ?? getRowNotes(rows);
 
     try {
       if (!supabaseUrl || !supabaseServiceRoleKey) {
@@ -194,7 +205,7 @@ export default async function handler(
           user_id: authenticatedUserId,
           workout_id: workoutId,
           date: sessionDate,
-          notes: notesFromBody,
+          notes: sessionNotes,
         });
 
         let sessionInsert = await supabase
@@ -203,7 +214,7 @@ export default async function handler(
             user_id: authenticatedUserId,
             workout_id: workoutId,
             date: sessionDate,
-            notes: notesFromBody,
+            notes: sessionNotes,
           })
           .select('id')
           .single();
