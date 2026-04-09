@@ -169,8 +169,31 @@ async function main(): Promise<void> {
 
   let updated = 0;
   let skipped = 0;
+  let skippedLogCount = 0;
 
   for (const row of csvRows) {
+    const shouldLogSkipDebug = skippedLogCount < 10;
+    if (shouldLogSkipDebug) {
+      console.log('LOOKING FOR:', {
+        user_id: TARGET_USER_ID,
+        workout: row.day,
+        date: row.date,
+      });
+    }
+
+    const workoutCandidates = candidates.filter((s) => s.workoutName === row.day);
+    if (shouldLogSkipDebug) {
+      console.log(
+        'CANDIDATES:',
+        workoutCandidates.map((s) => ({
+          id: s.id,
+          workout: s.workoutName,
+          date: s.date,
+          sessionIso: s.sessionIso,
+        })),
+      );
+    }
+
     const matching = candidates
       .filter((s) => s.workoutName === row.day && s.date === row.date)
       .sort((a, b) => b.sessionIso.localeCompare(a.sessionIso));
@@ -178,6 +201,22 @@ async function main(): Promise<void> {
     const best = matching[0];
     if (!best) {
       skipped += 1;
+      if (shouldLogSkipDebug) {
+        if (workoutCandidates.length === 0) {
+          console.log('NO SESSIONS FOUND FOR WORKOUT');
+        } else {
+          console.log('FOUND SESSIONS BUT DATE MISMATCH');
+        }
+        console.log('SKIPPED ROW:', {
+          csv: {
+            date: row.date,
+            day: row.day,
+            notes: row.notes,
+          },
+          reason: 'NO MATCH FOUND',
+        });
+        skippedLogCount += 1;
+      }
       continue;
     }
 
