@@ -60,12 +60,13 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     setPreviousNote(undefined);
     setRecommendedPlan(null);
     const targetSets = exercise.targetSets ?? 3;
+    const repRangeQuery = exercise.targetRepRange ?? (exercise.targetReps != null ? String(exercise.targetReps) : '');
     (async () => {
       try {
         const session = await supabase.auth.getSession();
         const token = session.data.session?.access_token;
         const response = await fetch(
-          `/api/getRecentLifts?exercise=${encodeURIComponent(queryExerciseName)}&targetSets=${targetSets}`,
+          `/api/getRecentLifts?exercise=${encodeURIComponent(queryExerciseName)}&targetSets=${targetSets}&repRange=${encodeURIComponent(repRangeQuery)}`,
           {
             cache: 'no-store',
             headers: token ? { Authorization: `Bearer ${token}` } : {},

@@ -1,0 +1,132 @@
+date,time,split,day,exercise,setNumber,weight,reps,rir,notes
+2026-03-20,17:54,PPLs,Pull B,Heavy Seated Cable Row,1,165,10,1,Did hammer before preacher
+2026-03-20,17:54,PPLs,Pull B,Heavy Seated Cable Row,2,170,8,0,Did hammer before preacher
+2026-03-20,17:54,PPLs,Pull B,Heavy Seated Cable Row,3,170,6,0,Did hammer before preacher
+2026-03-20,17:54,PPLs,Pull B,Heavy Seated Cable Row,4,165,6,0,Did hammer before preacher
+2026-03-20,17:54,PPLs,Pull B,Lat Pulldown,1,148,9,0,Did hammer before preacher
+2026-03-20,17:54,PPLs,Pull B,Lat Pulldown,2,143,9,0,Did hammer before preacher
+2026-03-20,17:54,PPLs,Pull B,Lat Pulldown,3,133,10,0,Did hammer before preacher
+2026-03-20,17:54,PPLs,Pull B,Wide Grip Cable Row,1,88,13,2,Did hammer before preacher
+2026-03-20,17:54,PPLs,Pull B,Wide Grip Cable Row,2,88,12,0,Did hammer before preacher
+2026-03-20,17:54,PPLs,Pull B,Wide Grip Cable Row,3,99,10,0,Did hammer before preacher
+2026-03-20,17:54,PPLs,Pull B,Preacher Curls,1,70,10,0,Did hammer before preacher
+2026-03-20,17:54,PPLs,Pull B,Preacher Curls,2,70,10,0,Did hammer before preacher
+2026-03-20,17:54,PPLs,Pull B,Preacher Curls,3,70,9,0,Did hammer before preacher
+2026-03-20,17:54,PPLs,Pull B,Hammer Curls,1,45,10,1,Did hammer before preacher
+2026-03-20,17:54,PPLs,Pull B,Hammer Curls,2,45,8,0,Did hammer before preacher
+2026-03-20,17:54,PPLs,Pull B,Hammer Curls,3,45,10,0,Did hammer before preacher
+2026-03-23,17:01,PPLs,Push A,Incline Dumbbell Press,1,85,8,0,Dips before chest press. Didn’t have time to do triceps because I’m going to see PHM tonight.
+2026-03-23,17:01,PPLs,Push A,Incline Dumbbell Press,2,80,8,0,Dips before chest press. Didn’t have time to do triceps because I’m going to see PHM tonight.
+2026-03-23,17:01,PPLs,Push A,Incline Dumbbell Press,3,80,8,0,Dips before chest press. Didn’t have time to do triceps because I’m going to see PHM tonight.
+2026-03-23,17:01,PPLs,Push A,Incline Dumbbell Press,4,80,5,0,Dips before chest press. Didn’t have time to do triceps because I’m going to see PHM tonight.
+2026-03-23,17:01,PPLs,Push A,Flat Machine Chest Press,1,160,8,0,[plate_meta p45=1;p35=1;p25=0;p10=0;sled=0] Dips before chest press. Didn’t have time to do triceps because I’m going to see PHM tonight.
+2026-03-23,17:01,PPLs,Push A,Flat Machine Chest Press,2,160,6,0,[plate_meta p45=1;p35=1;p25=0;p10=0;sled=0] Dips before chest press. Didn’t have time to do triceps because I’m going to see PHM tonight.
+2026-03-23,17:01,PPLs,Push A,Flat Machine Chest Press,3,140,8,0,[plate_meta p45=1;p35=0;p25=1;p10=0;sled=0] Dips before chest press. Didn’t have time to do triceps because I’m going to see PHM tonight.
+2026-03-23,17:01,PPLs,Push A,Weighted Chest Dips,1,0,10,0,Dips before chest press. Didn’t have time to do triceps because I’m going to see PHM tonight.
+2026-03-23,17:01,PPLs,Push A,Weighted Chest Dips,2,0,8,0,Dips before chest press. Didn’t have time to do triceps because I’m going to see PHM tonight.
+2026-03-24,17:35,PPLs,Pull A,Neutral Grip Pull-Ups,1,0,8,0,
+2026-03-24,17:35,PPLs,Pull A,Neutral Grip Pull-Ups,2,0,6,0,
+2026-03-24,17:35,PPLs,Pull A,Neutral Grip Pull-Ups,3,60,6,0,
+2026-03-24,17:35,PPLs,Pull A,Neutral Grip Pull-Ups,4,80,8,0,
+2026-03-24,17:35,PPLs,Pull A,Seated Cable Row,1,153,10,0,
+2026-03-24,17:35,PPLs,Pull A,Seated Cable Row,2,143,10,0,
+2026-03-24,17:35,PPLs,Pull A,Seated Cable Row,3,131,10,0,
+2026-03-24,17:35,PPLs,Pull A,Single Arm Rear Delt Cable Fly,1,22,15,0,
+2026-03-24,17:35,PPLs,Pull A,Single Arm Rear Delt Cable Fly,2,22,12,0,
+2026-03-24,17:35,PPLs,Pull A,Single Arm Rear Delt Cable Fly,3,16,15,0,
+2026-03-24,17:35,PPLs,Pull A,Incline Dumbbell Curl,1,30,11,2,
+2026-03-24,17:35,PPLs,Pull A,Incline Dumbbell Curl,2,30,9,0,
+2026-03-24,17:35,PPLs,Pull A,Incline Dumbbell Curl,3,30,8,0,
+2026-03-26,17:14,PPLs,Push B,Flat Dumbbell Press,1,90,9,0,Started workout testing 1 rep max. I got 235lbs
+2026-03-26,17:14,PPLs,Push B,Flat Dumbbell Press,2,85,8,0,Started workout testing 1 rep max. I got 235lbs
+2026-03-26,17:14,PPLs,Push B,Flat Dumbbell Press,3,80,8,0,Started workout testing 1 rep max. I got 235lbs
+2026-03-26,17:14,PPLs,Push B,Decline Machine Press,1,172,12,0,[plate_meta p45=1;p35=1;p25=0;p10=0;sled=12] Started workout testing 1 rep max. I got 235lbs
+2026-03-26,17:14,PPLs,Push B,Decline Machine Press,2,172,8,0,[plate_meta p45=1;p35=1;p25=0;p10=0;sled=12] Started workout testing 1 rep max. I got 235lbs
+2026-03-26,17:14,PPLs,Push B,Decline Machine Press,3,222,10,0,[plate_meta p45=1;p35=1;p25=1;p10=0;sled=12] Started workout testing 1 rep max. I got 235lbs
+2026-03-26,17:14,PPLs,Push B,Pec Deck,1,100,10,4,Started workout testing 1 rep max. I got 235lbs
+2026-03-26,17:14,PPLs,Push B,Pec Deck,2,120,10,3,Started workout testing 1 rep max. I got 235lbs
+2026-03-26,17:14,PPLs,Push B,Pec Deck,3,120,15,2,Started workout testing 1 rep max. I got 235lbs
+2026-03-26,17:14,PPLs,Push B,Single Arm Tricep Extensions,1,27,10,0,Started workout testing 1 rep max. I got 235lbs
+2026-03-26,17:14,PPLs,Push B,Single Arm Tricep Extensions,2,27,10,0,Started workout testing 1 rep max. I got 235lbs
+2026-03-26,17:14,PPLs,Push B,Single Arm Tricep Extensions,3,22,15,0,Started workout testing 1 rep max. I got 235lbs
+2026-03-26,17:14,PPLs,Push B,Triceps Pushdowns,1,71,10,0,Started workout testing 1 rep max. I got 235lbs
+2026-03-26,17:14,PPLs,Push B,Triceps Pushdowns,2,66,12,0,Started workout testing 1 rep max. I got 235lbs
+2026-03-26,17:14,PPLs,Push B,Triceps Pushdowns,3,66,10,0,Started workout testing 1 rep max. I got 235lbs
+2026-03-30,18:35,PPLs,Push A,Incline Dumbbell Press,1,85,8,1,Did dips last.
+2026-03-30,18:35,PPLs,Push A,Incline Dumbbell Press,2,85,8,0,Did dips last.
+2026-03-30,18:35,PPLs,Push A,Incline Dumbbell Press,3,85,6,0,Did dips last.
+2026-03-30,18:35,PPLs,Push A,Incline Dumbbell Press,4,80,6,0,Did dips last.
+2026-03-30,18:35,PPLs,Push A,Flat Machine Chest Press,1,192,12,0,[plate_meta p45=2;p35=0;p25=0;p10=0;sled=12] Did dips last.
+2026-03-30,18:35,PPLs,Push A,Flat Machine Chest Press,2,192,8,0,[plate_meta p45=2;p35=0;p25=0;p10=0;sled=12] Did dips last.
+2026-03-30,18:35,PPLs,Push A,Flat Machine Chest Press,3,160,8,1,[plate_meta p45=1;p35=1;p25=0;p10=0;sled=0] Did dips last.
+2026-03-30,18:35,PPLs,Push A,Weighted Chest Dips,1,0,7,0,Did dips last.
+2026-03-30,18:35,PPLs,Push A,Weighted Chest Dips,2,80,10,0,Did dips last.
+2026-03-30,18:35,PPLs,Push A,Single Arm Tricep Extensions,1,27,12,0,Did dips last.
+2026-03-30,18:35,PPLs,Push A,Single Arm Tricep Extensions,2,27,11,0,Did dips last.
+2026-03-30,18:35,PPLs,Push A,Single Arm Tricep Extensions,3,27,10,0,Did dips last.
+2026-03-30,18:35,PPLs,Push A,Pronated Triceps Pushdowns,1,44,13,0,Did dips last.
+2026-03-30,18:35,PPLs,Push A,Pronated Triceps Pushdowns,2,38,16,2,Did dips last.
+2026-03-31,17:23,PPLs,Pull B,Heavy Seated Cable Row,1,165,8,2,Did preacher after hammer curls and it was the preacher machine.
+2026-03-31,17:23,PPLs,Pull B,Heavy Seated Cable Row,2,165,8,1,Did preacher after hammer curls and it was the preacher machine.
+2026-03-31,17:23,PPLs,Pull B,Heavy Seated Cable Row,3,165,8,0,Did preacher after hammer curls and it was the preacher machine.
+2026-03-31,17:23,PPLs,Pull B,Heavy Seated Cable Row,4,165,6,0,Did preacher after hammer curls and it was the preacher machine.
+2026-03-31,17:23,PPLs,Pull B,Lat Pulldown,1,143,10,0,Did preacher after hammer curls and it was the preacher machine.
+2026-03-31,17:23,PPLs,Pull B,Lat Pulldown,2,131,10,0,Did preacher after hammer curls and it was the preacher machine.
+2026-03-31,17:23,PPLs,Pull B,Lat Pulldown,3,151,10,0,Did preacher after hammer curls and it was the preacher machine.
+2026-03-31,17:23,PPLs,Pull B,Preacher Curls,1,55,10,1,Did preacher after hammer curls and it was the preacher machine.
+2026-03-31,17:23,PPLs,Pull B,Preacher Curls,2,50,10,1,Did preacher after hammer curls and it was the preacher machine.
+2026-03-31,17:23,PPLs,Pull B,Preacher Curls,3,50,10,1,Did preacher after hammer curls and it was the preacher machine.
+2026-03-31,17:23,PPLs,Pull B,Hammer Curls,1,40,11,2,Did preacher after hammer curls and it was the preacher machine.
+2026-03-31,17:23,PPLs,Pull B,Hammer Curls,2,40,10,2,Did preacher after hammer curls and it was the preacher machine.
+2026-03-31,17:23,PPLs,Pull B,Hammer Curls,3,40,10,0,Did preacher after hammer curls and it was the preacher machine.
+2026-04-02,17:54,PPLs,Push B,Flat Dumbbell Press,1,90,10,0,Did push downs before overhead. Push downs were single arm dual column and extensions were katana.
+2026-04-02,17:54,PPLs,Push B,Flat Dumbbell Press,2,90,8,0,Did push downs before overhead. Push downs were single arm dual column and extensions were katana.
+2026-04-02,17:54,PPLs,Push B,Flat Dumbbell Press,3,90,7,0,Did push downs before overhead. Push downs were single arm dual column and extensions were katana.
+2026-04-02,17:54,PPLs,Push B,Decline Machine Press,1,180,10,2,[plate_meta p45=1;p35=1;p25=0;p10=1;sled=0] Did push downs before overhead. Push downs were single arm dual column and extensions were katana.
+2026-04-02,17:54,PPLs,Push B,Decline Machine Press,2,180,10,0,[plate_meta p45=2;p35=0;p25=0;p10=0;sled=0] Did push downs before overhead. Push downs were single arm dual column and extensions were katana.
+2026-04-02,17:54,PPLs,Push B,Decline Machine Press,3,180,8,1,[plate_meta p45=2;p35=0;p25=0;p10=0;sled=0] Did push downs before overhead. Push downs were single arm dual column and extensions were katana.
+2026-04-02,17:54,PPLs,Push B,High to Low Cable Fly,1,43,10,0,Did push downs before overhead. Push downs were single arm dual column and extensions were katana.
+2026-04-02,17:54,PPLs,Push B,High to Low Cable Fly,2,40,10,0,Did push downs before overhead. Push downs were single arm dual column and extensions were katana.
+2026-04-02,17:54,PPLs,Push B,High to Low Cable Fly,3,33,15,0,Did push downs before overhead. Push downs were single arm dual column and extensions were katana.
+2026-04-02,17:54,PPLs,Push B,Duel Cable Extension,1,23,12,0,Did push downs before overhead. Push downs were single arm dual column and extensions were katana.
+2026-04-02,17:54,PPLs,Push B,Duel Cable Extension,2,23,10,0,Did push downs before overhead. Push downs were single arm dual column and extensions were katana.
+2026-04-02,17:54,PPLs,Push B,Triceps Pushdowns,1,27,17,3,Did push downs before overhead. Push downs were single arm dual column and extensions were katana.
+2026-04-02,17:54,PPLs,Push B,Triceps Pushdowns,2,30,12,1,Did push downs before overhead. Push downs were single arm dual column and extensions were katana.
+2026-04-02,17:54,PPLs,Push B,Triceps Pushdowns,3,30,9,0,Did push downs before overhead. Push downs were single arm dual column and extensions were katana.
+2026-04-02,17:54,PPLs,Push B,Flat Dumbbell Press,1,90,10,0,Did push downs before overhead. Push downs were single arm dual column and extensions were katana.
+2026-04-02,17:54,PPLs,Push B,Flat Dumbbell Press,2,90,8,0,Did push downs before overhead. Push downs were single arm dual column and extensions were katana.
+2026-04-02,17:54,PPLs,Push B,Flat Dumbbell Press,3,90,7,0,Did push downs before overhead. Push downs were single arm dual column and extensions were katana.
+2026-04-02,17:54,PPLs,Push B,Decline Machine Press,1,180,10,2,[plate_meta p45=1;p35=1;p25=0;p10=1;sled=0] Did push downs before overhead. Push downs were single arm dual column and extensions were katana.
+2026-04-02,17:54,PPLs,Push B,Decline Machine Press,2,180,10,0,[plate_meta p45=2;p35=0;p25=0;p10=0;sled=0] Did push downs before overhead. Push downs were single arm dual column and extensions were katana.
+2026-04-02,17:54,PPLs,Push B,Decline Machine Press,3,180,8,1,[plate_meta p45=2;p35=0;p25=0;p10=0;sled=0] Did push downs before overhead. Push downs were single arm dual column and extensions were katana.
+2026-04-02,17:54,PPLs,Push B,High to Low Cable Fly,1,43,10,0,Did push downs before overhead. Push downs were single arm dual column and extensions were katana.
+2026-04-02,17:54,PPLs,Push B,High to Low Cable Fly,2,40,10,0,Did push downs before overhead. Push downs were single arm dual column and extensions were katana.
+2026-04-02,17:54,PPLs,Push B,High to Low Cable Fly,3,33,15,0,Did push downs before overhead. Push downs were single arm dual column and extensions were katana.
+2026-04-02,17:54,PPLs,Push B,Duel Cable Extension,1,23,12,0,Did push downs before overhead. Push downs were single arm dual column and extensions were katana.
+2026-04-02,17:54,PPLs,Push B,Duel Cable Extension,2,23,10,0,Did push downs before overhead. Push downs were single arm dual column and extensions were katana.
+2026-04-02,17:54,PPLs,Push B,Triceps Pushdowns,1,27,17,3,Did push downs before overhead. Push downs were single arm dual column and extensions were katana.
+2026-04-02,17:54,PPLs,Push B,Triceps Pushdowns,2,30,12,1,Did push downs before overhead. Push downs were single arm dual column and extensions were katana.
+2026-04-02,17:54,PPLs,Push B,Triceps Pushdowns,3,30,9,0,Did push downs before overhead. Push downs were single arm dual column and extensions were katana.
+2026-04-06,18:54,PPLs,Push A,Incline Dumbbell Press,1,85,8,1,Did tricep extensions before flat press.
+2026-04-06,18:54,PPLs,Push A,Incline Dumbbell Press,2,85,6,0,Did tricep extensions before flat press.
+2026-04-06,18:54,PPLs,Push A,Incline Dumbbell Press,3,80,8,0,Did tricep extensions before flat press.
+2026-04-06,18:54,PPLs,Push A,Incline Dumbbell Press,4,80,6,0,Did tricep extensions before flat press.
+2026-04-06,18:54,PPLs,Push A,Flat Machine Chest Press,1,192,8,2,[plate_meta p45=2;p35=0;p25=0;p10=0;sled=12] Did tricep extensions before flat press.
+2026-04-06,18:54,PPLs,Push A,Flat Machine Chest Press,2,195,8,0,[plate_meta p45=2;p35=0;p25=0;p10=0;sled=15] Did tricep extensions before flat press.
+2026-04-06,18:54,PPLs,Push A,Flat Machine Chest Press,3,192,6,0,[plate_meta p45=2;p35=0;p25=0;p10=0;sled=12] Did tricep extensions before flat press.
+2026-04-06,18:54,PPLs,Push A,Overhead Cable Triceps Extension,1,27,12,1,Did tricep extensions before flat press.
+2026-04-06,18:54,PPLs,Push A,Overhead Cable Triceps Extension,2,27,10,0,Did tricep extensions before flat press.
+2026-04-06,18:54,PPLs,Push A,Overhead Cable Triceps Extension,3,27,10,0,Did tricep extensions before flat press.
+2026-04-07,18:56,PPLs,Pull A,Neutral Grip Pull-Ups,1,0,8,0,
+2026-04-07,18:56,PPLs,Pull A,Neutral Grip Pull-Ups,2,0,6,0,
+2026-04-07,18:56,PPLs,Pull A,Neutral Grip Pull-Ups,3,0,4,0,
+2026-04-07,18:56,PPLs,Pull A,Seated Cable Row,1,143,12,2,
+2026-04-07,18:56,PPLs,Pull A,Seated Cable Row,2,143,12,0,
+2026-04-07,18:56,PPLs,Pull A,Seated Cable Row,3,143,8,0,
+2026-04-07,18:56,PPLs,Pull A,Seated Cable Row,4,131,8,0,
+2026-04-07,18:56,PPLs,Pull A,Single Arm Rear Delt Cable Fly,1,17,20,5,
+2026-04-07,18:56,PPLs,Pull A,Single Arm Rear Delt Cable Fly,2,20,20,2,
+2026-04-07,18:56,PPLs,Pull A,Single Arm Rear Delt Cable Fly,3,20,15,0,
+2026-04-07,18:56,PPLs,Pull A,Incline Dumbbell Curl,1,30,10,0,
+2026-04-07,18:56,PPLs,Pull A,Incline Dumbbell Curl,2,30,7,0,
+2026-04-07,18:56,PPLs,Pull A,Incline Dumbbell Curl,3,25,8,0,
