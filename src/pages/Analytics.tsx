@@ -38,13 +38,29 @@ interface TopSetSummary {
   changeText: string;
 }
 
+interface TopSetChartRow extends SessionAnalyticsRow {
+  shortDate: string;
+}
+
+interface DotRendererProps {
+  cx?: number;
+  cy?: number;
+  payload?: TopSetChartRow;
+}
+
 const tableCellStyle: React.CSSProperties = {
   padding: '0.5rem 0.75rem',
   textAlign: 'left',
 };
 
 const numberFormatter = new Intl.NumberFormat('en-US');
-const dateRangeOptions: DateRangeKey[] = ['30D', '90D', '6M', '1Y', 'ALL'];
+const dateRangeOptions: Array<{ value: DateRangeKey; label: string }> = [
+  { value: '30D', label: '30D' },
+  { value: '90D', label: '90D' },
+  { value: '6M', label: '6M' },
+  { value: '1Y', label: '1Y' },
+  { value: 'ALL', label: 'All' },
+];
 
 function formatDateLabel(dateValue: string): string {
   const parsed = new Date(dateValue);
@@ -54,6 +70,11 @@ function formatDateLabel(dateValue: string): string {
 
 function formatRir(rir: number): string {
   return Number.isInteger(rir) ? String(rir) : rir.toFixed(1);
+}
+
+function getRepDotRadius(reps: number): number {
+  const safeReps = Number.isFinite(reps) ? reps : 0;
+  return Math.max(4, Math.min(10, 3 + safeReps * 0.4));
 }
 
 function getTopSetSummary(sessions: SessionAnalyticsRow[]): TopSetSummary {
@@ -123,7 +144,6 @@ function Analytics(): React.JSX.Element {
       (sessions ?? []).map((session) => ({
         ...session,
         shortDate: formatDateLabel(session.date),
-        topSetScore: session.topSetWeight * (1 + session.topSetReps / 30),
       })),
     [sessions],
   );
@@ -285,8 +305,8 @@ function Analytics(): React.JSX.Element {
           disabled={loadingAnalytics}
         >
           {dateRangeOptions.map((option) => (
-            <option key={option} value={option}>
-              {option}
+            <option key={option.value} value={option.value}>
+              {option.label}
             </option>
           ))}
         </select>
@@ -304,13 +324,13 @@ function Analytics(): React.JSX.Element {
             <p style={{ margin: '0.25rem 0' }}>
               Current top set:{' '}
               {topSetSummary.current
-                ? `${numberFormatter.format(topSetSummary.current.topSetWeight)} x ${topSetSummary.current.topSetReps} @ RIR ${formatRir(topSetSummary.current.topSetRir)}`
+                ? `${numberFormatter.format(topSetSummary.current.topSetWeight)} x ${topSetSummary.current.topSetReps}`
                 : '-'}
             </p>
             <p style={{ margin: '0.25rem 0' }}>
               Previous top set:{' '}
               {topSetSummary.previous
-                ? `${numberFormatter.format(topSetSummary.previous.topSetWeight)} x ${topSetSummary.previous.topSetReps} @ RIR ${formatRir(topSetSummary.previous.topSetRir)}`
+                ? `${numberFormatter.format(topSetSummary.previous.topSetWeight)} x ${topSetSummary.previous.topSetReps}`
                 : '-'}
             </p>
             <p style={{ margin: '0.25rem 0' }}>Change: {topSetSummary.changeText}</p>
@@ -324,7 +344,12 @@ function Analytics(): React.JSX.Element {
                 <XAxis dataKey="shortDate" />
                 <YAxis />
                 <Tooltip
-                  formatter={(value) => [numberFormatter.format(Number(value)), 'Score']}
+                  formatter={(value, name, item) => {
+                    const row = (item?.payload ?? null) as TopSetChartRow | null;
+                    if (!row) return [numberFormatter.format(Number(value)), 'Weight'];
+                    if (name === 'Top Set Weight') return [`${numberFormatter.format(row.topSetWeight)} lbs`, 'Weight'];
+                    return [numberFormatter.format(Number(value)), String(name)];
+                  }}
                   labelFormatter={(_label, payload) => {
                     const row = payload?.[0]?.payload as SessionAnalyticsRow | undefined;
                     if (!row) return '';
@@ -333,10 +358,22 @@ function Analytics(): React.JSX.Element {
                 />
                 <Line
                   type="monotone"
-                  dataKey="topSetScore"
-                  name="Top Set Score"
+                  dataKey="topSetWeight"
+                  name="Top Set Weight"
                   stroke="#8884d8"
-                  dot
+                  dot={(props: DotRendererProps) => {
+                    if (props.cx == null || props.cy == null || !props.payload) return null;
+                    return (
+                      <circle
+                        cx={props.cx}
+                        cy={props.cy}
+                        r={getRepDotRadius(props.payload.topSetReps)}
+                        fill="#8884d8"
+                        stroke="#ffffff"
+                        strokeWidth={1.5}
+                      />
+                    );
+                  }}
                 />
               </LineChart>
             </ResponsiveContainer>
