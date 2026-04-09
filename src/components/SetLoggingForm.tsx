@@ -147,7 +147,7 @@ function SetLoggingForm({
         {showWeightInput ? (
           <label className="input-label">
             Weight (lbs)
-            <input ref={weightRef} className="input-field" type="number" inputMode="decimal" step="any" value={weight}
+            <input ref={weightRef} className="input-field" type="text" inputMode="decimal" value={weight}
               onChange={(e) => onWeightChange(e.target.value)} disabled={dis} />
           </label>
         ) : (

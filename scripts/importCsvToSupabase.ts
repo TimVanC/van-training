@@ -171,8 +171,8 @@ async function main(): Promise<void> {
     const reps = toPositiveFiniteNumber(repsRaw);
     const rirParsed = toPositiveFiniteNumber(rirRaw);
 
-    // Skip empty/invalid rows. We also skip negative weight rows to satisfy lift_sets constraints.
-    if (!date || !exerciseName || weight === null || reps === null || reps <= 0 || weight < 0) {
+    // Skip empty/invalid rows (negative weight is valid for assisted bodyweight movements).
+    if (!date || !exerciseName || weight === null || reps === null || reps <= 0) {
       skipped += 1;
       continue;
     }

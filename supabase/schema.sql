@@ -91,6 +91,24 @@ create table if not exists public.lift_sets (
 alter table public.lift_sets
 drop constraint if exists lift_sets_weight_check;
 
+do $$
+declare
+  c record;
+begin
+  for c in
+    select conname
+    from pg_constraint
+    where conrelid = 'public.lift_sets'::regclass
+      and contype = 'c'
+      and pg_get_constraintdef(oid) ilike '%weight%'
+      and pg_get_constraintdef(oid) ilike '%>=%'
+      and pg_get_constraintdef(oid) ilike '%0%'
+  loop
+    execute format('alter table public.lift_sets drop constraint if exists %I;', c.conname);
+  end loop;
+end
+$$;
+
 alter table public.lift_sets
 add column if not exists plate_data jsonb;
 
