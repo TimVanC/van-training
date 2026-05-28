@@ -30,12 +30,15 @@ export function validateReps(reps: number): SetFieldValidation {
 
 /**
  * Validates total weight (lbs) for a set: finite and not above max.
+ *
+ * Assisted (bodyweight-supported) sets store the assistance amount as a
+ * negative number, so the magnitude is range-checked via Math.abs.
  */
 export function validateLiftWeight(weight: number): SetFieldValidation {
   if (!Number.isFinite(weight)) {
     return { valid: false, message: 'Weight must be a valid number.' };
   }
-  if (weight > MAX_LIFT_WEIGHT_LBS) {
+  if (Math.abs(weight) > MAX_LIFT_WEIGHT_LBS) {
     return {
       valid: false,
       message: `Weight cannot exceed ${MAX_LIFT_WEIGHT_LBS} lbs.`,

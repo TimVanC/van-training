@@ -5,6 +5,12 @@ interface RecentLiftEntry {
   weight: string | number;
   reps: string | number;
   rir: string | number;
+  plateBreakdown?: { plate45: number; plate35: number; plate25: number; plate10: number; plate5: number; plate2_5: number; sled: number };
+}
+
+interface HistorySession {
+  date: string;
+  sets: RecentLiftEntry[];
 }
 
 interface RecommendedPlanSet {
@@ -44,7 +50,7 @@ interface NormalizedLiftSet {
   weight: number;
   reps: number;
   rir: number;
-  plateBreakdown?: { plate45: number; plate35: number; plate25: number; plate10: number; plate5: number; sled: number };
+  plateBreakdown?: { plate45: number; plate35: number; plate25: number; plate10: number; plate5: number; plate2_5: number; sled: number };
 }
 
 function toDateOnly(isoOrDate: unknown): string | undefined {
@@ -66,7 +72,7 @@ function computeEstimatedOneRepMax(weight: number, reps: number): number | undef
 }
 
 function parsePlateData(value: unknown):
-  | { plate45: number; plate35: number; plate25: number; plate10: number; plate5: number; sled: number }
+  | { plate45: number; plate35: number; plate25: number; plate10: number; plate5: number; plate2_5: number; sled: number }
   | undefined {
   let source: unknown = value;
   if (typeof source === 'string') {
@@ -85,6 +91,7 @@ function parsePlateData(value: unknown):
   const plate25 = Number(o['25'] ?? o.plate25 ?? 0);
   const plate10 = Number(o['10'] ?? o.plate10 ?? 0);
   const plate5 = Number(o['5'] ?? o.plate5 ?? 0);
+  const plate2_5 = Number(o['2.5'] ?? o.plate2_5 ?? 0);
   const sled = Number(o.sled ?? 0);
   if (
     !Number.isFinite(plate45) ||
@@ -92,17 +99,19 @@ function parsePlateData(value: unknown):
     !Number.isFinite(plate25) ||
     !Number.isFinite(plate10) ||
     !Number.isFinite(plate5) ||
+    !Number.isFinite(plate2_5) ||
     !Number.isFinite(sled) ||
     plate45 < 0 ||
     plate35 < 0 ||
     plate25 < 0 ||
     plate10 < 0 ||
     plate5 < 0 ||
+    plate2_5 < 0 ||
     sled < 0
   ) {
     return undefined;
   }
-  return { plate45, plate35, plate25, plate10, plate5, sled };
+  return { plate45, plate35, plate25, plate10, plate5, plate2_5, sled };
 }
 
 function isMissingColumnError(error: unknown, columnName: string): boolean {
@@ -145,6 +154,7 @@ async function fetchRecentSessions(
   userId: string,
   exerciseName: string,
   includeNotes: boolean,
+  limit = 2,
 ): Promise<{ data: SessionJoinRow[]; error: unknown }> {
   const sessionCols = includeNotes ? 'id,date,notes' : 'id,date';
   const result = await supabase
@@ -153,12 +163,36 @@ async function fetchRecentSessions(
     .eq('user_id', userId)
     .eq('lift_sets.exercise_name', exerciseName)
     .order('date', { ascending: false })
-    .limit(2);
+    .limit(limit);
 
   return {
     data: (result.data ?? []) as SessionJoinRow[],
     error: result.error,
   };
+}
+
+/**
+ * Fetch lift rows for one session with the same column-fallback chain used
+ * for the latest/previous session queries. Throws on a genuine error so the
+ * caller can decide how to surface it.
+ */
+async function fetchLiftRowsWithFallback(
+  supabase: ReturnType<typeof createClient>,
+  sessionId: string,
+  exerciseName: string,
+): Promise<LiftSetQueryRow[]> {
+  let result = await fetchLiftRows(supabase, sessionId, exerciseName, true, true);
+  if (result.error && isMissingColumnError(result.error, 'set_number')) {
+    result = await fetchLiftRows(supabase, sessionId, exerciseName, true, false);
+  }
+  if (result.error && isMissingColumnError(result.error, 'plate_data')) {
+    result = await fetchLiftRows(supabase, sessionId, exerciseName, false, true);
+  }
+  if (result.error && isMissingColumnError(result.error, 'set_number')) {
+    result = await fetchLiftRows(supabase, sessionId, exerciseName, false, false);
+  }
+  if (result.error) throw result.error;
+  return result.data ?? [];
 }
 
 function parseRepRange(
@@ -343,6 +377,7 @@ export default async function handler(
     let previousNote: string | undefined;
     let recommendedPlan: RecommendedPlanSet[] | null = null;
     let progressionMetrics: ProgressionMetrics | undefined;
+    let sessionHistory: HistorySession[] = [];
 
     let recentSessionsResult = await fetchRecentSessions(supabase, userId, exerciseName, true);
     if (recentSessionsResult.error && isMissingColumnError(recentSessionsResult.error, 'notes')) {
@@ -417,7 +452,37 @@ export default async function handler(
       }
     }
 
-    res.status(200).json({ lastTrained, sets, previousNote, recommendedPlan, progressionMetrics });
+    try {
+      const historySessionsResult = await fetchRecentSessions(supabase, userId, exerciseName, false, 10);
+      if (historySessionsResult.error) throw historySessionsResult.error;
+
+      const historySessions = historySessionsResult.data.slice(0, 10);
+      const historyEntries = await Promise.all(
+        historySessions.map(async (sessionRow) => {
+          const dateOnly = toDateOnly(sessionRow.date);
+          if (!dateOnly) return null;
+          const rows = await fetchLiftRowsWithFallback(supabase, sessionRow.id, exerciseName);
+          if (rows.length === 0) return null;
+          const entry: HistorySession = {
+            date: dateOnly,
+            sets: rows.map((row) => ({
+              weight: toFiniteNumber(row.weight),
+              reps: toFiniteNumber(row.reps),
+              rir: toFiniteNumber(row.rir),
+              plateBreakdown: parsePlateData(row.plate_data),
+            })),
+          };
+          return entry;
+        }),
+      );
+      sessionHistory = historyEntries.filter((entry): entry is HistorySession => entry !== null);
+    } catch (historyError) {
+      // History is additive — never fail the whole request if it can't load.
+      console.error('Failed to load session history:', historyError);
+      sessionHistory = [];
+    }
+
+    res.status(200).json({ lastTrained, sets, previousNote, recommendedPlan, progressionMetrics, sessionHistory });
   } catch (error) {
     console.error('Error in getRecentLifts:', error);
     res.status(500).json({ error: 'Internal Server Error' });

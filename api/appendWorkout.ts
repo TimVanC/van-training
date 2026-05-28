@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 
 type RowRecord = Record<string, unknown>;
-type PlateData = { '45': number; '35': number; '25': number; '10': number; '5': number; sled?: number };
+type PlateData = { '45': number; '35': number; '25': number; '10': number; '5': number; '2.5'?: number; sled?: number };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -23,6 +23,9 @@ function parsePlateData(value: unknown): PlateData | null {
   const plate25 = toFiniteNumber(candidate['25'] ?? candidate.plate25);
   const plate10 = toFiniteNumber(candidate['10'] ?? candidate.plate10);
   const plate5 = toFiniteNumber(candidate['5'] ?? candidate.plate5 ?? 0);
+  const rawPlate2_5 = candidate['2.5'] ?? candidate.plate2_5;
+  const hasPlate2_5 = rawPlate2_5 !== undefined && rawPlate2_5 !== null && String(rawPlate2_5).trim() !== '';
+  const plate2_5 = hasPlate2_5 ? toFiniteNumber(rawPlate2_5) : null;
   const hasSled = 'sled' in candidate && candidate.sled !== null && String(candidate.sled).trim() !== '';
   const sled = hasSled ? toFiniteNumber(candidate.sled) : null;
   if (
@@ -31,12 +34,14 @@ function parsePlateData(value: unknown): PlateData | null {
     plate25 === null ||
     plate10 === null ||
     plate5 === null ||
+    (hasPlate2_5 && plate2_5 === null) ||
     (hasSled && sled === null) ||
     plate45 < 0 ||
     plate35 < 0 ||
     plate25 < 0 ||
     plate10 < 0 ||
     plate5 < 0 ||
+    (hasPlate2_5 && (plate2_5 as number) < 0) ||
     (hasSled && (sled as number) < 0)
   ) {
     return null;
@@ -47,6 +52,7 @@ function parsePlateData(value: unknown): PlateData | null {
     '25': plate25,
     '10': plate10,
     '5': plate5,
+    ...(hasPlate2_5 ? { '2.5': plate2_5 as number } : {}),
     ...(hasSled ? { sled: sled as number } : {}),
   };
 }

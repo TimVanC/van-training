@@ -4,6 +4,8 @@ export interface PlateBreakdown {
   plate25: number;
   plate10: number;
   plate5: number;
+  /** Count of 2.5 lb plates (per side). Defaults to 0 for sets logged before this denomination was tracked. */
+  plate2_5: number;
   sled: number;
 }
 
@@ -28,12 +30,20 @@ export interface ProgressionMetrics {
   totalReps?: number;
 }
 
+export interface HistorySession {
+  /** ISO date string in `YYYY-MM-DD` form (server-local). */
+  date: string;
+  sets: RecentLift[];
+}
+
 export interface RecentLiftsResponse {
   lastTrained?: string;
   sets: RecentLift[];
   previousNote?: string;
   recommendedPlan?: RecommendedPlanSet[] | null;
   progressionMetrics?: ProgressionMetrics;
+  /** Up to 10 recent sessions for the side-drawer history view. */
+  sessionHistory?: HistorySession[];
 }
 
 export interface LoggedSet {
@@ -45,6 +55,7 @@ export interface LoggedSet {
   plate25?: number;
   plate10?: number;
   plate5?: number;
+  plate2_5?: number;
   sled?: number;
   plateData?: PlateBreakdown;
   /** Client-generated id for undo; not sent to Sheets */

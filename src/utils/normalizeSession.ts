@@ -28,6 +28,7 @@ function normalizeLift(session: LiftSession): LiftRow[] {
         plate25: Number(set.plate25),
         plate10: Number(set.plate10),
         plate5: Number(set.plate5),
+        plate2_5: Number(set.plate2_5 ?? 0),
         sled: Number(set.sled ?? 0),
       };
       const hasPlateData = isPlatesMode
@@ -40,12 +41,14 @@ function normalizeLift(session: LiftSession): LiftRow[] {
       const sessionNote = session.notes?.trim() ?? '';
 
       if (hasPlateData) {
+        const plate2_5 = Number.isFinite(plateData.plate2_5) ? plateData.plate2_5 : 0;
         row.plate_data = {
           '45': plateData.plate45,
           '35': plateData.plate35,
           '25': plateData.plate25,
           '10': plateData.plate10,
           '5': plateData.plate5,
+          ...(plate2_5 > 0 ? { '2.5': plate2_5 } : {}),
           ...(includeSled ? { sled: plateData.sled } : {}),
         };
       }

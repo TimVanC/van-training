@@ -29,6 +29,26 @@ export function parseTimeInput(input: string, format: TimeFormat): number | null
   return total > 0 ? total : null;
 }
 
+/**
+ * Format a `YYYY-MM-DD` date string for display in the session history
+ * drawer. Parses the components explicitly so the user's local timezone
+ * doesn't shift the date (which happens when `new Date('2026-05-28')`
+ * is interpreted as UTC midnight).
+ */
+export function formatHistoryDate(dateStr: string): string {
+  const parts = String(dateStr ?? '').split('-');
+  if (parts.length < 3) return dateStr;
+  const [year, month, day] = parts;
+  const localDate = new Date(Number(year), Number(month) - 1, Number(day));
+  if (isNaN(localDate.getTime())) return dateStr;
+  return localDate.toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
 export function formatTotalSeconds(totalSeconds: number, format: TimeFormat): string {
   if (format === 'hh:mm:ss') {
     const hours = Math.floor(totalSeconds / 3600);
