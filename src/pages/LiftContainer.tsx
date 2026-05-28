@@ -11,6 +11,7 @@ import SplitSelection from './SplitSelection';
 import DaySelection from './DaySelection';
 import ExerciseList from './ExerciseList';
 import ExerciseLogging from './ExerciseLogging';
+import WorkoutCheckin from '../components/WorkoutCheckin';
 import splits from '../data/splits';
 
 const splitItems: Split[] = splits;
@@ -36,6 +37,8 @@ function LiftContainer(): React.JSX.Element {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [navigatingToHome, setNavigatingToHome] = useState(false);
+  const [showCheckin, setShowCheckin] = useState(false);
+  const [checkinContext, setCheckinContext] = useState<{ split: string; day: string } | null>(null);
 
   function handleResume(): void {
     const saved = loadSession();
@@ -85,9 +88,19 @@ function LiftContainer(): React.JSX.Element {
       setIsSubmitting(false);
       return;
     }
-    setNavigatingToHome(true);
+    // Capture the split/day before clearing the session so the checkin
+    // overlay still has context to display and persist.
+    setCheckinContext({ split: session.split, day: session.day });
     clearSession();
     setSession(null);
+    setIsSubmitting(false);
+    setShowCheckin(true);
+  }
+
+  function handleCheckinComplete(): void {
+    setShowCheckin(false);
+    setCheckinContext(null);
+    setNavigatingToHome(true);
     navigate('/');
   }
 
@@ -111,14 +124,21 @@ function LiftContainer(): React.JSX.Element {
         <Route path=":splitName/:dayName" element={
           session
             ? <ExerciseList session={session} onUpdateSession={handleUpdateSession} onSubmit={handleSubmit} isSubmitting={isSubmitting} submitError={submitError ?? undefined} onRetry={handleSubmit} />
-            : navigatingToHome ? <Navigate to="/" replace /> : <Navigate to="/lift" replace />
+            : navigatingToHome || showCheckin ? <Navigate to="/" replace /> : <Navigate to="/lift" replace />
         } />
         <Route path=":splitName/:dayName/:exerciseIndex" element={
           session
             ? <ExerciseLogging session={session} onUpdateSession={handleUpdateSession} />
-            : navigatingToHome ? <Navigate to="/" replace /> : <Navigate to="/lift" replace />
+            : navigatingToHome || showCheckin ? <Navigate to="/" replace /> : <Navigate to="/lift" replace />
         } />
       </Routes>
+      {showCheckin && checkinContext && (
+        <WorkoutCheckin
+          splitName={checkinContext.split}
+          dayName={checkinContext.day}
+          onComplete={handleCheckinComplete}
+        />
+      )}
     </>
   );
 }
