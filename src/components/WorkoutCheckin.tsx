@@ -47,6 +47,7 @@ function WorkoutCheckin({ splitName, dayName, onComplete }: WorkoutCheckinProps)
   const [stepIndex, setStepIndex] = useState(0);
   const [answers, setAnswers] = useState<CheckinAnswers>(INITIAL_ANSWERS);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isComplete, setIsComplete] = useState(false);
 
   const currentQuestion = QUESTIONS[stepIndex];
   const isLastQuestion = stepIndex === QUESTIONS.length - 1;
@@ -74,7 +75,9 @@ function WorkoutCheckin({ splitName, dayName, onComplete }: WorkoutCheckinProps)
     } catch {
       // Checkins are non-critical telemetry — never block navigation on failure.
     } finally {
-      onComplete();
+      setIsSubmitting(false);
+      setIsComplete(true);
+      window.setTimeout(() => onComplete(), 1400);
     }
   }
 
@@ -87,12 +90,18 @@ function WorkoutCheckin({ splitName, dayName, onComplete }: WorkoutCheckinProps)
   }
 
   function handleAnswerScale(value: number | null): void {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
     const updated = { ...answers, [currentQuestion.key]: value };
     setAnswers(updated);
     advance(updated);
   }
 
   function handleAnswerYesNo(value: boolean | null): void {
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
     const updated = { ...answers, [currentQuestion.key]: value };
     setAnswers(updated);
     advance(updated);
@@ -107,60 +116,70 @@ function WorkoutCheckin({ splitName, dayName, onComplete }: WorkoutCheckinProps)
     <div className="checkin-overlay" role="dialog" aria-modal="true" aria-labelledby="checkin-title">
       <div className="checkin-modal">
         <div className="checkin-header">
-          <h2 id="checkin-title" className="checkin-title">Quick check-in</h2>
-          <button type="button" className="checkin-skip-all" onClick={handleSkipAll} disabled={isSubmitting}>
-            Skip questionnaire
-          </button>
+          <h2 id="checkin-title" className="checkin-title">Post-Lift Check-In</h2>
+          {!isComplete && (
+            <button type="button" className="checkin-skip-all" onClick={handleSkipAll} disabled={isSubmitting}>
+              Skip questionnaire
+            </button>
+          )}
         </div>
 
-        <div className="checkin-progress" aria-hidden>
-          {QUESTIONS.map((q, i) => (
-            <span key={q.key} className={`checkin-progress-dot ${i === stepIndex ? 'checkin-progress-dot--active' : ''} ${i < stepIndex ? 'checkin-progress-dot--done' : ''}`} />
-          ))}
-        </div>
-
-        <div className="checkin-question">
-          <span className="checkin-question-label">
-            {currentQuestion.label}
-            {currentQuestion.hint ? <span className="checkin-question-hint"> ({currentQuestion.hint})</span> : null}
-          </span>
-
-          {currentQuestion.type === 'scale' ? (
-            <div className="checkin-scale" role="radiogroup" aria-label={currentQuestion.label}>
-              {SCALE_VALUES.map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  className="checkin-scale-btn"
-                  onClick={() => handleAnswerScale(n)}
-                  disabled={isSubmitting}
-                >
-                  {n}
-                </button>
+        {isComplete ? (
+          <div className="checkin-done">
+            <p className="checkin-done-message">Thanks — logged.</p>
+          </div>
+        ) : (
+          <>
+            <div className="checkin-progress" aria-hidden>
+              {QUESTIONS.map((q, i) => (
+                <span key={q.key} className={`checkin-progress-dot ${i === stepIndex ? 'checkin-progress-dot--active' : ''} ${i < stepIndex ? 'checkin-progress-dot--done' : ''}`} />
               ))}
             </div>
-          ) : (
-            <div className="checkin-yesno" role="radiogroup" aria-label={currentQuestion.label}>
-              <button type="button" className="checkin-yesno-btn" onClick={() => handleAnswerYesNo(true)} disabled={isSubmitting}>
-                Yes
-              </button>
-              <button type="button" className="checkin-yesno-btn" onClick={() => handleAnswerYesNo(false)} disabled={isSubmitting}>
-                No
+
+            <div className="checkin-question">
+              <span className="checkin-question-label">
+                {currentQuestion.label}
+                {currentQuestion.hint ? <span className="checkin-question-hint">{currentQuestion.hint}</span> : null}
+              </span>
+
+              {currentQuestion.type === 'scale' ? (
+                <div className="checkin-scale" role="radiogroup" aria-label={currentQuestion.label}>
+                  {SCALE_VALUES.map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      className="checkin-scale-btn"
+                      onClick={() => handleAnswerScale(n)}
+                      disabled={isSubmitting}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="checkin-yesno" role="radiogroup" aria-label={currentQuestion.label}>
+                  <button type="button" className="checkin-yesno-btn" onClick={() => handleAnswerYesNo(true)} disabled={isSubmitting}>
+                    Yes
+                  </button>
+                  <button type="button" className="checkin-yesno-btn" onClick={() => handleAnswerYesNo(false)} disabled={isSubmitting}>
+                    No
+                  </button>
+                </div>
+              )}
+
+              <button
+                type="button"
+                className="checkin-question-skip"
+                onClick={() => (currentQuestion.type === 'scale' ? handleAnswerScale(null) : handleAnswerYesNo(null))}
+                disabled={isSubmitting}
+              >
+                Skip this question
               </button>
             </div>
-          )}
 
-          <button
-            type="button"
-            className="checkin-question-skip"
-            onClick={() => (currentQuestion.type === 'scale' ? handleAnswerScale(null) : handleAnswerYesNo(null))}
-            disabled={isSubmitting}
-          >
-            Skip this question
-          </button>
-        </div>
-
-        {isSubmitting && <p className="checkin-submitting-label">Saving...</p>}
+            {isSubmitting && <p className="checkin-submitting-label">Saving...</p>}
+          </>
+        )}
       </div>
     </div>
   );

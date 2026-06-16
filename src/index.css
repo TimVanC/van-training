@@ -1086,13 +1086,21 @@ body {
 
 .checkin-skip-all {
   font-size: 0.8rem;
+  font-weight: 600;
   color: var(--text-secondary);
-  background: none;
-  border: none;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem;
   cursor: pointer;
-  text-decoration: underline;
+  text-decoration: none;
   white-space: nowrap;
-  padding: 0;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.checkin-skip-all:hover:not(:disabled) {
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
 }
 
 .checkin-progress {
@@ -1123,14 +1131,17 @@ body {
 }
 
 .checkin-question-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
   font-size: 1rem;
   font-weight: 700;
   text-align: center;
 }
 
 .checkin-question-hint {
-  font-size: 0.8rem;
   font-weight: 400;
+  font-size: 0.8rem;
   color: var(--text-secondary);
 }
 
@@ -1180,12 +1191,21 @@ body {
 .checkin-question-skip {
   align-self: center;
   font-size: 0.8rem;
+  font-weight: 600;
   color: var(--text-secondary);
-  background: none;
-  border: none;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.35rem 0.9rem;
   cursor: pointer;
-  text-decoration: underline;
-  padding: 0;
+  text-decoration: none;
+  margin-top: 0.25rem;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.checkin-question-skip:hover:not(:disabled) {
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
 }
 
 .checkin-submitting-label {
@@ -1193,6 +1213,19 @@ body {
   font-size: 0.85rem;
   color: var(--text-secondary);
   margin: 0;
+}
+
+.checkin-done {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 0;
+}
+
+.checkin-done-message {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--accent);
 }
 
 .page-header-row {
