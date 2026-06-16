@@ -1236,20 +1236,89 @@ body {
 .page-header-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 0.75rem;
   margin-bottom: 0.5rem;
 }
 
-.settings-gear-button {
+.hamburger-button {
   background: none;
   border: none;
-  font-size: 1.4rem;
-  line-height: 1;
+  color: var(--text-primary);
   cursor: pointer;
-  padding: 0.25rem 0.5rem;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
 }
 
-.nav-button--danger {
+.settings-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 300;
+  display: flex;
+}
+
+.settings-drawer {
+  width: min(80vw, 300px);
+  height: 100%;
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  animation: settings-drawer-slide-in 0.18s ease-out;
+}
+
+@keyframes settings-drawer-slide-in {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+.settings-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.settings-drawer-header h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.settings-drawer-close {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+}
+
+.settings-drawer-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.settings-drawer-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+
+.settings-drawer-item--danger {
   border-color: #dc2626;
   color: #dc2626;
 }

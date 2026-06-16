@@ -9,7 +9,6 @@ import Swim from './pages/Swim';
 import Analytics from './pages/Analytics';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
-import Settings from './pages/Settings';
 import { supabase } from './utils/supabaseClient';
 import { getCurrentUser } from './utils/auth';
 import { ensureUserSetup } from './utils/ensureUserSetup';
@@ -84,7 +83,6 @@ function App(): React.JSX.Element {
       <Route path="/bike" element={user ? <Bike /> : <Navigate to="/login" replace />} />
       <Route path="/swim" element={user ? <Swim /> : <Navigate to="/login" replace />} />
       <Route path="/analytics" element={user ? <Analytics /> : <Navigate to="/login" replace />} />
-      <Route path="/settings" element={user ? <Settings /> : <Navigate to="/login" replace />} />
       <Route path="*" element={<Navigate to={user ? '/' : '/login'} replace />} />
     </Routes>
   );
