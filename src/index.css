@@ -130,15 +130,15 @@ body {
 }
 
 .nav-button.nav-button--finish-ready {
-  background-color: #bbf7d0;
-  color: #065f46;
-  border-color: #86efac;
+  background-color: var(--accent-blue);
+  color: #ffffff;
+  border-color: var(--accent-blue);
 }
 
 .nav-button.nav-button--finish-ready:hover:not(:disabled) {
-  background-color: #86efac;
-  border-color: #4ade80;
-  color: #065f46;
+  background-color: var(--accent-blue-hover);
+  border-color: var(--accent-blue-hover);
+  color: #ffffff;
 }
 
 .exercise-list {
@@ -196,12 +196,12 @@ body {
 }
 
 .exercise-card--completed {
-  border-color: var(--success);
-  background-color: rgba(34, 197, 94, 0.12);
+  border-color: var(--accent);
+  background-color: rgba(245, 132, 38, 0.12);
 }
 
 .exercise-card--completed:hover {
-  border-color: var(--success);
+  border-color: var(--accent);
 }
 
 .exercise-name {
@@ -572,16 +572,17 @@ body {
   font-size: 1.25rem;
   font-weight: 600;
   font-family: inherit;
-  border: 1px solid var(--success);
+  border: 1px solid var(--accent-blue);
   border-radius: var(--radius);
-  background-color: var(--success);
+  background-color: var(--accent-blue);
   color: #ffffff;
   cursor: pointer;
   transition: background-color var(--transition), border-color var(--transition), opacity var(--transition);
 }
 
 .submit-button:hover:not(:disabled) {
-  filter: brightness(1.1);
+  background-color: var(--accent-blue-hover);
+  border-color: var(--accent-blue-hover);
 }
 
 .submit-button:focus-visible {
@@ -1006,7 +1007,7 @@ body {
 
 .progress-bar-fill {
   height: 100%;
-  background-color: var(--success);
+  background-color: var(--accent);
   border-radius: var(--radius);
   transition: width 0.2s ease;
 }
