@@ -1194,11 +1194,23 @@ body {
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.12s, border-color 0.12s;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
 
-.checkin-scale-btn:hover {
-  border-color: var(--accent, #3b82f6);
+.checkin-scale-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.checkin-scale-btn:active:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1a0d00;
+}
+
+.checkin-scale-btn:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+  box-shadow: none;
 }
 
 .checkin-yesno {
@@ -1216,10 +1228,23 @@ body {
   font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
 
-.checkin-yesno-btn:hover {
-  border-color: var(--accent, #3b82f6);
+.checkin-yesno-btn:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.checkin-yesno-btn:active:not(:disabled) {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #1a0d00;
+}
+
+.checkin-yesno-btn:focus-visible {
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+  box-shadow: none;
 }
 
 .checkin-question-skip {
