@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { supabase } from '../utils/supabaseClient';
 
 function Signup(): React.JSX.Element {
   const navigate = useNavigate();
@@ -32,7 +33,18 @@ function Signup(): React.JSX.Element {
         return;
       }
 
-      navigate('/login');
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (signInError) {
+        // Account was created but auto-login failed — fall back to login screen.
+        navigate('/login');
+        return;
+      }
+
+      navigate('/');
     } catch {
       setError('Signup failed');
     } finally {

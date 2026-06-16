@@ -124,7 +124,7 @@ function SetLoggingForm({
 }: SetLoggingFormProps): React.JSX.Element {
   const dis = isSubmitting;
   const isPlates = inputMode === 'plates';
-  const showWeightInput = !isPlates || editingIndex !== null;
+  const showWeightInput = !isPlates;
 
   function renderSetSummary(set: LoggedSet, index: number): React.JSX.Element {
     const plateData = set.plateData ?? (

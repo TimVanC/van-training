@@ -1232,3 +1232,24 @@ body {
   flex-direction: column;
   gap: 0.5rem;
 }
+
+.page-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.settings-gear-button {
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+}
+
+.nav-button--danger {
+  border-color: #dc2626;
+  color: #dc2626;
+}

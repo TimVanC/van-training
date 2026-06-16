@@ -124,12 +124,12 @@ function LiftContainer(): React.JSX.Element {
         <Route path=":splitName/:dayName" element={
           session
             ? <ExerciseList session={session} onUpdateSession={handleUpdateSession} onSubmit={handleSubmit} isSubmitting={isSubmitting} submitError={submitError ?? undefined} onRetry={handleSubmit} />
-            : navigatingToHome || showCheckin ? <Navigate to="/" replace /> : <Navigate to="/lift" replace />
+            : navigatingToHome ? <Navigate to="/" replace /> : <Navigate to="/lift" replace />
         } />
         <Route path=":splitName/:dayName/:exerciseIndex" element={
           session
             ? <ExerciseLogging session={session} onUpdateSession={handleUpdateSession} />
-            : navigatingToHome || showCheckin ? <Navigate to="/" replace /> : <Navigate to="/lift" replace />
+            : navigatingToHome ? <Navigate to="/" replace /> : <Navigate to="/lift" replace />
         } />
       </Routes>
       {showCheckin && checkinContext && (
