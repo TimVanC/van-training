@@ -55,11 +55,6 @@ interface ChartTooltipProps {
   payload?: ReadonlyArray<{ payload?: TopSetChartRow }>;
 }
 
-const tableCellStyle: React.CSSProperties = {
-  padding: '0.5rem 0.75rem',
-  textAlign: 'left',
-};
-
 const numberFormatter = new Intl.NumberFormat('en-US');
 const dateRangeOptions: Array<{ value: DateRangeKey; label: string }> = [
   { value: '30D', label: '30D' },
@@ -68,30 +63,9 @@ const dateRangeOptions: Array<{ value: DateRangeKey; label: string }> = [
   { value: '1Y', label: '1Y' },
   { value: 'ALL', label: 'All' },
 ];
-const tooltipPanelStyle: React.CSSProperties = {
-  background: '#111827',
-  border: '1px solid #1f2937',
-  borderRadius: 8,
-  padding: '0.75rem',
-  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
-  lineHeight: 1.5,
-};
-const tooltipTitleStyle: React.CSSProperties = {
-  margin: 0,
-  color: '#ffffff',
-  fontWeight: 600,
-};
-const tooltipBodyStyle: React.CSSProperties = {
-  margin: '0.5rem 0 0',
-  color: '#d1d5db',
-  lineHeight: 1.5,
-};
-const tooltipLabelStyle: React.CSSProperties = {
-  color: '#9ca3af',
-};
 const chartContainerStyle: React.CSSProperties = {
   width: '100%',
-  maxWidth: 1080,
+  maxWidth: '100%',
   height: 'clamp(220px, 42vw, 300px)',
 };
 const chartLineMargin = { top: 8, right: 4, left: 4, bottom: 18 };
@@ -346,10 +320,11 @@ function Analytics(): React.JSX.Element {
     <div className="page">
       <h1>Analytics</h1>
 
-      <div ref={containerRef} style={{ width: '100%', maxWidth: 560, position: 'relative' }}>
+      <div ref={containerRef} className="analytics-field-group">
         <label htmlFor="exercise-selector">Exercise</label>
         <input
           id="exercise-selector"
+          className="input-field"
           type="text"
           placeholder={loadingExercises ? 'Loading exercises...' : 'Search exercises'}
           value={searchText}
@@ -360,36 +335,15 @@ function Analytics(): React.JSX.Element {
           autoComplete="off"
         />
         {dropdownOpen && (
-          <div
-            style={{
-              position: 'absolute',
-              top: '100%',
-              left: 0,
-              right: 0,
-              background: '#fff',
-              border: '1px solid #ddd',
-              borderRadius: 8,
-              marginTop: 4,
-              maxHeight: 240,
-              overflowY: 'auto',
-              zIndex: 10,
-            }}
-          >
+          <div className="analytics-dropdown">
             {filteredExercises.length === 0 ? (
-              <div style={{ padding: '0.5rem 0.75rem' }}>No matching exercises</div>
+              <div className="analytics-dropdown-empty">No matching exercises</div>
             ) : (
               filteredExercises.map((exercise) => (
                 <button
                   key={exercise}
                   type="button"
-                  style={{
-                    width: '100%',
-                    textAlign: 'left',
-                    padding: '0.5rem 0.75rem',
-                    border: 'none',
-                    background: selectedExercise === exercise ? '#f1f5ff' : 'transparent',
-                    cursor: 'pointer',
-                  }}
+                  className={`analytics-dropdown-item ${selectedExercise === exercise ? 'analytics-dropdown-item--selected' : ''}`}
                   onClick={() => handleSelectExercise(exercise)}
                 >
                   {exercise}
@@ -400,10 +354,11 @@ function Analytics(): React.JSX.Element {
         )}
       </div>
 
-      <div style={{ width: '100%', maxWidth: 560 }}>
+      <div className="analytics-field-group">
         <label htmlFor="analytics-date-range">Date range</label>
         <select
           id="analytics-date-range"
+          className="input-field"
           value={dateRange}
           onChange={(e) => setDateRange(e.target.value as DateRangeKey)}
           disabled={loadingAnalytics}
@@ -416,273 +371,235 @@ function Analytics(): React.JSX.Element {
         </select>
       </div>
 
-      {!selectedExercise && <p>Select an exercise to view progression.</p>}
-      {loadingAnalytics && <p>Loading...</p>}
+      {!selectedExercise && <p className="analytics-empty-state">Select an exercise to view progression.</p>}
+      {loadingAnalytics && <p className="analytics-empty-state">Loading...</p>}
       {!loadingAnalytics && selectedExercise && sessions !== null && sessions.length === 0 && (
-        <p>No data found</p>
+        <p className="analytics-empty-state">No data found</p>
       )}
       {!loadingAnalytics && sessions !== null && sessions.length > 0 && (
         <>
-          <h2>Top Set Summary</h2>
-          <div style={{ width: '100%', maxWidth: 720 }}>
-            <p style={{ margin: '0.25rem 0' }}>
-              Current top set:{' '}
-              {topSetSummary.current
-                ? `${numberFormatter.format(topSetSummary.current.topSetWeight)} x ${topSetSummary.current.topSetReps}`
-                : '-'}
-            </p>
-            <p style={{ margin: '0.25rem 0' }}>
-              Previous top set:{' '}
-              {topSetSummary.previous
-                ? `${numberFormatter.format(topSetSummary.previous.topSetWeight)} x ${topSetSummary.previous.topSetReps}`
-                : '-'}
-            </p>
-            <p style={{ margin: '0.25rem 0' }}>Change: {topSetSummary.changeText}</p>
+          <div className="analytics-card">
+            <h2 className="analytics-section-title">Top Set Summary</h2>
+            <div className="analytics-summary-row">
+              <span>Current top set</span>
+              <strong>
+                {topSetSummary.current
+                  ? `${numberFormatter.format(topSetSummary.current.topSetWeight)} x ${topSetSummary.current.topSetReps}`
+                  : '-'}
+              </strong>
+            </div>
+            <div className="analytics-summary-row">
+              <span>Previous top set</span>
+              <strong>
+                {topSetSummary.previous
+                  ? `${numberFormatter.format(topSetSummary.previous.topSetWeight)} x ${topSetSummary.previous.topSetReps}`
+                  : '-'}
+              </strong>
+            </div>
+            <div className="analytics-summary-row">
+              <span>Change</span>
+              <strong>{topSetSummary.changeText}</strong>
+            </div>
           </div>
 
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              position: 'relative',
-              width: 'fit-content',
-            }}
-          >
-            <h2 style={{ margin: 0 }}>Top Set Strength</h2>
-            <button
-              type="button"
-              aria-label="What is Top Set Strength?"
-              onMouseEnter={() => setShowStrengthInfo(true)}
-              onMouseLeave={() => setShowStrengthInfo(false)}
-              onFocus={() => setShowStrengthInfo(true)}
-              onBlur={() => setShowStrengthInfo(false)}
-              onClick={() => setShowStrengthInfo((prev) => !prev)}
-              style={{
-                width: 22,
-                height: 22,
-                borderRadius: '50%',
-                border: '1px solid #cbd5e1',
-                background: '#fff',
-                color: '#334155',
-                fontSize: '0.85rem',
-                lineHeight: 1,
-                cursor: 'pointer',
-                padding: 0,
-              }}
-            >
-              i
-            </button>
-            {showStrengthInfo && (
-              <div
-                role="tooltip"
-                style={{
-                  position: 'absolute',
-                  top: '110%',
-                  left: 0,
-                  zIndex: 20,
-                  width: 300,
-                  maxWidth: '90vw',
-                  ...tooltipPanelStyle,
-                }}
+          <div className="analytics-card">
+            <div className="analytics-chart-header">
+              <h2 className="analytics-section-title">Top Set Strength</h2>
+              <button
+                type="button"
+                className="analytics-info-button"
+                aria-label="What is Top Set Strength?"
+                onMouseEnter={() => setShowStrengthInfo(true)}
+                onMouseLeave={() => setShowStrengthInfo(false)}
+                onFocus={() => setShowStrengthInfo(true)}
+                onBlur={() => setShowStrengthInfo(false)}
+                onClick={() => setShowStrengthInfo((prev) => !prev)}
               >
-                <p style={tooltipTitleStyle}>What is this?</p>
-                <p style={tooltipBodyStyle}>
-                  We estimate your strength from your best set.
-                </p>
-                <p style={tooltipBodyStyle}>
-                  More reps at the same weight = stronger.
-                </p>
-                <p style={tooltipBodyStyle}>
-                  Example: 90 x 10 is stronger than 90 x 8.
-                </p>
-                <p style={tooltipBodyStyle}>
-                  We convert that into one number so your progress is easy to see.
-                </p>
-              </div>
-            )}
-          </div>
-          <div style={chartContainerStyle}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartRows} margin={chartLineMargin}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="shortDate" interval="preserveStartEnd" minTickGap={28} tickMargin={10} height={36} />
-                <YAxis domain={[0, topSetAxisUpper]} width={50} />
-                <Tooltip
-                  cursor={{ stroke: '#374151', strokeWidth: 1 }}
-                  content={({ active, payload }: ChartTooltipProps) => {
-                    if (!active || !payload || payload.length === 0) return null;
-                    const row = payload[0]?.payload;
-                    if (!row) return null;
-                    return (
-                      <div style={tooltipPanelStyle}>
-                        <p style={tooltipTitleStyle}>{row.date}</p>
-                        <p style={tooltipBodyStyle}>
-                          <span style={tooltipLabelStyle}>Top Set:</span> {numberFormatter.format(row.topSetWeight)} x {row.topSetReps}{' '}
-                          <span style={tooltipLabelStyle}>@ RIR</span> {formatRir(row.topSetRir)}
-                        </p>
-                        <p style={tooltipBodyStyle}>
-                          <span style={tooltipLabelStyle}>Strength:</span>{' '}
-                          {numberFormatter.format(Number(row.topSetStrength.toFixed(1)))}
-                        </p>
-                        {row.isPr && <p style={tooltipBodyStyle}>PR ✔</p>}
-                      </div>
-                    );
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="topSetStrength"
-                  name="Top Set Strength"
-                  stroke="#8884d8"
-                  dot={(props: DotRendererProps) => {
-                    if (props.cx == null || props.cy == null || !props.payload) return null;
-                    const isPr = props.payload.isPr;
-                    return (
-                      <circle
-                        cx={props.cx}
-                        cy={props.cy}
-                        r={getRepDotRadius(props.payload.topSetReps) + (isPr ? 1.5 : 0)}
-                        fill={isPr ? '#22c55e' : '#8884d8'}
-                        stroke={isPr ? '#86efac' : '#ffffff'}
-                        strokeWidth={isPr ? 2 : 1.5}
-                        style={isPr ? { filter: 'drop-shadow(0 0 6px rgba(34, 197, 94, 0.55))' } : undefined}
-                      />
-                    );
-                  }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-
-          <h2>Rep PR by Weight</h2>
-          <ul style={{ marginTop: 0, paddingLeft: '1.25rem' }}>
-            {filteredRepPrs.map((entry) => (
-              <li key={`${entry.weight}-${entry.maxReps}`}>
-                {numberFormatter.format(entry.weight)} lbs {'->'} {entry.maxReps} reps
-              </li>
-            ))}
-          </ul>
-
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              position: 'relative',
-              width: 'fit-content',
-            }}
-          >
-            <h2 style={{ margin: 0 }}>Volume Trend</h2>
-            <button
-              type="button"
-              aria-label="What is volume?"
-              onMouseEnter={() => setShowVolumeInfo(true)}
-              onMouseLeave={() => setShowVolumeInfo(false)}
-              onFocus={() => setShowVolumeInfo(true)}
-              onBlur={() => setShowVolumeInfo(false)}
-              onClick={() => setShowVolumeInfo((prev) => !prev)}
-              style={{
-                width: 22,
-                height: 22,
-                borderRadius: '50%',
-                border: '1px solid #cbd5e1',
-                background: '#fff',
-                color: '#334155',
-                fontSize: '0.85rem',
-                lineHeight: 1,
-                cursor: 'pointer',
-                padding: 0,
-              }}
-            >
-              i
-            </button>
-            {showVolumeInfo && (
-              <div
-                role="tooltip"
-                style={{
-                  position: 'absolute',
-                  top: '110%',
-                  left: 0,
-                  zIndex: 20,
-                  width: 300,
-                  maxWidth: '90vw',
-                  ...tooltipPanelStyle,
-                }}
-              >
-                <p style={tooltipTitleStyle}>What is volume?</p>
-                <p style={tooltipBodyStyle}>
-                  Volume is the total work you did in a workout.
-                </p>
-                <p style={tooltipBodyStyle}>
-                  We calculate it as: weight x reps for every set.
-                </p>
-                <p style={tooltipBodyStyle}>
-                  Higher volume means more total workload.
-                </p>
-              </div>
-            )}
-          </div>
-          <div style={chartContainerStyle}>
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartRows} margin={chartLineMargin}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="shortDate" interval="preserveStartEnd" minTickGap={28} tickMargin={10} height={36} />
-                <YAxis domain={[0, volumeAxisUpper]} width={50} />
-                <Tooltip
-                  cursor={{ stroke: '#374151', strokeWidth: 1 }}
-                  content={({ active, payload }: ChartTooltipProps) => {
-                    if (!active || !payload || payload.length === 0) return null;
-                    const row = payload[0]?.payload;
-                    if (!row) return null;
-                    return (
-                      <div style={tooltipPanelStyle}>
-                        <p style={tooltipTitleStyle}>{row.date}</p>
-                        <p style={tooltipBodyStyle}>
-                          <span style={tooltipLabelStyle}>Total Volume:</span>{' '}
-                          {numberFormatter.format(Math.round(row.totalVolume))}
-                        </p>
-                      </div>
-                    );
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="totalVolume"
-                  name="Total Volume"
-                  stroke="#82ca9d"
-                  dot
-                />
-              </LineChart>
-            </ResponsiveContainer>
+                i
+              </button>
+              {showStrengthInfo && (
+                <div
+                  role="tooltip"
+                  className="analytics-tooltip-panel"
+                  style={{ position: 'absolute', top: '110%', left: 0, zIndex: 20, width: 300, maxWidth: '90vw' }}
+                >
+                  <p className="analytics-tooltip-title">What is this?</p>
+                  <p className="analytics-tooltip-body">
+                    We estimate your strength from your best set.
+                  </p>
+                  <p className="analytics-tooltip-body">
+                    More reps at the same weight = stronger.
+                  </p>
+                  <p className="analytics-tooltip-body">
+                    Example: 90 x 10 is stronger than 90 x 8.
+                  </p>
+                  <p className="analytics-tooltip-body">
+                    We convert that into one number so your progress is easy to see.
+                  </p>
+                </div>
+              )}
+            </div>
+            <div style={chartContainerStyle}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartRows} margin={chartLineMargin}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="shortDate" interval="preserveStartEnd" minTickGap={28} tickMargin={10} height={36} tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} stroke="var(--border)" />
+                  <YAxis domain={[0, topSetAxisUpper]} width={50} tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} stroke="var(--border)" />
+                  <Tooltip
+                    cursor={{ stroke: 'var(--border)', strokeWidth: 1 }}
+                    content={({ active, payload }: ChartTooltipProps) => {
+                      if (!active || !payload || payload.length === 0) return null;
+                      const row = payload[0]?.payload;
+                      if (!row) return null;
+                      return (
+                        <div className="analytics-tooltip-panel">
+                          <p className="analytics-tooltip-title">{row.date}</p>
+                          <p className="analytics-tooltip-body">
+                            <span className="analytics-tooltip-label">Top Set:</span> {numberFormatter.format(row.topSetWeight)} x {row.topSetReps}{' '}
+                            <span className="analytics-tooltip-label">@ RIR</span> {formatRir(row.topSetRir)}
+                          </p>
+                          <p className="analytics-tooltip-body">
+                            <span className="analytics-tooltip-label">Strength:</span>{' '}
+                            {numberFormatter.format(Number(row.topSetStrength.toFixed(1)))}
+                          </p>
+                          {row.isPr && <p className="analytics-tooltip-body">PR ✔</p>}
+                        </div>
+                      );
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="topSetStrength"
+                    name="Top Set Strength"
+                    stroke="var(--accent)"
+                    dot={(props: DotRendererProps) => {
+                      if (props.cx == null || props.cy == null || !props.payload) return null;
+                      const isPr = props.payload.isPr;
+                      return (
+                        <circle
+                          cx={props.cx}
+                          cy={props.cy}
+                          r={getRepDotRadius(props.payload.topSetReps) + (isPr ? 1.5 : 0)}
+                          fill={isPr ? '#22c55e' : 'var(--accent)'}
+                          stroke={isPr ? '#86efac' : 'var(--bg-primary)'}
+                          strokeWidth={isPr ? 2 : 1.5}
+                          style={isPr ? { filter: 'drop-shadow(0 0 6px rgba(34, 197, 94, 0.55))' } : undefined}
+                        />
+                      );
+                    }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
           </div>
 
-          <p style={{ margin: '0.5rem 0 1rem', color: '#475569' }}>
-            Frequency: {frequencyPerWeek.toFixed(1)}x per week
-          </p>
-
-          <h2>Recent Sessions</h2>
-          <table style={{ borderCollapse: 'separate', borderSpacing: 0, width: '100%', maxWidth: 720 }}>
-            <thead>
-              <tr>
-                <th style={tableCellStyle}>Date</th>
-                <th style={tableCellStyle}>Top Set</th>
-                <th style={tableCellStyle}>Total Volume</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tableRows.map((row) => (
-                <tr key={row.sessionId}>
-                  <td style={tableCellStyle}>{row.date}</td>
-                  <td style={tableCellStyle}>
-                    {numberFormatter.format(row.topSetWeight)} x {row.topSetReps} @ RIR{' '}
-                    {formatRir(row.topSetRir)}
-                  </td>
-                  <td style={tableCellStyle}>{numberFormatter.format(Math.round(row.totalVolume))}</td>
-                </tr>
+          <div className="analytics-card">
+            <h2 className="analytics-section-title">Rep PR by Weight</h2>
+            <ul className="analytics-rep-pr-list">
+              {filteredRepPrs.map((entry) => (
+                <li key={`${entry.weight}-${entry.maxReps}`}>
+                  {numberFormatter.format(entry.weight)} lbs {'->'} {entry.maxReps} reps
+                </li>
               ))}
-            </tbody>
-          </table>
+            </ul>
+          </div>
+
+          <div className="analytics-card">
+            <div className="analytics-chart-header">
+              <h2 className="analytics-section-title">Volume Trend</h2>
+              <button
+                type="button"
+                className="analytics-info-button"
+                aria-label="What is volume?"
+                onMouseEnter={() => setShowVolumeInfo(true)}
+                onMouseLeave={() => setShowVolumeInfo(false)}
+                onFocus={() => setShowVolumeInfo(true)}
+                onBlur={() => setShowVolumeInfo(false)}
+                onClick={() => setShowVolumeInfo((prev) => !prev)}
+              >
+                i
+              </button>
+              {showVolumeInfo && (
+                <div
+                  role="tooltip"
+                  className="analytics-tooltip-panel"
+                  style={{ position: 'absolute', top: '110%', left: 0, zIndex: 20, width: 300, maxWidth: '90vw' }}
+                >
+                  <p className="analytics-tooltip-title">What is volume?</p>
+                  <p className="analytics-tooltip-body">
+                    Volume is the total work you did in a workout.
+                  </p>
+                  <p className="analytics-tooltip-body">
+                    We calculate it as: weight x reps for every set.
+                  </p>
+                  <p className="analytics-tooltip-body">
+                    Higher volume means more total workload.
+                  </p>
+                </div>
+              )}
+            </div>
+            <div style={chartContainerStyle}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={chartRows} margin={chartLineMargin}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="shortDate" interval="preserveStartEnd" minTickGap={28} tickMargin={10} height={36} tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} stroke="var(--border)" />
+                  <YAxis domain={[0, volumeAxisUpper]} width={50} tick={{ fill: 'var(--text-secondary)', fontSize: 12 }} stroke="var(--border)" />
+                  <Tooltip
+                    cursor={{ stroke: 'var(--border)', strokeWidth: 1 }}
+                    content={({ active, payload }: ChartTooltipProps) => {
+                      if (!active || !payload || payload.length === 0) return null;
+                      const row = payload[0]?.payload;
+                      if (!row) return null;
+                      return (
+                        <div className="analytics-tooltip-panel">
+                          <p className="analytics-tooltip-title">{row.date}</p>
+                          <p className="analytics-tooltip-body">
+                            <span className="analytics-tooltip-label">Total Volume:</span>{' '}
+                            {numberFormatter.format(Math.round(row.totalVolume))}
+                          </p>
+                        </div>
+                      );
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="totalVolume"
+                    name="Total Volume"
+                    stroke="var(--accent-blue)"
+                    dot
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            <p className="analytics-frequency-note">
+              Frequency: {frequencyPerWeek.toFixed(1)}x per week
+            </p>
+          </div>
+
+          <div className="analytics-card">
+            <h2 className="analytics-section-title">Recent Sessions</h2>
+            <table className="analytics-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Top Set</th>
+                  <th>Total Volume</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tableRows.map((row) => (
+                  <tr key={row.sessionId}>
+                    <td>{row.date}</td>
+                    <td>
+                      {numberFormatter.format(row.topSetWeight)} x {row.topSetReps} @ RIR{' '}
+                      {formatRir(row.topSetRir)}
+                    </td>
+                    <td>{numberFormatter.format(Math.round(row.totalVolume))}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </>
       )}
     </div>

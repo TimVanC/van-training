@@ -1378,3 +1378,211 @@ body {
   border-color: #dc2626;
   color: #dc2626;
 }
+
+.analytics-card {
+  width: 100%;
+  max-width: 720px;
+  background: var(--bg-surface);
+  border: 1.5px solid var(--accent-blue);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.analytics-section-title {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  margin: 0 0 0.85rem 0;
+}
+
+.analytics-field-group {
+  width: 100%;
+  max-width: 560px;
+  margin-bottom: 1rem;
+  position: relative;
+}
+
+.analytics-field-group label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 0.35rem;
+}
+
+.analytics-field-group .input-field {
+  width: 100%;
+}
+
+.analytics-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background: var(--bg-surface);
+  border: 1.5px solid var(--accent-blue);
+  border-radius: var(--radius);
+  margin-top: 4px;
+  max-height: 240px;
+  overflow-y: auto;
+  box-shadow: var(--shadow-card);
+}
+
+.analytics-dropdown-empty {
+  padding: 0.6rem 0.85rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.analytics-dropdown-item {
+  width: 100%;
+  text-align: left;
+  padding: 0.6rem 0.85rem;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.analytics-dropdown-item:hover,
+.analytics-dropdown-item--selected {
+  background: rgba(245, 132, 38, 0.12);
+}
+
+.analytics-empty-state {
+  width: 100%;
+  max-width: 560px;
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.analytics-summary-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.analytics-summary-row:last-child {
+  border-bottom: none;
+}
+
+.analytics-summary-row strong {
+  color: var(--text-primary);
+}
+
+.analytics-chart-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  position: relative;
+  width: fit-content;
+  margin-bottom: 0.85rem;
+}
+
+.analytics-chart-header .analytics-section-title {
+  margin: 0;
+}
+
+.analytics-info-button {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--accent-blue);
+  background: var(--bg-primary);
+  color: var(--accent-blue);
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.analytics-tooltip-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--accent-blue);
+  border-radius: var(--radius);
+  padding: 0.75rem;
+  box-shadow: var(--shadow-card);
+  line-height: 1.5;
+}
+
+.analytics-tooltip-title {
+  margin: 0;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.analytics-tooltip-body {
+  margin: 0.5rem 0 0;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.analytics-tooltip-label {
+  color: var(--text-secondary);
+}
+
+.analytics-rep-pr-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--text-primary);
+}
+
+.analytics-rep-pr-list li {
+  padding: 0.2rem 0;
+}
+
+.analytics-frequency-note {
+  margin: 0.5rem 0 0;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.analytics-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+}
+
+.analytics-table th {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+}
+
+.analytics-table td {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border);
+}
+
+.analytics-table tr:last-child td {
+  border-bottom: none;
+}
+
+@media (max-width: 600px) {
+  .analytics-table {
+    font-size: 0.8rem;
+  }
+  .analytics-table th,
+  .analytics-table td {
+    padding: 0.4rem 0.5rem;
+  }
+}
