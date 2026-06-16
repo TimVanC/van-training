@@ -382,8 +382,9 @@ body {
   align-items: center;
   justify-content: center;
   width: 2.75rem;
+  height: 2.75rem;
   padding: 0;
-  background: transparent;
+  background: var(--bg-surface);
   border: none;
   border-radius: var(--radius);
   cursor: pointer;
@@ -401,8 +402,6 @@ body {
 .recent-lifts-history-tab:focus-visible {
   outline: 2px solid var(--accent-blue);
   outline-offset: 2px;
-  background: var(--bg-surface);
-  color: var(--text-secondary);
   box-shadow: none;
 }
 
