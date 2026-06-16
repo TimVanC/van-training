@@ -374,8 +374,6 @@ body {
 
 .recent-lifts-header-row .recent-lifts-header {
   flex: 1;
-  border-right: none;
-  border-radius: var(--radius) 0 0 var(--radius);
 }
 
 .recent-lifts-history-tab {
@@ -446,8 +444,7 @@ body {
   font-weight: 500;
   color: var(--text-secondary);
   background: none;
-  border: 1.5px solid var(--accent-blue);
-  border-radius: var(--radius);
+  border: none;
   cursor: pointer;
   transition: color var(--transition);
 }
