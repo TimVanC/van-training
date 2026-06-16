@@ -1288,6 +1288,13 @@ body {
   background: var(--bg-surface);
 }
 
+.trophy-icon {
+  display: block;
+  width: 90px;
+  height: auto;
+  margin: 0 auto 1.5rem auto;
+}
+
 .settings-drawer-overlay {
   position: fixed;
   inset: 0;

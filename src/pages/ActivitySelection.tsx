@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { ActivityType } from '../types/activity';
 import { supabase } from '../utils/supabaseClient';
+import trophyIcon from '../assets/larry-obrien-icon.png';
 
 const activities: ActivityType[] = ['Lift', 'Run', 'Bike', 'Swim'];
 
@@ -59,6 +60,7 @@ function ActivitySelection(): React.JSX.Element {
         </button>
         <h1>Van Training</h1>
       </div>
+      <img src={trophyIcon} alt="" className="trophy-icon" />
       <div className="activity-list">
         {activities.map((activity) => (
           <button key={activity} className="activity-button" onClick={() => handleSelect(activity)}>
