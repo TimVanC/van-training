@@ -7,7 +7,7 @@ import LoadingOverlay from '../components/LoadingOverlay';
 import IncompleteSetModal from '../components/IncompleteSetModal';
 import RecentLiftsSection from '../components/RecentLiftsSection';
 import { exerciseAlternates } from '../data/exerciseAlternates';
-import { isSledExercise, supportsAssistedMode } from '../data/plateModeExercises';
+import { isSledExercise, supportsAssistedMode, usesPlateInputMode } from '../data/plateModeExercises';
 import { validateLiftWeight, validateReps } from '../utils/validateSetInput';
 import { supabase } from '../utils/supabaseClient';
 
@@ -240,7 +240,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     };
   }, [exercise?.name, session.startedAt]);
 
-  const inputMode = exercise?.inputMode ?? 'weight';
+  const inputMode: 'weight' | 'plates' = usesPlateInputMode(selectedExerciseName) ? 'plates' : 'weight';
   const isPlatesMode = inputMode === 'plates';
   const showSledInput = isPlatesMode && isSledExercise(selectedExerciseName);
   const showAssistedToggle = !isPlatesMode && supportsAssistedMode(selectedExerciseName);
@@ -380,6 +380,19 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
       i === index ? { ...ex, activeName: nextExercise } : ex,
     );
     onUpdateSession({ ...session, exercises: updated });
+
+    const willBePlatesMode = usesPlateInputMode(nextExercise);
+    setWeight('');
+    setIsAssisted(false);
+    setPlate45('');
+    setPlate35('');
+    setPlate25('');
+    setPlate10('');
+    setPlate5('');
+    setPlate2_5('');
+    setActivePlates(new Set(['45']));
+    setSled(willBePlatesMode && isSledExercise(nextExercise) ? '100' : '');
+    setEditingIndex(null);
   }
 
   async function ensureExerciseIdByName(exerciseName: string): Promise<string | null> {
