@@ -381,30 +381,29 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 0.65rem;
-  background: var(--bg-surface);
-  border: 1.5px solid var(--accent-blue);
-  border-left: none;
-  border-radius: 0 var(--radius) var(--radius) 0;
+  width: 2.75rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius);
   cursor: pointer;
-  color: var(--accent-blue);
-  transition: background var(--transition), border-color var(--transition), color var(--transition);
+  color: var(--text-secondary);
+  transition: background var(--transition), color var(--transition);
   flex-shrink: 0;
 }
 
 .recent-lifts-history-tab:hover,
-.recent-lifts-history-tab--open,
-.recent-lifts-history-tab:active {
+.recent-lifts-history-tab--open {
   background: var(--accent);
-  border-color: var(--accent);
   color: #1a0d00;
 }
 
 .recent-lifts-history-tab:focus-visible {
-  outline: none;
-  background: var(--accent);
-  color: #fff;
-  box-shadow: 0 0 0 3px var(--accent-focus);
+  outline: 2px solid var(--accent-blue);
+  outline-offset: 2px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  box-shadow: none;
 }
 
 .recent-lifts-history-panel {

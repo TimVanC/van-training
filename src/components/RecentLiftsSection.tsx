@@ -12,7 +12,7 @@ function IconCaretDown(): React.JSX.Element {
 
 function IconHistory(): React.JSX.Element {
   return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <circle cx="12" cy="12" r="10" />
       <polyline points="12 6 12 12 16 14" />
     </svg>
@@ -117,7 +117,10 @@ function RecentLiftsSection({
         <button
           type="button"
           className={`recent-lifts-history-tab ${isHistoryOpen ? 'recent-lifts-history-tab--open' : ''}`}
-          onClick={() => setIsHistoryOpen((v) => !v)}
+          onClick={(e) => {
+            e.currentTarget.blur();
+            setIsHistoryOpen((v) => !v);
+          }}
           aria-expanded={isHistoryOpen}
           aria-label="Show session history"
           title="Session history"
