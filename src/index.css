@@ -204,6 +204,15 @@ body {
   border-color: var(--accent);
 }
 
+.exercise-card--all-done {
+  border-color: var(--success);
+  background-color: rgba(34, 197, 94, 0.12);
+}
+
+.exercise-card--all-done:hover {
+  border-color: var(--success);
+}
+
 .exercise-name {
   font-weight: 600;
   font-size: 1rem;
@@ -1010,6 +1019,10 @@ body {
   background-color: var(--accent);
   border-radius: var(--radius);
   transition: width 0.2s ease;
+}
+
+.progress-bar-fill--all-done {
+  background-color: var(--success);
 }
 
 .submit-error {

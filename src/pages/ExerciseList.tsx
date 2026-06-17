@@ -46,7 +46,7 @@ function ExerciseList({
         <div className="progress-bar-label">{loggedSets} / {totalSets} sets completed</div>
         <div className="progress-bar-track">
           <div
-            className="progress-bar-fill"
+            className={`progress-bar-fill ${allCompleted ? 'progress-bar-fill--all-done' : ''}`}
             style={{ width: `${totalSets > 0 ? (loggedSets / totalSets) * 100 : 0}%` }}
           />
         </div>
@@ -55,7 +55,7 @@ function ExerciseList({
         {session.exercises.map((ex, index) => (
           <li
             key={index}
-            className={`exercise-card ${ex.completed ? 'exercise-card--completed' : ''}`}
+            className={`exercise-card ${ex.completed ? (allCompleted ? 'exercise-card--all-done' : 'exercise-card--completed') : ''}`}
             onClick={() => handleNavigate(index)}
             role="button"
             tabIndex={0}
