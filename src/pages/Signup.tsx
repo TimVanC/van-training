@@ -54,49 +54,51 @@ function Signup(): React.JSX.Element {
 
   return (
     <div className="page">
-      <h1>Sign Up</h1>
-      <form onSubmit={handleSignup} className="input-group">
-        <label className="input-label">
-          Email
-          <input
-            className="input-field"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            disabled={loading}
-          />
-        </label>
-        <label className="input-label">
-          Password
-          <input
-            className="input-field"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            disabled={loading}
-          />
-        </label>
-        <label className="input-label">
-          Invite code
-          <input
-            className="input-field"
-            type="text"
-            value={inviteCode}
-            onChange={(e) => setInviteCode(e.target.value)}
-            required
-            disabled={loading}
-          />
-        </label>
-        <button className="nav-button" type="submit" disabled={loading}>
-          Sign Up
-        </button>
-      </form>
-      {error ? <p>{error}</p> : null}
-      <p>
-        Already have an account? <Link to="/login">Login</Link>
-      </p>
+      <div className="auth-card">
+        <h1>Sign Up</h1>
+        <form onSubmit={handleSignup} className="input-group">
+          <label className="input-label">
+            Email
+            <input
+              className="input-field"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              disabled={loading}
+            />
+          </label>
+          <label className="input-label">
+            Password
+            <input
+              className="input-field"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              disabled={loading}
+            />
+          </label>
+          <label className="input-label">
+            Invite code
+            <input
+              className="input-field"
+              type="text"
+              value={inviteCode}
+              onChange={(e) => setInviteCode(e.target.value)}
+              required
+              disabled={loading}
+            />
+          </label>
+          <button className="auth-submit-button" type="submit" disabled={loading}>
+            {loading ? 'Creating account...' : 'Sign Up'}
+          </button>
+        </form>
+        {error ? <p className="auth-error">{error}</p> : null}
+        <p className="auth-footer-link">
+          Already have an account? <Link to="/login">Login</Link>
+        </p>
+      </div>
     </div>
   );
 }

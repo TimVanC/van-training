@@ -1,27 +1,33 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
 
-function Login(): React.JSX.Element {
+function ResetPassword(): React.JSX.Element {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function handleLogin(e: React.FormEvent<HTMLFormElement>): Promise<void> {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>): Promise<void> {
     e.preventDefault();
     setError(null);
+
+    if (password !== confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
+
     setLoading(true);
-
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
-
+    const { error: updateError } = await supabase.auth.updateUser({ password });
     setLoading(false);
-    if (signInError) {
-      setError(signInError.message);
+
+    if (updateError) {
+      setError(updateError.message);
       return;
     }
 
@@ -31,21 +37,10 @@ function Login(): React.JSX.Element {
   return (
     <div className="page">
       <div className="auth-card">
-        <h1>Login</h1>
-        <form onSubmit={handleLogin} className="input-group">
+        <h1>Set New Password</h1>
+        <form onSubmit={handleSubmit} className="input-group">
           <label className="input-label">
-            Email
-            <input
-              className="input-field"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              disabled={loading}
-            />
-          </label>
-          <label className="input-label">
-            Password
+            New Password
             <input
               className="input-field"
               type="password"
@@ -55,20 +50,25 @@ function Login(): React.JSX.Element {
               disabled={loading}
             />
           </label>
-          <Link to="/forgot-password" className="auth-forgot-link">
-            Forgot password?
-          </Link>
+          <label className="input-label">
+            Confirm Password
+            <input
+              className="input-field"
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              disabled={loading}
+            />
+          </label>
           <button className="auth-submit-button" type="submit" disabled={loading}>
-            {loading ? 'Logging in...' : 'Login'}
+            {loading ? 'Saving...' : 'Save New Password'}
           </button>
         </form>
         {error ? <p className="auth-error">{error}</p> : null}
-        <p className="auth-footer-link">
-          Need an account? <Link to="/signup">Sign up</Link>
-        </p>
       </div>
     </div>
   );
 }
 
-export default Login;
+export default ResetPassword;
