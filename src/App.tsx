@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import ActivitySelection from './pages/ActivitySelection';
 import LiftContainer from './pages/LiftContainer';
 import Run from './pages/Run';
@@ -19,6 +19,7 @@ import { seedSplitFromCsv } from './utils/seedSplitFromCsv';
 function App(): React.JSX.Element {
   const [user, setUser] = useState<User | null>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     let mounted = true;
@@ -51,7 +52,18 @@ function App(): React.JSX.Element {
         setLoadingAuth(false);
       });
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        // Recovery link landed — force the reset form regardless of session state,
+        // and skip normal post-auth setup until the password is actually changed.
+        if (mounted) {
+          setUser(session?.user ?? null);
+          setLoadingAuth(false);
+          navigate('/reset-password', { replace: true });
+        }
+        return;
+      }
+
       const nextUser = session?.user ?? null;
       if (nextUser?.id) {
         runPostAuthSetup(nextUser.id);
@@ -65,7 +77,7 @@ function App(): React.JSX.Element {
       mounted = false;
       authListener.subscription.unsubscribe();
     };
-  }, []);
+  }, [navigate]);
 
   if (loadingAuth) {
     return (
