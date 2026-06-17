@@ -1,4 +1,5 @@
 import type { MouseEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { LiftSession } from '../types/session';
 import LoadingOverlay from '../components/LoadingOverlay';
@@ -24,6 +25,24 @@ function ExerciseList({
   const allCompleted = session.exercises.every((ex) => ex.completed);
   const totalSets = session.exercises.reduce((acc, ex) => acc + ex.targetSets, 0);
   const loggedSets = session.exercises.reduce((acc, ex) => acc + ex.sets.length, 0);
+
+  const wasAllCompleted = useRef(false);
+  const [justUnlocked, setJustUnlocked] = useState(false);
+
+  useEffect(() => {
+    if (allCompleted && !wasAllCompleted.current) {
+      const cascadeDuration = session.exercises.length * 100 + 450;
+      const timeout = window.setTimeout(() => {
+        setJustUnlocked(true);
+        window.setTimeout(() => setJustUnlocked(false), 700);
+      }, cascadeDuration);
+      wasAllCompleted.current = true;
+      return () => window.clearTimeout(timeout);
+    }
+    if (!allCompleted) {
+      wasAllCompleted.current = false;
+    }
+  }, [allCompleted, session.exercises.length]);
 
   function handleNavigate(exerciseIndex: number): void {
     navigate(
@@ -56,6 +75,7 @@ function ExerciseList({
           <li
             key={index}
             className={`exercise-card ${ex.completed ? (allCompleted ? 'exercise-card--all-done' : 'exercise-card--completed') : ''}`}
+            style={allCompleted ? { animationDelay: `${index * 100}ms` } : undefined}
             onClick={() => handleNavigate(index)}
             role="button"
             tabIndex={0}
@@ -88,7 +108,11 @@ function ExerciseList({
           disabled={isSubmitting}
         />
       </label>
-      <button className="submit-button" disabled={!allCompleted || isSubmitting} onClick={onSubmit}>
+      <button
+        className={`submit-button ${justUnlocked ? 'submit-button--just-unlocked' : ''}`}
+        disabled={!allCompleted || isSubmitting}
+        onClick={onSubmit}
+      >
         Submit Workout
       </button>
       {submitError && (
