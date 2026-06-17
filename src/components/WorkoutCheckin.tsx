@@ -4,7 +4,6 @@ import { supabase } from '../utils/supabaseClient';
 interface WorkoutCheckinProps {
   splitName: string;
   dayName: string;
-  /** Called on submit (success or failure) or when the user fully skips. */
   onComplete: () => void;
 }
 
@@ -13,6 +12,7 @@ interface CheckinAnswers {
   effort: number | null;
   sleep: number | null;
   soreness: number | null;
+  dietQuality: number | null;
   tookPreworkout: boolean | null;
 }
 
@@ -21,6 +21,7 @@ const INITIAL_ANSWERS: CheckinAnswers = {
   effort: null,
   sleep: null,
   soreness: null,
+  dietQuality: null,
   tookPreworkout: null,
 };
 
@@ -40,6 +41,7 @@ const QUESTIONS: QuestionDef[] = [
   { key: 'effort', label: 'How hard did you push?', hint: '1 = easy, 10 = max effort', type: 'scale' },
   { key: 'sleep', label: 'Sleep last night?', hint: '1 = terrible, 10 = great', type: 'scale' },
   { key: 'soreness', label: 'Soreness going in?', hint: '1 = none, 10 = very sore', type: 'scale' },
+  { key: 'dietQuality', label: 'Diet quality today?', hint: '1 = poor, 10 = excellent', type: 'scale' },
   { key: 'tookPreworkout', label: 'Did you take pre-workout?', type: 'yesno' },
 ];
 
@@ -69,6 +71,7 @@ function WorkoutCheckin({ splitName, dayName, onComplete }: WorkoutCheckinProps)
           effort: finalAnswers.effort,
           sleep: finalAnswers.sleep,
           soreness: finalAnswers.soreness,
+          diet_quality: finalAnswers.dietQuality,
           took_preworkout: finalAnswers.tookPreworkout,
         });
       }
@@ -89,19 +92,21 @@ function WorkoutCheckin({ splitName, dayName, onComplete }: WorkoutCheckinProps)
     setStepIndex((i) => i + 1);
   }
 
-  function handleAnswerScale(value: number | null): void {
+  function blurActiveElement(): void {
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
+  }
+
+  function handleAnswerScale(value: number | null): void {
+    blurActiveElement();
     const updated = { ...answers, [currentQuestion.key]: value };
     setAnswers(updated);
     advance(updated);
   }
 
   function handleAnswerYesNo(value: boolean | null): void {
-    if (document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
-    }
+    blurActiveElement();
     const updated = { ...answers, [currentQuestion.key]: value };
     setAnswers(updated);
     advance(updated);
@@ -117,11 +122,9 @@ function WorkoutCheckin({ splitName, dayName, onComplete }: WorkoutCheckinProps)
       <div className="checkin-modal">
         <div className="checkin-header">
           <h2 id="checkin-title" className="checkin-title">Post-Lift Check-In</h2>
-          {!isComplete && (
-            <button type="button" className="checkin-skip-all" onClick={handleSkipAll} disabled={isSubmitting}>
-              Skip questionnaire
-            </button>
-          )}
+          <button type="button" className="checkin-skip-all" onClick={handleSkipAll} disabled={isSubmitting || isComplete}>
+            Skip questionnaire
+          </button>
         </div>
 
         {isComplete ? (
@@ -132,11 +135,17 @@ function WorkoutCheckin({ splitName, dayName, onComplete }: WorkoutCheckinProps)
           <>
             <div className="checkin-progress" aria-hidden>
               {QUESTIONS.map((q, i) => (
-                <span key={q.key} className={`checkin-progress-dot ${i === stepIndex ? 'checkin-progress-dot--active' : ''} ${i < stepIndex ? 'checkin-progress-dot--done' : ''}`} />
+                <span
+                  key={q.key}
+                  className={`checkin-progress-dot ${i === stepIndex ? 'checkin-progress-dot--active' : ''} ${i < stepIndex ? 'checkin-progress-dot--done' : ''}`}
+                />
               ))}
             </div>
 
-            <div className="checkin-question">
+            {/* key={currentQuestion.key} forces React to fully unmount/remount this
+                block on every step, so no button DOM node or focus state survives
+                between questions — this is what actually kills the stuck-highlight bug. */}
+            <div className="checkin-question" key={currentQuestion.key}>
               <span className="checkin-question-label">
                 {currentQuestion.label}
                 {currentQuestion.hint ? <span className="checkin-question-hint">{currentQuestion.hint}</span> : null}
