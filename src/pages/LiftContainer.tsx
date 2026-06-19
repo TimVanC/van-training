@@ -1,20 +1,77 @@
 import { useState } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import type { LiftSession } from '../types/session';
-import type { Split } from '../types/lift';
+import type { Exercise } from '../types/lift';
 import { loadSession, saveSession, clearSession } from '../utils/storage';
 import { createLiftSession } from '../utils/session';
 import { normalizeSessionToRows } from '../utils/normalizeSession';
 import { submitWorkout } from '../utils/submitWorkout';
 import { resolveWorkoutIdForLiftSession } from '../utils/resolveWorkoutId';
+import { supabase } from '../utils/supabaseClient';
 import SplitSelection from './SplitSelection';
 import DaySelection from './DaySelection';
 import ExerciseList from './ExerciseList';
 import ExerciseLogging from './ExerciseLogging';
 import WorkoutCheckin from '../components/WorkoutCheckin';
-import splits from '../data/splits';
 
-const splitItems: Split[] = splits;
+interface EmbeddedExercise {
+  name: string;
+  input_mode: 'weight' | 'plates' | null;
+}
+
+interface WorkoutExerciseRow {
+  sets: number;
+  rep_range: string;
+  order_index: number;
+  input_mode: 'weight' | 'plates' | null;
+  exercises: EmbeddedExercise | EmbeddedExercise[] | null;
+}
+
+async function loadDayExercises(splitName: string, dayName: string): Promise<Exercise[] | null> {
+  const userResult = await supabase.auth.getUser();
+  const userId = userResult.data.user?.id;
+  if (!userId) return null;
+
+  const splitResult = await supabase
+    .from('splits')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('name', splitName)
+    .maybeSingle();
+  const splitId = splitResult.data?.id;
+  if (!splitId) return null;
+
+  const workoutResult = await supabase
+    .from('workouts')
+    .select('id')
+    .eq('split_id', splitId)
+    .eq('name', dayName)
+    .maybeSingle();
+  const workoutId = workoutResult.data?.id;
+  if (!workoutId) return null;
+
+  const { data: rows } = await supabase
+    .from('workout_exercises')
+    .select('sets, rep_range, order_index, input_mode, exercises ( name, input_mode )')
+    .eq('workout_id', workoutId)
+    .order('order_index', { ascending: true });
+
+  const exercises: Exercise[] = [];
+  for (const row of (rows ?? []) as WorkoutExerciseRow[]) {
+    const exerciseRecord = Array.isArray(row.exercises) ? row.exercises[0] : row.exercises;
+    if (!exerciseRecord) continue;
+    // Per-prescription override wins; otherwise inherit the exercise's input mode.
+    const effectiveMode = row.input_mode ?? exerciseRecord.input_mode ?? 'weight';
+    const exercise: Exercise = {
+      exercise: exerciseRecord.name,
+      sets: row.sets,
+      repRange: row.rep_range,
+    };
+    if (effectiveMode === 'plates') exercise.inputMode = 'plates';
+    exercises.push(exercise);
+  }
+  return exercises;
+}
 
 function LiftContainer(): React.JSX.Element {
   const navigate = useNavigate();
@@ -54,11 +111,9 @@ function LiftContainer(): React.JSX.Element {
     setSession(null);
   }
 
-  function handleDaySelect(splitName: string, dayName: string): void {
-    const split = splitItems.find((s) => s.split === splitName);
-    if (!split) return;
-    const exercises = split.days[dayName];
-    if (!exercises) return;
+  async function handleDaySelect(splitName: string, dayName: string): Promise<void> {
+    const exercises = await loadDayExercises(splitName, dayName);
+    if (!exercises || exercises.length === 0) return;
 
     const newSession = createLiftSession(splitName, dayName, exercises);
     setSession(newSession);
