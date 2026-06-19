@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { ActivityType } from '../types/activity';
 import { supabase } from '../utils/supabaseClient';
 import trophyIcon from '../assets/larry-obrien-icon.png';
 
 const activities: ActivityType[] = ['Lift', 'Run', 'Bike', 'Swim'];
+
+const ADMIN_EMAIL = 'timvancau@gmail.com';
 
 const IconMenu = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -29,9 +31,28 @@ const IconLogout = () => (
   </svg>
 );
 
+const IconShield = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+  </svg>
+);
+
 function ActivitySelection(): React.JSX.Element {
   const navigate = useNavigate();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      const email = data.session?.user?.email ?? null;
+      if (!cancelled) setIsAdmin(email === ADMIN_EMAIL);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   function handleSelect(activity: ActivityType): void {
     navigate(`/${activity.toLowerCase()}`);
@@ -39,6 +60,11 @@ function ActivitySelection(): React.JSX.Element {
 
   function handleOpenAnalytics(): void {
     navigate('/analytics');
+  }
+
+  function handleOpenAdmin(): void {
+    setIsSettingsOpen(false);
+    navigate('/admin');
   }
 
   async function handleLogout(): Promise<void> {
@@ -87,6 +113,12 @@ function ActivitySelection(): React.JSX.Element {
               </button>
             </div>
             <div className="settings-drawer-body">
+              {isAdmin && (
+                <button type="button" className="settings-drawer-item" onClick={handleOpenAdmin}>
+                  <IconShield />
+                  <span>Admin</span>
+                </button>
+              )}
               <button type="button" className="settings-drawer-item settings-drawer-item--danger" onClick={handleLogout}>
                 <IconLogout />
                 <span>Log Out</span>
