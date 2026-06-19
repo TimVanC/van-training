@@ -68,6 +68,15 @@ interface EditForm {
   supportsAssisted: boolean;
 }
 
+interface ReplaceForm {
+  name: string;
+  sets: string;
+  repRange: string;
+  inputMode: InputMode;
+  supportsAssisted: boolean;
+  makeOldSwap: boolean;
+}
+
 interface DeletePrompt {
   id: string;
   confirmations: number;
@@ -147,6 +156,15 @@ const IconTrash = () => (
     <path d="M10 11v6" />
     <path d="M14 11v6" />
     <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+  </svg>
+);
+
+const IconSwap = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <polyline points="17 1 21 5 17 9" />
+    <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+    <polyline points="7 23 3 19 7 15" />
+    <path d="M21 13v2a4 4 0 0 1-4 4H3" />
   </svg>
 );
 
@@ -308,6 +326,11 @@ function AdminPortal(): React.JSX.Element | null {
   const [deletePrompt, setDeletePrompt] = useState<DeletePrompt | null>(null);
   const [actionPending, setActionPending] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  const [replacingId, setReplacingId] = useState<string | null>(null);
+  const [replaceForm, setReplaceForm] = useState<ReplaceForm | null>(null);
+  const [replaceError, setReplaceError] = useState<string | null>(null);
+  const [replaceSubmitting, setReplaceSubmitting] = useState(false);
 
   const [exerciseOptions, setExerciseOptions] = useState<ExerciseOption[]>([]);
   const [addExerciseOpen, setAddExerciseOpen] = useState(false);
@@ -511,6 +534,112 @@ function AdminPortal(): React.JSX.Element | null {
       setActionError(`Delete failed: ${message}`);
     } finally {
       setActionPending(false);
+    }
+  }
+
+  function startReplace(exercise: ExerciseView): void {
+    setEditingId(null);
+    setDeletePrompt(null);
+    setReplaceError(null);
+    setReplacingId(exercise.id);
+    setReplaceForm({
+      name: '',
+      sets: String(exercise.sets),
+      repRange: exercise.repRange,
+      inputMode: exercise.inputMode,
+      supportsAssisted: exercise.supportsAssisted,
+      makeOldSwap: false,
+    });
+  }
+
+  function cancelReplace(): void {
+    setReplacingId(null);
+    setReplaceForm(null);
+    setReplaceError(null);
+  }
+
+  async function handleConfirmReplace(exercise: ExerciseView): Promise<void> {
+    if (!replaceForm || !userId) return;
+
+    const name = replaceForm.name.trim();
+    const repRange = replaceForm.repRange.trim();
+    const setsNum = Number(replaceForm.sets);
+
+    if (!name) {
+      setReplaceError('Name is required.');
+      return;
+    }
+    if (!repRange) {
+      setReplaceError('Rep range is required.');
+      return;
+    }
+    if (!Number.isInteger(setsNum) || setsNum <= 0) {
+      setReplaceError('Sets must be a whole number greater than 0.');
+      return;
+    }
+
+    setReplaceSubmitting(true);
+    setReplaceError(null);
+    try {
+      // 1) Insert the new exercise first so a duplicate name fails before any
+      //    other rows are mutated. It starts with no lift history.
+      const insertRes = await supabase
+        .from('exercises')
+        .insert({
+          name,
+          input_mode: replaceForm.inputMode,
+          supports_assisted: replaceForm.supportsAssisted,
+          is_archived: false,
+        })
+        .select('id')
+        .single();
+      if (insertRes.error || !insertRes.data) {
+        const rawMessage = insertRes.error?.message ?? '';
+        if (rawMessage.toLowerCase().includes('duplicate')) {
+          throw new Error(`An exercise named "${name}" already exists.`);
+        }
+        throw insertRes.error ?? new Error('Could not create the new exercise.');
+      }
+      const newExerciseId = insertRes.data.id;
+
+      // 2) Point the existing slot at the new exercise (same workout_id + order_index).
+      const { error: weError } = await supabase
+        .from('workout_exercises')
+        .update({
+          exercise_id: newExerciseId,
+          sets: setsNum,
+          rep_range: repRange,
+          input_mode: replaceForm.inputMode,
+        })
+        .eq('id', exercise.id);
+      if (weError) throw weError;
+
+      // 3) Archive the replaced exercise.
+      const { error: archiveError } = await supabase
+        .from('exercises')
+        .update({ is_archived: true })
+        .eq('id', exercise.exerciseId);
+      if (archiveError) throw archiveError;
+
+      // 4) Optionally make the old exercise a swap child of the new one.
+      if (replaceForm.makeOldSwap) {
+        const { error: swapError } = await supabase.from('exercise_swaps').insert({
+          user_id: userId,
+          base_exercise_name: name,
+          swap_exercise_name: exercise.name,
+        });
+        if (swapError) throw swapError;
+      }
+
+      await loadSplits(userId);
+      await loadExerciseOptions();
+      await loadSwaps(userId);
+      cancelReplace();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      setReplaceError(`Replace failed: ${message}`);
+    } finally {
+      setReplaceSubmitting(false);
     }
   }
 
@@ -854,6 +983,144 @@ function AdminPortal(): React.JSX.Element | null {
     );
   }
 
+  function renderReplaceRow(exercise: ExerciseView): React.JSX.Element {
+    return (
+      <tr key={exercise.id}>
+        <td colSpan={ACTIVE_COLSPAN}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem',
+              maxWidth: 480,
+              padding: '0.5rem 0',
+            }}
+          >
+            <p style={{ margin: 0, fontWeight: 600, color: 'var(--text-primary)' }}>
+              Replace {exercise.name}
+            </p>
+
+            <label style={editFieldStyle}>
+              New exercise name
+              <input
+                className="input-field"
+                type="text"
+                value={replaceForm?.name ?? ''}
+                onChange={(e) => setReplaceForm((prev) => (prev ? { ...prev, name: e.target.value } : prev))}
+                disabled={replaceSubmitting}
+              />
+            </label>
+
+            <label style={editFieldStyle}>
+              Sets
+              <input
+                className="input-field"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                value={replaceForm?.sets ?? ''}
+                onChange={(e) => setReplaceForm((prev) => (prev ? { ...prev, sets: e.target.value } : prev))}
+                disabled={replaceSubmitting}
+              />
+            </label>
+
+            <label style={editFieldStyle}>
+              Rep range
+              <input
+                className="input-field"
+                type="text"
+                placeholder="8-12"
+                value={replaceForm?.repRange ?? ''}
+                onChange={(e) => setReplaceForm((prev) => (prev ? { ...prev, repRange: e.target.value } : prev))}
+                disabled={replaceSubmitting}
+              />
+            </label>
+
+            <label style={editFieldStyle}>
+              Input mode
+              <select
+                className="input-field"
+                value={replaceForm?.inputMode ?? 'weight'}
+                onChange={(e) =>
+                  setReplaceForm((prev) => (prev ? { ...prev, inputMode: e.target.value as InputMode } : prev))
+                }
+                disabled={replaceSubmitting}
+              >
+                <option value="weight">weight</option>
+                <option value="plates">plates</option>
+              </select>
+            </label>
+
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontSize: '0.9rem',
+                color: 'var(--text-primary)',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={replaceForm?.supportsAssisted ?? false}
+                onChange={(e) =>
+                  setReplaceForm((prev) => (prev ? { ...prev, supportsAssisted: e.target.checked } : prev))
+                }
+                disabled={replaceSubmitting}
+              />
+              Supports assisted
+            </label>
+
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontSize: '0.9rem',
+                color: 'var(--text-primary)',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={replaceForm?.makeOldSwap ?? false}
+                onChange={(e) =>
+                  setReplaceForm((prev) => (prev ? { ...prev, makeOldSwap: e.target.checked } : prev))
+                }
+                disabled={replaceSubmitting}
+              />
+              Make {exercise.name} a swap option for this new one
+            </label>
+
+            {replaceError && (
+              <div className="submit-error" role="alert">
+                {replaceError}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button
+                type="button"
+                className="nav-button nav-button--finish-ready"
+                onClick={() => void handleConfirmReplace(exercise)}
+                disabled={replaceSubmitting}
+              >
+                {replaceSubmitting ? 'Replacing…' : 'Confirm Replace'}
+              </button>
+              <button
+                type="button"
+                className="nav-button"
+                onClick={cancelReplace}
+                disabled={replaceSubmitting}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </td>
+      </tr>
+    );
+  }
+
   function renderActiveRow(exercise: ExerciseView): React.JSX.Element {
     return (
       <tr key={exercise.id}>
@@ -869,7 +1136,7 @@ function AdminPortal(): React.JSX.Element | null {
               type="button"
               className="set-action-button"
               onClick={() => startEdit(exercise)}
-              disabled={actionPending || editingId !== null || deletePrompt !== null}
+              disabled={actionPending || editingId !== null || deletePrompt !== null || replacingId !== null}
               aria-label={`Edit ${exercise.name}`}
             >
               <IconPencil />
@@ -877,8 +1144,17 @@ function AdminPortal(): React.JSX.Element | null {
             <button
               type="button"
               className="set-action-button"
+              onClick={() => startReplace(exercise)}
+              disabled={actionPending || editingId !== null || deletePrompt !== null || replacingId !== null}
+              aria-label={`Replace ${exercise.name}`}
+            >
+              <IconSwap />
+            </button>
+            <button
+              type="button"
+              className="set-action-button"
               onClick={() => void setArchived(exercise, true)}
-              disabled={actionPending || editingId !== null || deletePrompt !== null}
+              disabled={actionPending || editingId !== null || deletePrompt !== null || replacingId !== null}
               aria-label={`Archive ${exercise.name}`}
             >
               <IconArchive />
@@ -887,7 +1163,7 @@ function AdminPortal(): React.JSX.Element | null {
               type="button"
               className="set-action-button set-action-button--delete"
               onClick={() => startDelete(exercise)}
-              disabled={actionPending || editingId !== null || deletePrompt !== null}
+              disabled={actionPending || editingId !== null || deletePrompt !== null || replacingId !== null}
               aria-label={`Permanently delete ${exercise.name}`}
             >
               <IconTrash />
@@ -913,7 +1189,7 @@ function AdminPortal(): React.JSX.Element | null {
               type="button"
               className="set-action-button"
               onClick={() => void setArchived(exercise, false)}
-              disabled={actionPending || editingId !== null || deletePrompt !== null}
+              disabled={actionPending || editingId !== null || deletePrompt !== null || replacingId !== null}
               aria-label={`Restore ${exercise.name}`}
             >
               <IconRestore />
@@ -922,7 +1198,7 @@ function AdminPortal(): React.JSX.Element | null {
               type="button"
               className="set-action-button set-action-button--delete"
               onClick={() => startDelete(exercise)}
-              disabled={actionPending || editingId !== null || deletePrompt !== null}
+              disabled={actionPending || editingId !== null || deletePrompt !== null || replacingId !== null}
               aria-label={`Permanently delete ${exercise.name}`}
             >
               <IconTrash />
@@ -1354,6 +1630,7 @@ function AdminPortal(): React.JSX.Element | null {
                               <tbody>
                                 {activeExercises.map((exercise) => {
                                   if (editingId === exercise.id) return renderEditRow(exercise);
+                                  if (replacingId === exercise.id) return renderReplaceRow(exercise);
                                   if (deletePrompt?.id === exercise.id) return renderDeleteRow(exercise);
                                   return renderActiveRow(exercise);
                                 })}
