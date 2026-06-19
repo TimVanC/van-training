@@ -26,6 +26,7 @@ const INITIAL_ANSWERS: CheckinAnswers = {
 };
 
 const SCALE_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
+const ADVANCE_DELAY_MS = 320;
 
 type QuestionKey = keyof CheckinAnswers;
 
@@ -48,11 +49,15 @@ const QUESTIONS: QuestionDef[] = [
 function WorkoutCheckin({ splitName, dayName, onComplete }: WorkoutCheckinProps): React.JSX.Element {
   const [stepIndex, setStepIndex] = useState(0);
   const [answers, setAnswers] = useState<CheckinAnswers>(INITIAL_ANSWERS);
+  const [pendingValue, setPendingValue] = useState<number | boolean | null>(null);
+  const [isAdvancing, setIsAdvancing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
 
   const currentQuestion = QUESTIONS[stepIndex];
   const isLastQuestion = stepIndex === QUESTIONS.length - 1;
+  const isFirstQuestion = stepIndex === 0;
+  const currentAnswerValue = answers[currentQuestion.key];
 
   async function persistAndComplete(finalAnswers: CheckinAnswers): Promise<void> {
     setIsSubmitting(true);
@@ -84,38 +89,47 @@ function WorkoutCheckin({ splitName, dayName, onComplete }: WorkoutCheckinProps)
     }
   }
 
-  function advance(updated: CheckinAnswers): void {
-    if (isLastQuestion) {
-      void persistAndComplete(updated);
-      return;
-    }
-    setStepIndex((i) => i + 1);
-  }
-
   function blurActiveElement(): void {
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
   }
 
-  function handleAnswerScale(value: number | null): void {
+  function commitAnswer(value: number | boolean | null): void {
+    if (isAdvancing) return;
     blurActiveElement();
+    setPendingValue(value);
+    setIsAdvancing(true);
+
     const updated = { ...answers, [currentQuestion.key]: value };
     setAnswers(updated);
-    advance(updated);
+
+    window.setTimeout(() => {
+      setIsAdvancing(false);
+      setPendingValue(null);
+      if (isLastQuestion) {
+        void persistAndComplete(updated);
+      } else {
+        setStepIndex((i) => i + 1);
+      }
+    }, ADVANCE_DELAY_MS);
   }
 
-  function handleAnswerYesNo(value: boolean | null): void {
+  function handleBack(): void {
+    if (isAdvancing || isFirstQuestion) return;
     blurActiveElement();
-    const updated = { ...answers, [currentQuestion.key]: value };
-    setAnswers(updated);
-    advance(updated);
+    setStepIndex((i) => i - 1);
   }
 
   function handleSkipAll(): void {
     if (isSubmitting) return;
     onComplete();
   }
+
+  // While the brief post-tap delay is running, show the tapped value as filled;
+  // otherwise show whatever was previously saved for this step, so Back
+  // correctly restores the prior selection's highlight.
+  const displayValue = isAdvancing ? pendingValue : currentAnswerValue;
 
   return (
     <div className="checkin-overlay" role="dialog" aria-modal="true" aria-labelledby="checkin-title">
@@ -142,9 +156,6 @@ function WorkoutCheckin({ splitName, dayName, onComplete }: WorkoutCheckinProps)
               ))}
             </div>
 
-            {/* key={currentQuestion.key} forces React to fully unmount/remount this
-                block on every step, so no button DOM node or focus state survives
-                between questions — this is what actually kills the stuck-highlight bug. */}
             <div className="checkin-question" key={currentQuestion.key}>
               <span className="checkin-question-label">
                 {currentQuestion.label}
@@ -157,9 +168,9 @@ function WorkoutCheckin({ splitName, dayName, onComplete }: WorkoutCheckinProps)
                     <button
                       key={n}
                       type="button"
-                      className="checkin-scale-btn"
-                      onClick={() => handleAnswerScale(n)}
-                      disabled={isSubmitting}
+                      className={`checkin-scale-btn ${displayValue === n ? 'checkin-scale-btn--selected' : ''}`}
+                      onClick={() => commitAnswer(n)}
+                      disabled={isSubmitting || isAdvancing}
                     >
                       {n}
                     </button>
@@ -167,23 +178,43 @@ function WorkoutCheckin({ splitName, dayName, onComplete }: WorkoutCheckinProps)
                 </div>
               ) : (
                 <div className="checkin-yesno" role="radiogroup" aria-label={currentQuestion.label}>
-                  <button type="button" className="checkin-yesno-btn" onClick={() => handleAnswerYesNo(true)} disabled={isSubmitting}>
+                  <button
+                    type="button"
+                    className={`checkin-yesno-btn ${displayValue === true ? 'checkin-yesno-btn--selected' : ''}`}
+                    onClick={() => commitAnswer(true)}
+                    disabled={isSubmitting || isAdvancing}
+                  >
                     Yes
                   </button>
-                  <button type="button" className="checkin-yesno-btn" onClick={() => handleAnswerYesNo(false)} disabled={isSubmitting}>
+                  <button
+                    type="button"
+                    className={`checkin-yesno-btn ${displayValue === false ? 'checkin-yesno-btn--selected' : ''}`}
+                    onClick={() => commitAnswer(false)}
+                    disabled={isSubmitting || isAdvancing}
+                  >
                     No
                   </button>
                 </div>
               )}
 
-              <button
-                type="button"
-                className="checkin-question-skip"
-                onClick={() => (currentQuestion.type === 'scale' ? handleAnswerScale(null) : handleAnswerYesNo(null))}
-                disabled={isSubmitting}
-              >
-                Skip this question
-              </button>
+              <div className="checkin-question-footer">
+                <button
+                  type="button"
+                  className="checkin-back-button"
+                  onClick={handleBack}
+                  disabled={isFirstQuestion || isAdvancing || isSubmitting}
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  className="checkin-question-skip"
+                  onClick={() => commitAnswer(null)}
+                  disabled={isSubmitting || isAdvancing}
+                >
+                  Skip this question
+                </button>
+              </div>
             </div>
 
             {isSubmitting && <p className="checkin-submitting-label">Saving...</p>}

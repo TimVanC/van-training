@@ -1247,10 +1247,13 @@ body {
   border-color: var(--accent);
 }
 
-.checkin-scale-btn:active:not(:disabled) {
+.checkin-scale-btn:active:not(:disabled),
+.checkin-scale-btn--selected,
+.checkin-scale-btn--selected:disabled {
   background: var(--accent);
   border-color: var(--accent);
   color: #1a0d00;
+  opacity: 1;
 }
 
 .checkin-scale-btn:focus-visible {
@@ -1281,10 +1284,13 @@ body {
   border-color: var(--accent);
 }
 
-.checkin-yesno-btn:active:not(:disabled) {
+.checkin-yesno-btn:active:not(:disabled),
+.checkin-yesno-btn--selected,
+.checkin-yesno-btn--selected:disabled {
   background: var(--accent);
   border-color: var(--accent);
   color: #1a0d00;
+  opacity: 1;
 }
 
 .checkin-yesno-btn:focus-visible {
@@ -1293,8 +1299,36 @@ body {
   box-shadow: none;
 }
 
+.checkin-question-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+}
+
+.checkin-back-button {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.35rem 0.9rem;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.checkin-back-button:hover:not(:disabled) {
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+}
+
+.checkin-back-button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
 .checkin-question-skip {
-  align-self: center;
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--text-secondary);
@@ -1304,13 +1338,17 @@ body {
   padding: 0.35rem 0.9rem;
   cursor: pointer;
   text-decoration: none;
-  margin-top: 0.25rem;
   transition: border-color 0.15s, color 0.15s;
 }
 
 .checkin-question-skip:hover:not(:disabled) {
   border-color: var(--text-secondary);
   color: var(--text-primary);
+}
+
+.checkin-question-skip:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
 
 .checkin-submitting-label {
