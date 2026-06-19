@@ -17,6 +17,7 @@ import WorkoutCheckin from '../components/WorkoutCheckin';
 interface EmbeddedExercise {
   name: string;
   input_mode: 'weight' | 'plates' | null;
+  is_archived: boolean | null;
 }
 
 interface WorkoutExerciseRow {
@@ -52,7 +53,7 @@ async function loadDayExercises(splitName: string, dayName: string): Promise<Exe
 
   const { data: rows } = await supabase
     .from('workout_exercises')
-    .select('sets, rep_range, order_index, input_mode, exercises ( name, input_mode )')
+    .select('sets, rep_range, order_index, input_mode, exercises ( name, input_mode, is_archived )')
     .eq('workout_id', workoutId)
     .order('order_index', { ascending: true });
 
@@ -60,6 +61,8 @@ async function loadDayExercises(splitName: string, dayName: string): Promise<Exe
   for (const row of (rows ?? []) as WorkoutExerciseRow[]) {
     const exerciseRecord = Array.isArray(row.exercises) ? row.exercises[0] : row.exercises;
     if (!exerciseRecord) continue;
+    // Archived exercises are hidden from the logging UI.
+    if (exerciseRecord.is_archived) continue;
     // Per-prescription override wins; otherwise inherit the exercise's input mode.
     const effectiveMode = row.input_mode ?? exerciseRecord.input_mode ?? 'weight';
     const exercise: Exercise = {

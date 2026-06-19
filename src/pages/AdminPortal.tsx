@@ -68,6 +68,11 @@ interface EditForm {
   supportsAssisted: boolean;
 }
 
+interface DeletePrompt {
+  id: string;
+  confirmations: number;
+}
+
 const IconArrowLeft = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
     <line x1="19" y1="12" x2="5" y2="12" />
@@ -96,6 +101,31 @@ const IconPencil = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
     <path d="M12 20h9" />
     <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+  </svg>
+);
+
+const IconArchive = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <polyline points="21 8 21 21 3 21 3 8" />
+    <rect x="1" y="3" width="22" height="5" />
+    <line x1="10" y1="12" x2="14" y2="12" />
+  </svg>
+);
+
+const IconRestore = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <polyline points="1 4 1 10 7 10" />
+    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+  </svg>
+);
+
+const IconTrash = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <polyline points="3 6 5 6 21 6" />
+    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+    <path d="M10 11v6" />
+    <path d="M14 11v6" />
+    <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
   </svg>
 );
 
@@ -147,6 +177,8 @@ function toggleId(set: Set<string>, id: string): Set<string> {
 const SPLITS_SELECT =
   'id, name, created_at, workouts ( id, name, order_index, workout_exercises ( id, sets, rep_range, order_index, input_mode, exercises ( id, name, input_mode, supports_assisted, is_archived ) ) )';
 
+const ACTIVE_COLSPAN = 7;
+
 const headerButtonStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
@@ -166,6 +198,11 @@ const subHeaderButtonStyle: React.CSSProperties = {
   borderTop: '1px solid var(--border)',
 };
 
+const archivedHeaderButtonStyle: React.CSSProperties = {
+  ...subHeaderButtonStyle,
+  color: 'var(--text-secondary)',
+};
+
 const countStyle: React.CSSProperties = {
   marginLeft: 'auto',
   color: 'var(--text-secondary)',
@@ -181,6 +218,36 @@ const editFieldStyle: React.CSSProperties = {
   color: 'var(--text-secondary)',
 };
 
+const actionsCellStyle: React.CSSProperties = {
+  display: 'flex',
+  gap: '0.4rem',
+  justifyContent: 'flex-end',
+};
+
+const dangerButtonStyle: React.CSSProperties = {
+  padding: '0.6rem 1rem',
+  fontSize: '0.95rem',
+  fontWeight: 600,
+  fontFamily: 'inherit',
+  border: '1px solid var(--danger)',
+  borderRadius: 'var(--radius)',
+  background: 'transparent',
+  color: 'var(--danger)',
+  cursor: 'pointer',
+};
+
+const neutralButtonStyle: React.CSSProperties = {
+  padding: '0.6rem 1rem',
+  fontSize: '0.95rem',
+  fontWeight: 600,
+  fontFamily: 'inherit',
+  border: '1px solid var(--border)',
+  borderRadius: 'var(--radius)',
+  background: 'transparent',
+  color: 'var(--text-primary)',
+  cursor: 'pointer',
+};
+
 function AdminPortal(): React.JSX.Element | null {
   const navigate = useNavigate();
   const [authorized, setAuthorized] = useState<boolean | null>(null);
@@ -189,11 +256,16 @@ function AdminPortal(): React.JSX.Element | null {
   const [loadError, setLoadError] = useState(false);
   const [expandedSplits, setExpandedSplits] = useState<Set<string>>(new Set());
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
+  const [expandedArchived, setExpandedArchived] = useState<Set<string>>(new Set());
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<EditForm | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const [deletePrompt, setDeletePrompt] = useState<DeletePrompt | null>(null);
+  const [actionPending, setActionPending] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   async function loadSplits(currentUserId: string): Promise<void> {
     const { data, error } = await supabase
@@ -235,6 +307,7 @@ function AdminPortal(): React.JSX.Element | null {
 
   function startEdit(exercise: ExerciseView): void {
     setEditingId(exercise.id);
+    setDeletePrompt(null);
     setFormError(null);
     setForm({
       name: exercise.name,
@@ -304,6 +377,304 @@ function AdminPortal(): React.JSX.Element | null {
     }
   }
 
+  async function setArchived(exercise: ExerciseView, archived: boolean): Promise<void> {
+    if (!userId) return;
+    setActionPending(true);
+    setActionError(null);
+    try {
+      const { error } = await supabase
+        .from('exercises')
+        .update({ is_archived: archived })
+        .eq('id', exercise.exerciseId);
+      if (error) throw error;
+      await loadSplits(userId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      setActionError(`${archived ? 'Archive' : 'Restore'} failed: ${message}`);
+    } finally {
+      setActionPending(false);
+    }
+  }
+
+  function startDelete(exercise: ExerciseView): void {
+    setEditingId(null);
+    setActionError(null);
+    setDeletePrompt({ id: exercise.id, confirmations: 0 });
+  }
+
+  function cancelDelete(): void {
+    setDeletePrompt(null);
+    setActionError(null);
+  }
+
+  function confirmDelete(exercise: ExerciseView): void {
+    if (!deletePrompt || deletePrompt.id !== exercise.id) return;
+    const next = deletePrompt.confirmations + 1;
+    if (next >= 2) {
+      void executeDelete(exercise);
+    } else {
+      setDeletePrompt({ id: exercise.id, confirmations: next });
+    }
+  }
+
+  async function executeDelete(exercise: ExerciseView): Promise<void> {
+    if (!userId) return;
+    setActionPending(true);
+    setActionError(null);
+    try {
+      const { error } = await supabase.from('exercises').delete().eq('id', exercise.exerciseId);
+      if (error) throw error;
+      await loadSplits(userId);
+      setDeletePrompt(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      setActionError(`Delete failed: ${message}`);
+    } finally {
+      setActionPending(false);
+    }
+  }
+
+  function renderEditRow(exercise: ExerciseView): React.JSX.Element {
+    return (
+      <tr key={exercise.id}>
+        <td colSpan={ACTIVE_COLSPAN}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem',
+              maxWidth: 480,
+              padding: '0.5rem 0',
+            }}
+          >
+            <label style={editFieldStyle}>
+              Name
+              <input
+                className="input-field"
+                type="text"
+                value={form?.name ?? ''}
+                onChange={(e) => setForm((prev) => (prev ? { ...prev, name: e.target.value } : prev))}
+                disabled={saving}
+              />
+            </label>
+
+            <label style={editFieldStyle}>
+              Sets
+              <input
+                className="input-field"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                value={form?.sets ?? ''}
+                onChange={(e) => setForm((prev) => (prev ? { ...prev, sets: e.target.value } : prev))}
+                disabled={saving}
+              />
+            </label>
+
+            <label style={editFieldStyle}>
+              Rep range
+              <input
+                className="input-field"
+                type="text"
+                placeholder="8-12"
+                value={form?.repRange ?? ''}
+                onChange={(e) => setForm((prev) => (prev ? { ...prev, repRange: e.target.value } : prev))}
+                disabled={saving}
+              />
+            </label>
+
+            <label style={editFieldStyle}>
+              Input mode
+              <select
+                className="input-field"
+                value={form?.inputMode ?? 'weight'}
+                onChange={(e) =>
+                  setForm((prev) => (prev ? { ...prev, inputMode: e.target.value as InputMode } : prev))
+                }
+                disabled={saving}
+              >
+                <option value="weight">weight</option>
+                <option value="plates">plates</option>
+              </select>
+            </label>
+
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontSize: '0.9rem',
+                color: 'var(--text-primary)',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={form?.supportsAssisted ?? false}
+                onChange={(e) =>
+                  setForm((prev) => (prev ? { ...prev, supportsAssisted: e.target.checked } : prev))
+                }
+                disabled={saving}
+              />
+              Supports assisted
+            </label>
+
+            {formError && (
+              <div className="submit-error" role="alert">
+                {formError}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button
+                type="button"
+                className="nav-button nav-button--finish-ready"
+                onClick={() => void handleSave(exercise)}
+                disabled={saving}
+              >
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+              <button type="button" className="nav-button" onClick={cancelEdit} disabled={saving}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </td>
+      </tr>
+    );
+  }
+
+  function renderDeleteRow(exercise: ExerciseView): React.JSX.Element {
+    const confirmations = deletePrompt?.confirmations ?? 0;
+    return (
+      <tr key={exercise.id}>
+        <td colSpan={ACTIVE_COLSPAN}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem',
+              maxWidth: 480,
+              padding: '0.5rem 0',
+            }}
+          >
+            <p style={{ margin: 0, color: 'var(--danger)', fontWeight: 600 }}>
+              This will permanently delete {exercise.name}. Historical lift data will be orphaned and
+              unrecoverable. This cannot be undone.
+            </p>
+
+            {actionError && (
+              <div className="submit-error" role="alert">
+                {actionError}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button
+                type="button"
+                style={dangerButtonStyle}
+                onClick={() => confirmDelete(exercise)}
+                disabled={actionPending}
+              >
+                {actionPending
+                  ? 'Deleting…'
+                  : confirmations === 0
+                    ? 'Confirm delete'
+                    : 'Click again to permanently delete'}
+              </button>
+              <button
+                type="button"
+                style={neutralButtonStyle}
+                onClick={cancelDelete}
+                disabled={actionPending}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </td>
+      </tr>
+    );
+  }
+
+  function renderActiveRow(exercise: ExerciseView): React.JSX.Element {
+    return (
+      <tr key={exercise.id}>
+        <td>{exercise.name}</td>
+        <td>{exercise.sets}</td>
+        <td>{exercise.repRange}</td>
+        <td>{exercise.inputMode}</td>
+        <td>{exercise.supportsAssisted ? 'Yes' : 'No'}</td>
+        <td>{exercise.isArchived ? 'Yes' : 'No'}</td>
+        <td>
+          <div style={actionsCellStyle}>
+            <button
+              type="button"
+              className="set-action-button"
+              onClick={() => startEdit(exercise)}
+              disabled={actionPending || editingId !== null || deletePrompt !== null}
+              aria-label={`Edit ${exercise.name}`}
+            >
+              <IconPencil />
+            </button>
+            <button
+              type="button"
+              className="set-action-button"
+              onClick={() => void setArchived(exercise, true)}
+              disabled={actionPending || editingId !== null || deletePrompt !== null}
+              aria-label={`Archive ${exercise.name}`}
+            >
+              <IconArchive />
+            </button>
+            <button
+              type="button"
+              className="set-action-button set-action-button--delete"
+              onClick={() => startDelete(exercise)}
+              disabled={actionPending || editingId !== null || deletePrompt !== null}
+              aria-label={`Permanently delete ${exercise.name}`}
+            >
+              <IconTrash />
+            </button>
+          </div>
+        </td>
+      </tr>
+    );
+  }
+
+  function renderArchivedRow(exercise: ExerciseView): React.JSX.Element {
+    return (
+      <tr key={exercise.id} style={{ color: 'var(--text-secondary)' }}>
+        <td>{exercise.name}</td>
+        <td>{exercise.sets}</td>
+        <td>{exercise.repRange}</td>
+        <td>{exercise.inputMode}</td>
+        <td>{exercise.supportsAssisted ? 'Yes' : 'No'}</td>
+        <td>Yes</td>
+        <td>
+          <div style={actionsCellStyle}>
+            <button
+              type="button"
+              className="set-action-button"
+              onClick={() => void setArchived(exercise, false)}
+              disabled={actionPending || editingId !== null || deletePrompt !== null}
+              aria-label={`Restore ${exercise.name}`}
+            >
+              <IconRestore />
+            </button>
+            <button
+              type="button"
+              className="set-action-button set-action-button--delete"
+              onClick={() => startDelete(exercise)}
+              disabled={actionPending || editingId !== null || deletePrompt !== null}
+              aria-label={`Permanently delete ${exercise.name}`}
+            >
+              <IconTrash />
+            </button>
+          </div>
+        </td>
+      </tr>
+    );
+  }
+
   if (!authorized) return null;
 
   return (
@@ -350,6 +721,9 @@ function AdminPortal(): React.JSX.Element | null {
                 split.days.map((day) => {
                   const dayKey = `${split.id}:${day.id}`;
                   const dayOpen = expandedDays.has(dayKey);
+                  const activeExercises = day.exercises.filter((e) => !e.isArchived);
+                  const archivedExercises = day.exercises.filter((e) => e.isArchived);
+                  const archivedOpen = expandedArchived.has(dayKey);
                   return (
                     <div key={day.id}>
                       <button
@@ -361,179 +735,78 @@ function AdminPortal(): React.JSX.Element | null {
                         <IconChevron open={dayOpen} />
                         <span style={{ fontWeight: 600 }}>{day.name}</span>
                         <span style={countStyle}>
-                          {day.exercises.length}{' '}
-                          {day.exercises.length === 1 ? 'exercise' : 'exercises'}
+                          {activeExercises.length}{' '}
+                          {activeExercises.length === 1 ? 'exercise' : 'exercises'}
                         </span>
                       </button>
 
-                      {dayOpen &&
-                        (day.exercises.length === 0 ? (
-                          <p className="analytics-empty-state" style={{ marginTop: 0 }}>
-                            No exercises.
-                          </p>
-                        ) : (
-                          <table className="analytics-table">
-                            <thead>
-                              <tr>
-                                <th>Exercise</th>
-                                <th>Sets</th>
-                                <th>Reps</th>
-                                <th>Input</th>
-                                <th>Assisted</th>
-                                <th>Archived</th>
-                                <th aria-label="Actions" />
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {day.exercises.map((exercise) =>
-                                editingId === exercise.id && form ? (
-                                  <tr key={exercise.id}>
-                                    <td colSpan={7}>
-                                      <div
-                                        style={{
-                                          display: 'flex',
-                                          flexDirection: 'column',
-                                          gap: '0.75rem',
-                                          maxWidth: 480,
-                                          padding: '0.5rem 0',
-                                        }}
-                                      >
-                                        <label style={editFieldStyle}>
-                                          Name
-                                          <input
-                                            className="input-field"
-                                            type="text"
-                                            value={form.name}
-                                            onChange={(e) =>
-                                              setForm((prev) => (prev ? { ...prev, name: e.target.value } : prev))
-                                            }
-                                            disabled={saving}
-                                          />
-                                        </label>
+                      {dayOpen && (
+                        <>
+                          {activeExercises.length === 0 ? (
+                            <p className="analytics-empty-state" style={{ marginTop: 0 }}>
+                              No active exercises.
+                            </p>
+                          ) : (
+                            <table className="analytics-table">
+                              <thead>
+                                <tr>
+                                  <th>Exercise</th>
+                                  <th>Sets</th>
+                                  <th>Reps</th>
+                                  <th>Input</th>
+                                  <th>Assisted</th>
+                                  <th>Archived</th>
+                                  <th aria-label="Actions" />
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {activeExercises.map((exercise) => {
+                                  if (editingId === exercise.id) return renderEditRow(exercise);
+                                  if (deletePrompt?.id === exercise.id) return renderDeleteRow(exercise);
+                                  return renderActiveRow(exercise);
+                                })}
+                              </tbody>
+                            </table>
+                          )}
 
-                                        <label style={editFieldStyle}>
-                                          Sets
-                                          <input
-                                            className="input-field"
-                                            type="number"
-                                            inputMode="numeric"
-                                            min={1}
-                                            value={form.sets}
-                                            onChange={(e) =>
-                                              setForm((prev) => (prev ? { ...prev, sets: e.target.value } : prev))
-                                            }
-                                            disabled={saving}
-                                          />
-                                        </label>
+                          {archivedExercises.length > 0 && (
+                            <>
+                              <button
+                                type="button"
+                                style={archivedHeaderButtonStyle}
+                                onClick={() => setExpandedArchived((prev) => toggleId(prev, dayKey))}
+                                aria-expanded={archivedOpen}
+                              >
+                                <IconChevron open={archivedOpen} />
+                                <span style={{ fontWeight: 600 }}>Archived</span>
+                                <span style={countStyle}>{archivedExercises.length}</span>
+                              </button>
 
-                                        <label style={editFieldStyle}>
-                                          Rep range
-                                          <input
-                                            className="input-field"
-                                            type="text"
-                                            placeholder="8-12"
-                                            value={form.repRange}
-                                            onChange={(e) =>
-                                              setForm((prev) => (prev ? { ...prev, repRange: e.target.value } : prev))
-                                            }
-                                            disabled={saving}
-                                          />
-                                        </label>
-
-                                        <label style={editFieldStyle}>
-                                          Input mode
-                                          <select
-                                            className="input-field"
-                                            value={form.inputMode}
-                                            onChange={(e) =>
-                                              setForm((prev) =>
-                                                prev ? { ...prev, inputMode: e.target.value as InputMode } : prev,
-                                              )
-                                            }
-                                            disabled={saving}
-                                          >
-                                            <option value="weight">weight</option>
-                                            <option value="plates">plates</option>
-                                          </select>
-                                        </label>
-
-                                        <label
-                                          style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '0.5rem',
-                                            fontSize: '0.9rem',
-                                            color: 'var(--text-primary)',
-                                          }}
-                                        >
-                                          <input
-                                            type="checkbox"
-                                            checked={form.supportsAssisted}
-                                            onChange={(e) =>
-                                              setForm((prev) =>
-                                                prev ? { ...prev, supportsAssisted: e.target.checked } : prev,
-                                              )
-                                            }
-                                            disabled={saving}
-                                          />
-                                          Supports assisted
-                                        </label>
-
-                                        {formError && (
-                                          <div className="submit-error" role="alert">
-                                            {formError}
-                                          </div>
-                                        )}
-
-                                        <div style={{ display: 'flex', gap: '0.75rem' }}>
-                                          <button
-                                            type="button"
-                                            className="nav-button nav-button--finish-ready"
-                                            onClick={() => void handleSave(exercise)}
-                                            disabled={saving}
-                                          >
-                                            {saving ? 'Saving…' : 'Save'}
-                                          </button>
-                                          <button
-                                            type="button"
-                                            className="nav-button"
-                                            onClick={cancelEdit}
-                                            disabled={saving}
-                                          >
-                                            Cancel
-                                          </button>
-                                        </div>
-                                      </div>
-                                    </td>
-                                  </tr>
-                                ) : (
-                                  <tr
-                                    key={exercise.id}
-                                    style={exercise.isArchived ? { color: 'var(--text-secondary)' } : undefined}
-                                  >
-                                    <td>{exercise.name}</td>
-                                    <td>{exercise.sets}</td>
-                                    <td>{exercise.repRange}</td>
-                                    <td>{exercise.inputMode}</td>
-                                    <td>{exercise.supportsAssisted ? 'Yes' : 'No'}</td>
-                                    <td>{exercise.isArchived ? 'Yes' : 'No'}</td>
-                                    <td>
-                                      <button
-                                        type="button"
-                                        className="set-action-button"
-                                        onClick={() => startEdit(exercise)}
-                                        disabled={editingId !== null}
-                                        aria-label={`Edit ${exercise.name}`}
-                                      >
-                                        <IconPencil />
-                                      </button>
-                                    </td>
-                                  </tr>
-                                ),
+                              {archivedOpen && (
+                                <table className="analytics-table">
+                                  <thead>
+                                    <tr>
+                                      <th>Exercise</th>
+                                      <th>Sets</th>
+                                      <th>Reps</th>
+                                      <th>Input</th>
+                                      <th>Assisted</th>
+                                      <th>Archived</th>
+                                      <th aria-label="Actions" />
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {archivedExercises.map((exercise) => {
+                                      if (deletePrompt?.id === exercise.id) return renderDeleteRow(exercise);
+                                      return renderArchivedRow(exercise);
+                                    })}
+                                  </tbody>
+                                </table>
                               )}
-                            </tbody>
-                          </table>
-                        ))}
+                            </>
+                          )}
+                        </>
+                      )}
                     </div>
                   );
                 })}
