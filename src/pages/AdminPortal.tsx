@@ -485,11 +485,15 @@ function AdminPortal(): React.JSX.Element | null {
     setActionPending(true);
     setActionError(null);
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('exercises')
         .update({ is_archived: archived })
-        .eq('id', exercise.exerciseId);
+        .eq('id', exercise.exerciseId)
+        .select('id');
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error('No rows were updated — you may not have permission.');
+      }
       await loadSplits(userId);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -525,8 +529,15 @@ function AdminPortal(): React.JSX.Element | null {
     setActionPending(true);
     setActionError(null);
     try {
-      const { error } = await supabase.from('exercises').delete().eq('id', exercise.exerciseId);
+      const { data, error } = await supabase
+        .from('exercises')
+        .delete()
+        .eq('id', exercise.exerciseId)
+        .select('id');
       if (error) throw error;
+      if (!data || data.length === 0) {
+        throw new Error('No rows were deleted — you may not have permission.');
+      }
       await loadSplits(userId);
       setDeletePrompt(null);
     } catch (error) {
@@ -1234,6 +1245,12 @@ function AdminPortal(): React.JSX.Element | null {
         </button>
         <h1>Admin</h1>
       </div>
+
+      {actionError && deletePrompt === null && (
+        <div className="submit-error" role="alert">
+          {actionError}
+        </div>
+      )}
 
       <section className="analytics-card">
         <button
