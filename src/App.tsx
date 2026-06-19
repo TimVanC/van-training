@@ -14,7 +14,6 @@ import ResetPassword from './pages/ResetPassword';
 import { supabase } from './utils/supabaseClient';
 import { getCurrentUser } from './utils/auth';
 import { ensureUserSetup } from './utils/ensureUserSetup';
-import { seedSplitFromCsv } from './utils/seedSplitFromCsv';
 
 function App(): React.JSX.Element {
   const [user, setUser] = useState<User | null>(null);
@@ -32,7 +31,6 @@ function App(): React.JSX.Element {
       void (async () => {
         try {
           await ensureUserSetup(supabase, userId);
-          await seedSplitFromCsv(supabase, userId);
         } catch (error) {
           console.error('post-auth setup failed', error);
         }
