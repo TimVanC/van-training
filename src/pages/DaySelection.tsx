@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import splits from '../data/splits';
 import { supabase } from '../utils/supabaseClient';
 
 interface WorkoutRow {
   id: string;
+  name: string;
 }
 
 interface LastTrainedByWorkoutRow {
@@ -18,46 +18,44 @@ interface DaySelectionProps {
 
 function DaySelection({ onDaySelect }: DaySelectionProps): React.JSX.Element {
   const { splitName } = useParams<{ splitName: string }>();
+  const [days, setDays] = useState<WorkoutRow[] | null>(null);
+  const [notFound, setNotFound] = useState(false);
   const [dayToLastTrained, setDayToLastTrained] = useState<Record<string, string>>({});
-
-  const split = splits.find((s) => s.split === splitName);
-
-  if (!split) {
-    return (
-      <div className="page">
-        <h1>Split not found</h1>
-      </div>
-    );
-  }
-
-  const currentSplit = split.split;
-  const dayNames = Object.keys(split.days);
-  const dayNamesKey = useMemo(() => dayNames.join('|'), [dayNames]);
 
   useEffect(() => {
     let cancelled = false;
+    setDays(null);
+    setNotFound(false);
     setDayToLastTrained({});
 
     (async () => {
       const userResult = await supabase.auth.getUser();
       const userId = userResult.data.user?.id;
-      if (!userId) return;
+      if (!userId) {
+        if (!cancelled) setNotFound(true);
+        return;
+      }
 
       const splitResult = await supabase
         .from('splits')
         .select('id')
         .eq('user_id', userId)
-        .eq('name', currentSplit)
+        .eq('name', splitName ?? '')
         .maybeSingle();
       const splitId = splitResult.data?.id;
-      if (!splitId) return;
+      if (!splitId) {
+        if (!cancelled) setNotFound(true);
+        return;
+      }
 
       const workoutsResult = await supabase
         .from('workouts')
-        .select('id')
+        .select('id, name')
         .eq('split_id', splitId)
         .order('order_index', { ascending: true });
       const orderedWorkouts = (workoutsResult.data ?? []) as WorkoutRow[];
+      if (cancelled) return;
+      setDays(orderedWorkouts);
       if (orderedWorkouts.length === 0) return;
 
       const session = await supabase.auth.getSession();
@@ -75,20 +73,17 @@ function DaySelection({ onDaySelect }: DaySelectionProps): React.JSX.Element {
       }
 
       const next: Record<string, string> = {};
-      dayNames.forEach((day, index) => {
-        const workoutId = orderedWorkouts[index]?.id;
-        if (!workoutId) return;
-        const lastTrained = lastTrainedByWorkout.get(workoutId);
-        if (!lastTrained) return;
-        next[day] = lastTrained;
-      });
+      for (const workout of orderedWorkouts) {
+        const lastTrained = lastTrainedByWorkout.get(workout.id);
+        if (lastTrained) next[workout.name] = lastTrained;
+      }
       if (!cancelled) setDayToLastTrained(next);
     })();
 
     return () => {
       cancelled = true;
     };
-  }, [currentSplit, dayNamesKey]);
+  }, [splitName]);
 
   function formatLastTrained(value: string): string {
     const parsed = new Date(value);
@@ -102,26 +97,38 @@ function DaySelection({ onDaySelect }: DaySelectionProps): React.JSX.Element {
     });
   }
 
+  if (notFound) {
+    return (
+      <div className="page">
+        <h1>Split not found</h1>
+      </div>
+    );
+  }
+
   return (
     <div className="page">
-      <h1>{split.split}</h1>
-      <div className="button-list">
-        {dayNames.map((day) => (
-          <div key={day} className="workout-choice">
-            <button
-              className="nav-button"
-              onClick={() => onDaySelect(currentSplit, day)}
-            >
-              {day}
-            </button>
-            <p className="workout-choice-last-trained">
-              {dayToLastTrained[day]
-                ? `Last trained: ${formatLastTrained(dayToLastTrained[day])}`
-                : 'Not trained yet'}
-            </p>
-          </div>
-        ))}
-      </div>
+      <h1>{splitName}</h1>
+      {days === null ? (
+        <p>Loading…</p>
+      ) : (
+        <div className="button-list">
+          {days.map((day) => (
+            <div key={day.id} className="workout-choice">
+              <button
+                className="nav-button"
+                onClick={() => onDaySelect(splitName ?? '', day.name)}
+              >
+                {day.name}
+              </button>
+              <p className="workout-choice-last-trained">
+                {dayToLastTrained[day.name]
+                  ? `Last trained: ${formatLastTrained(dayToLastTrained[day.name])}`
+                  : 'Not trained yet'}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
