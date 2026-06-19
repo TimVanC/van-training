@@ -73,6 +73,21 @@ interface DeletePrompt {
   confirmations: number;
 }
 
+interface AddExerciseForm {
+  name: string;
+  workoutId: string;
+  sets: string;
+  repRange: string;
+  inputMode: InputMode;
+  supportsAssisted: boolean;
+  swapParentName: string;
+}
+
+interface ExerciseOption {
+  id: string;
+  name: string;
+}
+
 const IconArrowLeft = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
     <line x1="19" y1="12" x2="5" y2="12" />
@@ -179,6 +194,27 @@ const SPLITS_SELECT =
 
 const ACTIVE_COLSPAN = 7;
 
+const INITIAL_ADD_EXERCISE: AddExerciseForm = {
+  name: '',
+  workoutId: '',
+  sets: '',
+  repRange: '',
+  inputMode: 'weight',
+  supportsAssisted: false,
+  swapParentName: '',
+};
+
+// "Add Day" targets a single primary split: prefer PPLs, then the first
+// non-placeholder split, then whatever exists.
+function resolveTargetSplit(views: SplitView[]): SplitView | null {
+  if (views.length === 0) return null;
+  return (
+    views.find((s) => s.name === 'PPLs') ??
+    views.find((s) => s.name.trim().toLowerCase() !== 'import split') ??
+    views[0]
+  );
+}
+
 const headerButtonStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
@@ -267,6 +303,16 @@ function AdminPortal(): React.JSX.Element | null {
   const [actionPending, setActionPending] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
+  const [exerciseOptions, setExerciseOptions] = useState<ExerciseOption[]>([]);
+  const [addExerciseOpen, setAddExerciseOpen] = useState(false);
+  const [addExerciseForm, setAddExerciseForm] = useState<AddExerciseForm>(INITIAL_ADD_EXERCISE);
+  const [addExerciseError, setAddExerciseError] = useState<string | null>(null);
+  const [addExerciseSubmitting, setAddExerciseSubmitting] = useState(false);
+  const [addDayOpen, setAddDayOpen] = useState(false);
+  const [addDayName, setAddDayName] = useState('');
+  const [addDayError, setAddDayError] = useState<string | null>(null);
+  const [addDaySubmitting, setAddDaySubmitting] = useState(false);
+
   async function loadSplits(currentUserId: string): Promise<void> {
     const { data, error } = await supabase
       .from('splits')
@@ -281,6 +327,11 @@ function AdminPortal(): React.JSX.Element | null {
     }
     setLoadError(false);
     setSplits(buildSplitViews((data ?? []) as SplitRecord[]));
+  }
+
+  async function loadExerciseOptions(): Promise<void> {
+    const { data } = await supabase.from('exercises').select('id, name').order('name', { ascending: true });
+    setExerciseOptions((data ?? []) as ExerciseOption[]);
   }
 
   useEffect(() => {
@@ -298,6 +349,7 @@ function AdminPortal(): React.JSX.Element | null {
       setAuthorized(true);
       setUserId(id);
       await loadSplits(id);
+      await loadExerciseOptions();
     })();
 
     return () => {
@@ -431,6 +483,135 @@ function AdminPortal(): React.JSX.Element | null {
       setActionError(`Delete failed: ${message}`);
     } finally {
       setActionPending(false);
+    }
+  }
+
+  async function handleAddExercise(): Promise<void> {
+    if (!userId) return;
+    const name = addExerciseForm.name.trim();
+    const repRange = addExerciseForm.repRange.trim();
+    const setsNum = Number(addExerciseForm.sets);
+
+    if (!name) {
+      setAddExerciseError('Name is required.');
+      return;
+    }
+    if (!addExerciseForm.workoutId) {
+      setAddExerciseError('Select a day to add this exercise to.');
+      return;
+    }
+    if (!repRange) {
+      setAddExerciseError('Rep range is required.');
+      return;
+    }
+    if (!Number.isInteger(setsNum) || setsNum <= 0) {
+      setAddExerciseError('Sets must be a whole number greater than 0.');
+      return;
+    }
+
+    setAddExerciseSubmitting(true);
+    setAddExerciseError(null);
+    try {
+      // Insert the exercise into the global catalog, reusing an existing row if
+      // the name is already taken (name is unique).
+      let exerciseId: string;
+      const insertRes = await supabase
+        .from('exercises')
+        .insert({
+          name,
+          input_mode: addExerciseForm.inputMode,
+          supports_assisted: addExerciseForm.supportsAssisted,
+          is_archived: false,
+        })
+        .select('id')
+        .single();
+      if (insertRes.error) {
+        const existing = await supabase.from('exercises').select('id').eq('name', name).maybeSingle();
+        if (existing.error || !existing.data) throw insertRes.error;
+        exerciseId = existing.data.id;
+      } else {
+        exerciseId = insertRes.data.id;
+      }
+
+      // Append to the chosen day at the next order_index.
+      const orderRes = await supabase
+        .from('workout_exercises')
+        .select('order_index')
+        .eq('workout_id', addExerciseForm.workoutId)
+        .order('order_index', { ascending: false })
+        .limit(1);
+      const nextOrder = (orderRes.data?.[0]?.order_index ?? 0) + 1;
+
+      const { error: weError } = await supabase.from('workout_exercises').insert({
+        workout_id: addExerciseForm.workoutId,
+        exercise_id: exerciseId,
+        sets: setsNum,
+        rep_range: repRange,
+        input_mode: addExerciseForm.inputMode,
+        order_index: nextOrder,
+      });
+      if (weError) throw weError;
+
+      // Optional: register the new exercise as a swap child of a parent.
+      const swapParent = addExerciseForm.swapParentName.trim();
+      if (swapParent) {
+        const { error: swapError } = await supabase.from('exercise_swaps').insert({
+          user_id: userId,
+          base_exercise_name: swapParent,
+          swap_exercise_name: name,
+        });
+        if (swapError) throw swapError;
+      }
+
+      await loadSplits(userId);
+      await loadExerciseOptions();
+      setAddExerciseForm(INITIAL_ADD_EXERCISE);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      setAddExerciseError(`Add exercise failed: ${message}`);
+    } finally {
+      setAddExerciseSubmitting(false);
+    }
+  }
+
+  async function handleAddDay(): Promise<void> {
+    if (!userId || splits === null) return;
+    const name = addDayName.trim();
+    if (!name) {
+      setAddDayError('Name is required.');
+      return;
+    }
+    const targetSplit = resolveTargetSplit(splits);
+    if (!targetSplit) {
+      setAddDayError('No split available to add a day to.');
+      return;
+    }
+
+    setAddDaySubmitting(true);
+    setAddDayError(null);
+    try {
+      const orderRes = await supabase
+        .from('workouts')
+        .select('order_index')
+        .eq('split_id', targetSplit.id)
+        .order('order_index', { ascending: false })
+        .limit(1);
+      const nextOrder = (orderRes.data?.[0]?.order_index ?? 0) + 1;
+
+      const { error } = await supabase.from('workouts').insert({
+        split_id: targetSplit.id,
+        name,
+        order_index: nextOrder,
+      });
+      if (error) throw error;
+
+      await loadSplits(userId);
+      setAddDayName('');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      setAddDayError(`Add day failed: ${message}`);
+    } finally {
+      setAddDaySubmitting(false);
     }
   }
 
@@ -677,6 +858,16 @@ function AdminPortal(): React.JSX.Element | null {
 
   if (!authorized) return null;
 
+  const splitViews = splits ?? [];
+  const multipleSplits = splitViews.length > 1;
+  const dayOptions = splitViews.flatMap((split) =>
+    split.days.map((day) => ({
+      value: day.id,
+      label: multipleSplits ? `${split.name} — ${day.name}` : day.name,
+    })),
+  );
+  const addDayTargetSplit = resolveTargetSplit(splitViews);
+
   return (
     <div className="page">
       <div className="page-header-row">
@@ -690,6 +881,211 @@ function AdminPortal(): React.JSX.Element | null {
         </button>
         <h1>Admin</h1>
       </div>
+
+      <section className="analytics-card">
+        <button
+          type="button"
+          style={headerButtonStyle}
+          onClick={() => setAddExerciseOpen((open) => !open)}
+          aria-expanded={addExerciseOpen}
+        >
+          <IconChevron open={addExerciseOpen} />
+          <span className="analytics-section-title" style={{ margin: 0 }}>
+            Add Exercise
+          </span>
+        </button>
+
+        {addExerciseOpen && (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem',
+              maxWidth: 480,
+              paddingTop: '0.75rem',
+            }}
+          >
+            <label style={editFieldStyle}>
+              Name
+              <input
+                className="input-field"
+                type="text"
+                value={addExerciseForm.name}
+                onChange={(e) => setAddExerciseForm((prev) => ({ ...prev, name: e.target.value }))}
+                disabled={addExerciseSubmitting}
+              />
+            </label>
+
+            <label style={editFieldStyle}>
+              Day
+              <select
+                className="input-field"
+                value={addExerciseForm.workoutId}
+                onChange={(e) => setAddExerciseForm((prev) => ({ ...prev, workoutId: e.target.value }))}
+                disabled={addExerciseSubmitting || dayOptions.length === 0}
+              >
+                <option value="">{dayOptions.length === 0 ? 'No days available' : 'Select a day'}</option>
+                {dayOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label style={editFieldStyle}>
+              Sets
+              <input
+                className="input-field"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                value={addExerciseForm.sets}
+                onChange={(e) => setAddExerciseForm((prev) => ({ ...prev, sets: e.target.value }))}
+                disabled={addExerciseSubmitting}
+              />
+            </label>
+
+            <label style={editFieldStyle}>
+              Rep range
+              <input
+                className="input-field"
+                type="text"
+                placeholder="8-12"
+                value={addExerciseForm.repRange}
+                onChange={(e) => setAddExerciseForm((prev) => ({ ...prev, repRange: e.target.value }))}
+                disabled={addExerciseSubmitting}
+              />
+            </label>
+
+            <label style={editFieldStyle}>
+              Input mode
+              <select
+                className="input-field"
+                value={addExerciseForm.inputMode}
+                onChange={(e) =>
+                  setAddExerciseForm((prev) => ({ ...prev, inputMode: e.target.value as InputMode }))
+                }
+                disabled={addExerciseSubmitting}
+              >
+                <option value="weight">weight</option>
+                <option value="plates">plates</option>
+              </select>
+            </label>
+
+            <label
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontSize: '0.9rem',
+                color: 'var(--text-primary)',
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={addExerciseForm.supportsAssisted}
+                onChange={(e) =>
+                  setAddExerciseForm((prev) => ({ ...prev, supportsAssisted: e.target.checked }))
+                }
+                disabled={addExerciseSubmitting}
+              />
+              Supports assisted
+            </label>
+
+            <label style={editFieldStyle}>
+              Designate as swap child of (optional)
+              <select
+                className="input-field"
+                value={addExerciseForm.swapParentName}
+                onChange={(e) =>
+                  setAddExerciseForm((prev) => ({ ...prev, swapParentName: e.target.value }))
+                }
+                disabled={addExerciseSubmitting}
+              >
+                <option value="">None</option>
+                {exerciseOptions.map((option) => (
+                  <option key={option.id} value={option.name}>
+                    {option.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            {addExerciseError && (
+              <div className="submit-error" role="alert">
+                {addExerciseError}
+              </div>
+            )}
+
+            <button
+              type="button"
+              className="nav-button nav-button--finish-ready"
+              onClick={() => void handleAddExercise()}
+              disabled={addExerciseSubmitting}
+            >
+              {addExerciseSubmitting ? 'Adding…' : 'Add Exercise'}
+            </button>
+          </div>
+        )}
+      </section>
+
+      <section className="analytics-card">
+        <button
+          type="button"
+          style={headerButtonStyle}
+          onClick={() => setAddDayOpen((open) => !open)}
+          aria-expanded={addDayOpen}
+        >
+          <IconChevron open={addDayOpen} />
+          <span className="analytics-section-title" style={{ margin: 0 }}>
+            Add Day
+          </span>
+        </button>
+
+        {addDayOpen && (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.75rem',
+              maxWidth: 480,
+              paddingTop: '0.75rem',
+            }}
+          >
+            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              Adds a day to: <strong>{addDayTargetSplit?.name ?? '—'}</strong>
+            </p>
+
+            <label style={editFieldStyle}>
+              Name
+              <input
+                className="input-field"
+                type="text"
+                placeholder="Push C"
+                value={addDayName}
+                onChange={(e) => setAddDayName(e.target.value)}
+                disabled={addDaySubmitting}
+              />
+            </label>
+
+            {addDayError && (
+              <div className="submit-error" role="alert">
+                {addDayError}
+              </div>
+            )}
+
+            <button
+              type="button"
+              className="nav-button nav-button--finish-ready"
+              onClick={() => void handleAddDay()}
+              disabled={addDaySubmitting || !addDayTargetSplit}
+            >
+              {addDaySubmitting ? 'Adding…' : 'Add Day'}
+            </button>
+          </div>
+        )}
+      </section>
 
       {splits === null ? (
         <p className="analytics-empty-state">Loading…</p>
