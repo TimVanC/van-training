@@ -375,11 +375,12 @@ function AdminPortal(): React.JSX.Element | null {
     setExerciseOptions((data ?? []) as ExerciseOption[]);
   }
 
-  async function loadSwaps(currentUserId: string): Promise<void> {
+  async function loadSwaps(): Promise<void> {
+    // Swaps are admin-curated and global, so the manager shows the global set.
     const { data } = await supabase
       .from('exercise_swaps')
       .select('id, base_exercise_name, swap_exercise_name')
-      .eq('user_id', currentUserId)
+      .eq('is_global', true)
       .order('base_exercise_name', { ascending: true });
     setSwaps((data ?? []) as SwapRow[]);
   }
@@ -400,7 +401,7 @@ function AdminPortal(): React.JSX.Element | null {
       setUserId(id);
       await loadSplits(id);
       await loadExerciseOptions();
-      await loadSwaps(id);
+      await loadSwaps();
     })();
 
     return () => {
@@ -642,6 +643,7 @@ function AdminPortal(): React.JSX.Element | null {
           user_id: userId,
           base_exercise_name: name,
           swap_exercise_name: exercise.name,
+          is_global: true,
         });
         if (swapError) {
           swapWarning = `"${name}" replaced, but the swap link could not be created: ${swapError.message}`;
@@ -660,7 +662,7 @@ function AdminPortal(): React.JSX.Element | null {
       if (userId) {
         await loadSplits(userId);
         await loadExerciseOptions();
-        await loadSwaps(userId);
+        await loadSwaps();
       }
     }
   }
@@ -738,6 +740,7 @@ function AdminPortal(): React.JSX.Element | null {
           user_id: userId,
           base_exercise_name: swapParent,
           swap_exercise_name: name,
+          is_global: true,
         });
         if (swapError) throw swapError;
       }
@@ -814,9 +817,10 @@ function AdminPortal(): React.JSX.Element | null {
         user_id: userId,
         base_exercise_name: parent,
         swap_exercise_name: child,
+        is_global: true,
       });
       if (error) throw error;
-      await loadSwaps(userId);
+      await loadSwaps();
       setSwapParent('');
       setSwapChild('');
     } catch (error) {
@@ -834,7 +838,7 @@ function AdminPortal(): React.JSX.Element | null {
     try {
       const { error } = await supabase.from('exercise_swaps').delete().eq('id', row.id);
       if (error) throw error;
-      await loadSwaps(userId);
+      await loadSwaps();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       setSwapError(`Remove failed: ${message}`);

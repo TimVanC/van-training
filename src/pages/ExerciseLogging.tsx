@@ -142,11 +142,13 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         if (!cancelled) setCustomSwapOptions([]);
         return;
       }
+      // Show the admin-curated global swaps plus this user's own personal swaps.
+      const swapScope = `is_global.eq.true,user_id.eq.${userId}`;
       const primaryResult = await supabase
         .from('exercise_swaps')
         .select('swap_exercise_name,updated_at,created_at')
-        .eq('user_id', userId)
         .eq('base_exercise_name', exercise.name)
+        .or(swapScope)
         .order('updated_at', { ascending: false })
         .order('created_at', { ascending: false });
       let data: Array<{ swap_exercise_name?: unknown }> | null = primaryResult.data as Array<{ swap_exercise_name?: unknown }> | null;
@@ -155,8 +157,8 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         const fallbackResult = await supabase
           .from('exercise_swaps')
           .select('swap_exercise_name,created_at')
-          .eq('user_id', userId)
           .eq('base_exercise_name', exercise.name)
+          .or(swapScope)
           .order('created_at', { ascending: false });
         data = fallbackResult.data as Array<{ swap_exercise_name?: unknown }> | null;
         error = fallbackResult.error;
