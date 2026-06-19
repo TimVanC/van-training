@@ -7,6 +7,7 @@ const ADMIN_EMAIL = 'timvancau@gmail.com';
 type InputMode = 'weight' | 'plates';
 
 interface ExerciseRecord {
+  id: string;
   name: string;
   input_mode: InputMode | null;
   supports_assisted: boolean | null;
@@ -38,6 +39,7 @@ interface SplitRecord {
 
 interface ExerciseView {
   id: string;
+  exerciseId: string;
   name: string;
   sets: number;
   repRange: string;
@@ -56,6 +58,14 @@ interface SplitView {
   id: string;
   name: string;
   days: DayView[];
+}
+
+interface EditForm {
+  name: string;
+  sets: string;
+  repRange: string;
+  inputMode: InputMode;
+  supportsAssisted: boolean;
 }
 
 const IconArrowLeft = () => (
@@ -82,6 +92,13 @@ const IconChevron = ({ open }: { open: boolean }) => (
   </svg>
 );
 
+const IconPencil = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <path d="M12 20h9" />
+    <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+  </svg>
+);
+
 function firstRecord<T>(value: T | T[] | null): T | null {
   if (Array.isArray(value)) return value[0] ?? null;
   return value;
@@ -102,6 +119,7 @@ function buildSplitViews(records: SplitRecord[]): SplitView[] {
         const inputMode: InputMode = we.input_mode ?? exerciseRecord.input_mode ?? 'weight';
         exercises.push({
           id: we.id,
+          exerciseId: exerciseRecord.id,
           name: exerciseRecord.name,
           sets: we.sets,
           repRange: we.rep_range,
@@ -125,6 +143,9 @@ function toggleId(set: Set<string>, id: string): Set<string> {
   }
   return next;
 }
+
+const SPLITS_SELECT =
+  'id, name, created_at, workouts ( id, name, order_index, workout_exercises ( id, sets, rep_range, order_index, input_mode, exercises ( id, name, input_mode, supports_assisted, is_archived ) ) )';
 
 const headerButtonStyle: React.CSSProperties = {
   display: 'flex',
@@ -152,13 +173,43 @@ const countStyle: React.CSSProperties = {
   fontWeight: 500,
 };
 
+const editFieldStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '0.25rem',
+  fontSize: '0.85rem',
+  color: 'var(--text-secondary)',
+};
+
 function AdminPortal(): React.JSX.Element | null {
   const navigate = useNavigate();
   const [authorized, setAuthorized] = useState<boolean | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [splits, setSplits] = useState<SplitView[] | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [expandedSplits, setExpandedSplits] = useState<Set<string>>(new Set());
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState<EditForm | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  async function loadSplits(currentUserId: string): Promise<void> {
+    const { data, error } = await supabase
+      .from('splits')
+      .select(SPLITS_SELECT)
+      .eq('user_id', currentUserId)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      setLoadError(true);
+      setSplits([]);
+      return;
+    }
+    setLoadError(false);
+    setSplits(buildSplitViews((data ?? []) as SplitRecord[]));
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -166,35 +217,92 @@ function AdminPortal(): React.JSX.Element | null {
     (async () => {
       const sessionResult = await supabase.auth.getSession();
       const email = sessionResult.data.session?.user?.email ?? null;
-      const userId = sessionResult.data.session?.user?.id ?? null;
+      const id = sessionResult.data.session?.user?.id ?? null;
       if (cancelled) return;
-      if (email !== ADMIN_EMAIL || !userId) {
+      if (email !== ADMIN_EMAIL || !id) {
         navigate('/', { replace: true });
         return;
       }
       setAuthorized(true);
-
-      const { data, error } = await supabase
-        .from('splits')
-        .select(
-          'id, name, created_at, workouts ( id, name, order_index, workout_exercises ( id, sets, rep_range, order_index, input_mode, exercises ( name, input_mode, supports_assisted, is_archived ) ) )',
-        )
-        .eq('user_id', userId)
-        .order('created_at', { ascending: true });
-
-      if (cancelled) return;
-      if (error) {
-        setLoadError(true);
-        setSplits([]);
-        return;
-      }
-      setSplits(buildSplitViews((data ?? []) as SplitRecord[]));
+      setUserId(id);
+      await loadSplits(id);
     })();
 
     return () => {
       cancelled = true;
     };
   }, [navigate]);
+
+  function startEdit(exercise: ExerciseView): void {
+    setEditingId(exercise.id);
+    setFormError(null);
+    setForm({
+      name: exercise.name,
+      sets: String(exercise.sets),
+      repRange: exercise.repRange,
+      inputMode: exercise.inputMode,
+      supportsAssisted: exercise.supportsAssisted,
+    });
+  }
+
+  function cancelEdit(): void {
+    setEditingId(null);
+    setForm(null);
+    setFormError(null);
+  }
+
+  async function handleSave(exercise: ExerciseView): Promise<void> {
+    if (!form || !userId) return;
+
+    const trimmedName = form.name.trim();
+    const trimmedRepRange = form.repRange.trim();
+    const setsNum = Number(form.sets);
+
+    if (!trimmedName) {
+      setFormError('Name is required.');
+      return;
+    }
+    if (!trimmedRepRange) {
+      setFormError('Rep range is required.');
+      return;
+    }
+    if (!Number.isInteger(setsNum) || setsNum <= 0) {
+      setFormError('Sets must be a whole number greater than 0.');
+      return;
+    }
+
+    setSaving(true);
+    setFormError(null);
+    try {
+      const { error: weError } = await supabase
+        .from('workout_exercises')
+        .update({ sets: setsNum, rep_range: trimmedRepRange, input_mode: form.inputMode })
+        .eq('id', exercise.id);
+      if (weError) throw weError;
+
+      const { error: exError } = await supabase
+        .from('exercises')
+        .update({ name: trimmedName, supports_assisted: form.supportsAssisted })
+        .eq('id', exercise.exerciseId);
+      if (exError) throw exError;
+
+      if (trimmedName !== exercise.name) {
+        const { error: liftSetsError } = await supabase
+          .from('lift_sets')
+          .update({ exercise_name: trimmedName })
+          .eq('exercise_name', exercise.name);
+        if (liftSetsError) throw liftSetsError;
+      }
+
+      await loadSplits(userId);
+      cancelEdit();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      setFormError(`Save failed: ${message}`);
+    } finally {
+      setSaving(false);
+    }
+  }
 
   if (!authorized) return null;
 
@@ -273,22 +381,156 @@ function AdminPortal(): React.JSX.Element | null {
                                 <th>Input</th>
                                 <th>Assisted</th>
                                 <th>Archived</th>
+                                <th aria-label="Actions" />
                               </tr>
                             </thead>
                             <tbody>
-                              {day.exercises.map((exercise) => (
-                                <tr
-                                  key={exercise.id}
-                                  style={exercise.isArchived ? { color: 'var(--text-secondary)' } : undefined}
-                                >
-                                  <td>{exercise.name}</td>
-                                  <td>{exercise.sets}</td>
-                                  <td>{exercise.repRange}</td>
-                                  <td>{exercise.inputMode}</td>
-                                  <td>{exercise.supportsAssisted ? 'Yes' : 'No'}</td>
-                                  <td>{exercise.isArchived ? 'Yes' : 'No'}</td>
-                                </tr>
-                              ))}
+                              {day.exercises.map((exercise) =>
+                                editingId === exercise.id && form ? (
+                                  <tr key={exercise.id}>
+                                    <td colSpan={7}>
+                                      <div
+                                        style={{
+                                          display: 'flex',
+                                          flexDirection: 'column',
+                                          gap: '0.75rem',
+                                          maxWidth: 480,
+                                          padding: '0.5rem 0',
+                                        }}
+                                      >
+                                        <label style={editFieldStyle}>
+                                          Name
+                                          <input
+                                            className="input-field"
+                                            type="text"
+                                            value={form.name}
+                                            onChange={(e) =>
+                                              setForm((prev) => (prev ? { ...prev, name: e.target.value } : prev))
+                                            }
+                                            disabled={saving}
+                                          />
+                                        </label>
+
+                                        <label style={editFieldStyle}>
+                                          Sets
+                                          <input
+                                            className="input-field"
+                                            type="number"
+                                            inputMode="numeric"
+                                            min={1}
+                                            value={form.sets}
+                                            onChange={(e) =>
+                                              setForm((prev) => (prev ? { ...prev, sets: e.target.value } : prev))
+                                            }
+                                            disabled={saving}
+                                          />
+                                        </label>
+
+                                        <label style={editFieldStyle}>
+                                          Rep range
+                                          <input
+                                            className="input-field"
+                                            type="text"
+                                            placeholder="8-12"
+                                            value={form.repRange}
+                                            onChange={(e) =>
+                                              setForm((prev) => (prev ? { ...prev, repRange: e.target.value } : prev))
+                                            }
+                                            disabled={saving}
+                                          />
+                                        </label>
+
+                                        <label style={editFieldStyle}>
+                                          Input mode
+                                          <select
+                                            className="input-field"
+                                            value={form.inputMode}
+                                            onChange={(e) =>
+                                              setForm((prev) =>
+                                                prev ? { ...prev, inputMode: e.target.value as InputMode } : prev,
+                                              )
+                                            }
+                                            disabled={saving}
+                                          >
+                                            <option value="weight">weight</option>
+                                            <option value="plates">plates</option>
+                                          </select>
+                                        </label>
+
+                                        <label
+                                          style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.5rem',
+                                            fontSize: '0.9rem',
+                                            color: 'var(--text-primary)',
+                                          }}
+                                        >
+                                          <input
+                                            type="checkbox"
+                                            checked={form.supportsAssisted}
+                                            onChange={(e) =>
+                                              setForm((prev) =>
+                                                prev ? { ...prev, supportsAssisted: e.target.checked } : prev,
+                                              )
+                                            }
+                                            disabled={saving}
+                                          />
+                                          Supports assisted
+                                        </label>
+
+                                        {formError && (
+                                          <div className="submit-error" role="alert">
+                                            {formError}
+                                          </div>
+                                        )}
+
+                                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                          <button
+                                            type="button"
+                                            className="nav-button nav-button--finish-ready"
+                                            onClick={() => void handleSave(exercise)}
+                                            disabled={saving}
+                                          >
+                                            {saving ? 'Saving…' : 'Save'}
+                                          </button>
+                                          <button
+                                            type="button"
+                                            className="nav-button"
+                                            onClick={cancelEdit}
+                                            disabled={saving}
+                                          >
+                                            Cancel
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                ) : (
+                                  <tr
+                                    key={exercise.id}
+                                    style={exercise.isArchived ? { color: 'var(--text-secondary)' } : undefined}
+                                  >
+                                    <td>{exercise.name}</td>
+                                    <td>{exercise.sets}</td>
+                                    <td>{exercise.repRange}</td>
+                                    <td>{exercise.inputMode}</td>
+                                    <td>{exercise.supportsAssisted ? 'Yes' : 'No'}</td>
+                                    <td>{exercise.isArchived ? 'Yes' : 'No'}</td>
+                                    <td>
+                                      <button
+                                        type="button"
+                                        className="set-action-button"
+                                        onClick={() => startEdit(exercise)}
+                                        disabled={editingId !== null}
+                                        aria-label={`Edit ${exercise.name}`}
+                                      >
+                                        <IconPencil />
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ),
+                              )}
                             </tbody>
                           </table>
                         ))}
