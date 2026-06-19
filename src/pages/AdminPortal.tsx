@@ -591,6 +591,8 @@ function AdminPortal(): React.JSX.Element | null {
 
     setReplaceSubmitting(true);
     setReplaceError(null);
+    setActionError(null);
+    let swapWarning: string | null = null;
     try {
       // 1) Insert the new exercise first so a duplicate name fails before any
       //    other rows are mutated. It starts with no lift history.
@@ -633,24 +635,33 @@ function AdminPortal(): React.JSX.Element | null {
       if (archiveError) throw archiveError;
 
       // 4) Optionally make the old exercise a swap child of the new one.
+      //    The core replace (steps 1-3) is already committed, so a swap failure
+      //    must NOT abort the UI refresh below — surface it as a warning instead.
       if (replaceForm.makeOldSwap) {
         const { error: swapError } = await supabase.from('exercise_swaps').insert({
           user_id: userId,
           base_exercise_name: name,
           swap_exercise_name: exercise.name,
         });
-        if (swapError) throw swapError;
+        if (swapError) {
+          swapWarning = `"${name}" replaced, but the swap link could not be created: ${swapError.message}`;
+        }
       }
 
-      await loadSplits(userId);
-      await loadExerciseOptions();
-      await loadSwaps(userId);
       cancelReplace();
+      if (swapWarning) setActionError(swapWarning);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       setReplaceError(`Replace failed: ${message}`);
     } finally {
       setReplaceSubmitting(false);
+      // Always re-sync the Split Editor with the backend so a successful (or
+      // partial) replace is reflected without a manual page refresh.
+      if (userId) {
+        await loadSplits(userId);
+        await loadExerciseOptions();
+        await loadSwaps(userId);
+      }
     }
   }
 
