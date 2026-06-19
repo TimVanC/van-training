@@ -88,6 +88,12 @@ interface ExerciseOption {
   name: string;
 }
 
+interface SwapRow {
+  id: string;
+  base_exercise_name: string;
+  swap_exercise_name: string;
+}
+
 const IconArrowLeft = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
     <line x1="19" y1="12" x2="5" y2="12" />
@@ -313,6 +319,14 @@ function AdminPortal(): React.JSX.Element | null {
   const [addDayError, setAddDayError] = useState<string | null>(null);
   const [addDaySubmitting, setAddDaySubmitting] = useState(false);
 
+  const [swaps, setSwaps] = useState<SwapRow[] | null>(null);
+  const [swapsOpen, setSwapsOpen] = useState(false);
+  const [swapParent, setSwapParent] = useState('');
+  const [swapChild, setSwapChild] = useState('');
+  const [swapError, setSwapError] = useState<string | null>(null);
+  const [swapSubmitting, setSwapSubmitting] = useState(false);
+  const [swapRemovingId, setSwapRemovingId] = useState<string | null>(null);
+
   async function loadSplits(currentUserId: string): Promise<void> {
     const { data, error } = await supabase
       .from('splits')
@@ -330,8 +344,21 @@ function AdminPortal(): React.JSX.Element | null {
   }
 
   async function loadExerciseOptions(): Promise<void> {
-    const { data } = await supabase.from('exercises').select('id, name').order('name', { ascending: true });
+    const { data } = await supabase
+      .from('exercises')
+      .select('id, name')
+      .eq('is_archived', false)
+      .order('name', { ascending: true });
     setExerciseOptions((data ?? []) as ExerciseOption[]);
+  }
+
+  async function loadSwaps(currentUserId: string): Promise<void> {
+    const { data } = await supabase
+      .from('exercise_swaps')
+      .select('id, base_exercise_name, swap_exercise_name')
+      .eq('user_id', currentUserId)
+      .order('base_exercise_name', { ascending: true });
+    setSwaps((data ?? []) as SwapRow[]);
   }
 
   useEffect(() => {
@@ -350,6 +377,7 @@ function AdminPortal(): React.JSX.Element | null {
       setUserId(id);
       await loadSplits(id);
       await loadExerciseOptions();
+      await loadSwaps(id);
     })();
 
     return () => {
@@ -612,6 +640,55 @@ function AdminPortal(): React.JSX.Element | null {
       setAddDayError(`Add day failed: ${message}`);
     } finally {
       setAddDaySubmitting(false);
+    }
+  }
+
+  async function handleAddSwap(): Promise<void> {
+    if (!userId) return;
+    const parent = swapParent.trim();
+    const child = swapChild.trim();
+    if (!parent || !child) {
+      setSwapError('Select both a parent and a child exercise.');
+      return;
+    }
+    if (parent.toLowerCase() === child.toLowerCase()) {
+      setSwapError('Parent and child must be different exercises.');
+      return;
+    }
+
+    setSwapSubmitting(true);
+    setSwapError(null);
+    try {
+      const { error } = await supabase.from('exercise_swaps').insert({
+        user_id: userId,
+        base_exercise_name: parent,
+        swap_exercise_name: child,
+      });
+      if (error) throw error;
+      await loadSwaps(userId);
+      setSwapParent('');
+      setSwapChild('');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      setSwapError(`Add relationship failed: ${message}`);
+    } finally {
+      setSwapSubmitting(false);
+    }
+  }
+
+  async function handleRemoveSwap(row: SwapRow): Promise<void> {
+    if (!userId) return;
+    setSwapRemovingId(row.id);
+    setSwapError(null);
+    try {
+      const { error } = await supabase.from('exercise_swaps').delete().eq('id', row.id);
+      if (error) throw error;
+      await loadSwaps(userId);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      setSwapError(`Remove failed: ${message}`);
+    } finally {
+      setSwapRemovingId(null);
     }
   }
 
@@ -1083,6 +1160,125 @@ function AdminPortal(): React.JSX.Element | null {
             >
               {addDaySubmitting ? 'Adding…' : 'Add Day'}
             </button>
+          </div>
+        )}
+      </section>
+
+      <section className="analytics-card">
+        <button
+          type="button"
+          style={headerButtonStyle}
+          onClick={() => setSwapsOpen((open) => !open)}
+          aria-expanded={swapsOpen}
+        >
+          <IconChevron open={swapsOpen} />
+          <span className="analytics-section-title" style={{ margin: 0 }}>
+            Swap Relationships
+          </span>
+          <span style={countStyle}>{swaps?.length ?? 0}</span>
+        </button>
+
+        {swapsOpen && (
+          <div style={{ paddingTop: '0.75rem' }}>
+            {swaps === null ? (
+              <p className="analytics-empty-state" style={{ marginTop: 0 }}>
+                Loading…
+              </p>
+            ) : swaps.length === 0 ? (
+              <p className="analytics-empty-state" style={{ marginTop: 0 }}>
+                No swap relationships.
+              </p>
+            ) : (
+              <div>
+                {swaps.map((row) => (
+                  <div
+                    key={row.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.6rem',
+                      padding: '0.55rem 0',
+                      borderTop: '1px solid var(--border)',
+                    }}
+                  >
+                    <span>
+                      {row.base_exercise_name} → {row.swap_exercise_name}
+                    </span>
+                    <button
+                      type="button"
+                      className="set-action-button set-action-button--delete"
+                      style={{ marginLeft: 'auto' }}
+                      onClick={() => void handleRemoveSwap(row)}
+                      disabled={swapRemovingId !== null}
+                      aria-label={`Remove swap ${row.base_exercise_name} to ${row.swap_exercise_name}`}
+                    >
+                      <IconTrash />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.75rem',
+                maxWidth: 480,
+                marginTop: '1rem',
+                paddingTop: '1rem',
+                borderTop: '1px solid var(--border)',
+              }}
+            >
+              <label style={editFieldStyle}>
+                Parent exercise
+                <select
+                  className="input-field"
+                  value={swapParent}
+                  onChange={(e) => setSwapParent(e.target.value)}
+                  disabled={swapSubmitting || exerciseOptions.length === 0}
+                >
+                  <option value="">Select parent</option>
+                  {exerciseOptions.map((option) => (
+                    <option key={option.id} value={option.name}>
+                      {option.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label style={editFieldStyle}>
+                Child exercise
+                <select
+                  className="input-field"
+                  value={swapChild}
+                  onChange={(e) => setSwapChild(e.target.value)}
+                  disabled={swapSubmitting || exerciseOptions.length === 0}
+                >
+                  <option value="">Select child</option>
+                  {exerciseOptions.map((option) => (
+                    <option key={option.id} value={option.name}>
+                      {option.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {swapError && (
+                <div className="submit-error" role="alert">
+                  {swapError}
+                </div>
+              )}
+
+              <button
+                type="button"
+                className="nav-button nav-button--finish-ready"
+                onClick={() => void handleAddSwap()}
+                disabled={swapSubmitting}
+              >
+                {swapSubmitting ? 'Adding…' : 'Add Relationship'}
+              </button>
+            </div>
           </div>
         )}
       </section>
