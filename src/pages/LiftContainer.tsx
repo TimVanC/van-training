@@ -85,6 +85,17 @@ function LiftContainer(): React.JSX.Element {
     const saved = loadSession();
     if (!saved || saved.activityType !== 'Lift') return null;
     if (isLiftRoot) return null;
+    const pathParts = window.location.pathname.split('/').filter(Boolean);
+    // On /lift or /lift/:splitName (selection screens) — don't restore.
+    if (pathParts.length < 3) return null;
+    const urlSplit = decodeURIComponent(pathParts[1]);
+    const urlDay = decodeURIComponent(pathParts[2]);
+    // Only restore if the saved session matches the URL we're actually on;
+    // a mismatched saved session is stale and must be cleared.
+    if (saved.split !== urlSplit || saved.day !== urlDay) {
+      clearSession();
+      return null;
+    }
     return saved;
   });
 
