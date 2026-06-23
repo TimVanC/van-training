@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate, useLocation, useParams } from 'react-router-dom';
 import type { LiftSession } from '../types/session';
 import type { Exercise } from '../types/lift';
 import { loadSession, saveSession, clearSession } from '../utils/storage';
@@ -74,6 +74,59 @@ async function loadDayExercises(splitName: string, dayName: string): Promise<Exe
     exercises.push(exercise);
   }
   return exercises;
+}
+
+/**
+ * Resolves the session a day/exercise route should render.
+ *
+ * The in-memory `session` state is preferred, but it may not be committed yet
+ * on the first render after `handleDaySelect` calls `setSession` + `navigate`
+ * together (React batches the updates, and on some devices the route renders
+ * before the state commit lands). Because `saveSession` is written to
+ * localStorage synchronously *before* navigation, the saved session is a
+ * reliable fallback. We only trust either source when it matches the URL we're
+ * actually on, so a stale saved session can never leak into the wrong route.
+ */
+function resolveRouteSession(
+  stateSession: LiftSession | null,
+  splitName: string | undefined,
+  dayName: string | undefined,
+): LiftSession | null {
+  if (!splitName || !dayName) return null;
+  if (stateSession && stateSession.split === splitName && stateSession.day === dayName) {
+    return stateSession;
+  }
+  const saved = loadSession();
+  if (
+    saved &&
+    saved.activityType === 'Lift' &&
+    saved.split === splitName &&
+    saved.day === dayName
+  ) {
+    return saved;
+  }
+  return null;
+}
+
+/**
+ * Route guard that renders `children(session)` when a session matching the
+ * current URL is available, otherwise redirects away. Reading route params
+ * here (rather than trusting only in-memory state) makes day navigation
+ * resilient to React's state-commit timing.
+ */
+function SessionRoute({
+  stateSession,
+  navigatingToHome,
+  children,
+}: {
+  stateSession: LiftSession | null;
+  navigatingToHome: boolean;
+  children: (session: LiftSession) => React.JSX.Element;
+}): React.JSX.Element {
+  const { splitName, dayName } = useParams();
+  const session = resolveRouteSession(stateSession, splitName, dayName);
+  if (session) return children(session);
+  return navigatingToHome ? <Navigate to="/" replace /> : <Navigate to="/lift" replace />;
 }
 
 function LiftContainer(): React.JSX.Element {
@@ -191,14 +244,14 @@ function LiftContainer(): React.JSX.Element {
         <Route index element={<SplitSelection />} />
         <Route path=":splitName" element={<DaySelection onDaySelect={handleDaySelect} />} />
         <Route path=":splitName/:dayName" element={
-          session
-            ? <ExerciseList session={session} onUpdateSession={handleUpdateSession} onSubmit={handleSubmit} isSubmitting={isSubmitting} submitError={submitError ?? undefined} onRetry={handleSubmit} />
-            : navigatingToHome ? <Navigate to="/" replace /> : <Navigate to="/lift" replace />
+          <SessionRoute stateSession={session} navigatingToHome={navigatingToHome}>
+            {(active) => <ExerciseList session={active} onUpdateSession={handleUpdateSession} onSubmit={handleSubmit} isSubmitting={isSubmitting} submitError={submitError ?? undefined} onRetry={handleSubmit} />}
+          </SessionRoute>
         } />
         <Route path=":splitName/:dayName/:exerciseIndex" element={
-          session
-            ? <ExerciseLogging session={session} onUpdateSession={handleUpdateSession} />
-            : navigatingToHome ? <Navigate to="/" replace /> : <Navigate to="/lift" replace />
+          <SessionRoute stateSession={session} navigatingToHome={navigatingToHome}>
+            {(active) => <ExerciseLogging session={active} onUpdateSession={handleUpdateSession} />}
+          </SessionRoute>
         } />
       </Routes>
       {showCheckin && checkinContext && (
