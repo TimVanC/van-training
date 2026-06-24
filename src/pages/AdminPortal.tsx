@@ -77,9 +77,16 @@ interface ReplaceForm {
   makeOldSwap: boolean;
 }
 
+interface ExerciseUsage {
+  slots: number;
+  users: number;
+}
+
 interface DeletePrompt {
   id: string;
   confirmations: number;
+  usage: ExerciseUsage | null;
+  usageLoading: boolean;
 }
 
 interface AddExerciseForm {
@@ -507,7 +514,27 @@ function AdminPortal(): React.JSX.Element | null {
   function startDelete(exercise: ExerciseView): void {
     setEditingId(null);
     setActionError(null);
-    setDeletePrompt({ id: exercise.id, confirmations: 0 });
+    setDeletePrompt({ id: exercise.id, confirmations: 0, usage: null, usageLoading: true });
+    void loadDeleteUsage(exercise);
+  }
+
+  async function loadDeleteUsage(exercise: ExerciseView): Promise<void> {
+    const { data, error } = await supabase.rpc('exercise_usage_stats', {
+      p_exercise_id: exercise.exerciseId,
+    });
+    const row = Array.isArray(data) ? data[0] : data;
+    // Only apply the result if this exercise's prompt is still open.
+    setDeletePrompt((prev) => {
+      if (!prev || prev.id !== exercise.id) return prev;
+      if (error || !row) {
+        return { ...prev, usage: null, usageLoading: false };
+      }
+      return {
+        ...prev,
+        usage: { slots: row.slot_count ?? 0, users: row.user_count ?? 0 },
+        usageLoading: false,
+      };
+    });
   }
 
   function cancelDelete(): void {
@@ -521,7 +548,7 @@ function AdminPortal(): React.JSX.Element | null {
     if (next >= 2) {
       void executeDelete(exercise);
     } else {
-      setDeletePrompt({ id: exercise.id, confirmations: next });
+      setDeletePrompt({ ...deletePrompt, confirmations: next });
     }
   }
 
@@ -542,8 +569,17 @@ function AdminPortal(): React.JSX.Element | null {
       await loadSplits(userId);
       setDeletePrompt(null);
     } catch (error) {
+      // ON DELETE RESTRICT: blocked because the exercise is still in a program.
+      const code = (error as { code?: string } | null)?.code;
       const message = error instanceof Error ? error.message : 'Unknown error';
-      setActionError(`Delete failed: ${message}`);
+      if (code === '23503') {
+        setActionError(
+          `Can't delete "${exercise.name}" — it's still used in active programs. ` +
+            'Archive it instead to hide it from logging without breaking anyone\'s program.',
+        );
+      } else {
+        setActionError(`Delete failed: ${message}`);
+      }
     } finally {
       setActionPending(false);
     }
@@ -974,6 +1010,18 @@ function AdminPortal(): React.JSX.Element | null {
               This will permanently delete {exercise.name}. Historical lift data will be orphaned and
               unrecoverable. This cannot be undone.
             </p>
+
+            {deletePrompt?.usageLoading ? (
+              <p style={{ margin: 0, color: 'var(--text-secondary)' }}>Checking program usage…</p>
+            ) : deletePrompt?.usage && deletePrompt.usage.slots > 0 ? (
+              <p style={{ margin: 0, color: 'var(--danger)' }}>
+                In use by {deletePrompt.usage.users} user
+                {deletePrompt.usage.users === 1 ? '' : 's'} ({deletePrompt.usage.slots} program slot
+                {deletePrompt.usage.slots === 1 ? '' : 's'}). Deleting removes it from{' '}
+                {deletePrompt.usage.users === 1 ? 'their' : 'all of their'} program
+                {deletePrompt.usage.users === 1 ? '' : 's'}. Consider Archive instead.
+              </p>
+            ) : null}
 
             {actionError && (
               <div className="submit-error" role="alert">

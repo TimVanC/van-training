@@ -12,8 +12,12 @@ interface LastTrainedByWorkoutRow {
   last_trained: string;
 }
 
+/** Outcome of attempting to start a day, so the UI can give feedback instead
+ *  of silently doing nothing when a day can't be opened. */
+export type DaySelectResult = 'ok' | 'empty' | 'error';
+
 interface DaySelectionProps {
-  onDaySelect: (splitName: string, dayName: string) => void;
+  onDaySelect: (splitName: string, dayName: string) => Promise<DaySelectResult>;
 }
 
 function DaySelection({ onDaySelect }: DaySelectionProps): React.JSX.Element {
@@ -21,6 +25,24 @@ function DaySelection({ onDaySelect }: DaySelectionProps): React.JSX.Element {
   const [days, setDays] = useState<WorkoutRow[] | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [dayToLastTrained, setDayToLastTrained] = useState<Record<string, string>>({});
+  const [busyDay, setBusyDay] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  async function handleDayClick(dayName: string): Promise<void> {
+    if (busyDay) return;
+    setActionError(null);
+    setBusyDay(dayName);
+    const result = await onDaySelect(splitName ?? '', dayName);
+    // On 'ok' we navigate away and this component unmounts, so only update
+    // state for the failure cases.
+    if (result === 'empty') {
+      setActionError(`"${dayName}" doesn't have any exercises set up yet.`);
+      setBusyDay(null);
+    } else if (result === 'error') {
+      setActionError(`Couldn't open "${dayName}". Please try again.`);
+      setBusyDay(null);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -112,11 +134,13 @@ function DaySelection({ onDaySelect }: DaySelectionProps): React.JSX.Element {
         <p>Loading…</p>
       ) : (
         <div className="button-list">
+          {actionError && <div className="submit-error" role="alert">{actionError}</div>}
           {days.map((day) => (
             <div key={day.id} className="workout-choice">
               <button
                 className="nav-button"
-                onClick={() => onDaySelect(splitName ?? '', day.name)}
+                onClick={() => handleDayClick(day.name)}
+                disabled={busyDay !== null}
               >
                 {day.name}
               </button>

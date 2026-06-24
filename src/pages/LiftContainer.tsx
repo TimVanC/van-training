@@ -9,7 +9,7 @@ import { submitWorkout } from '../utils/submitWorkout';
 import { resolveWorkoutIdForLiftSession } from '../utils/resolveWorkoutId';
 import { supabase } from '../utils/supabaseClient';
 import SplitSelection from './SplitSelection';
-import DaySelection from './DaySelection';
+import DaySelection, { type DaySelectResult } from './DaySelection';
 import ExerciseList from './ExerciseList';
 import ExerciseLogging from './ExerciseLogging';
 import WorkoutCheckin from '../components/WorkoutCheckin';
@@ -178,14 +178,19 @@ function LiftContainer(): React.JSX.Element {
     setSession(null);
   }
 
-  async function handleDaySelect(splitName: string, dayName: string): Promise<void> {
+  async function handleDaySelect(splitName: string, dayName: string): Promise<DaySelectResult> {
     const exercises = await loadDayExercises(splitName, dayName);
-    if (!exercises || exercises.length === 0) return;
+    // `null` means the split/workout couldn't be resolved; an empty array means
+    // the day exists but has no (non-archived) exercises configured. Both used
+    // to bail silently here, which looked like a dead tap to the user.
+    if (!exercises) return 'error';
+    if (exercises.length === 0) return 'empty';
 
     const newSession = createLiftSession(splitName, dayName, exercises);
     setSession(newSession);
     saveSession(newSession);
     navigate(`/lift/${encodeURIComponent(splitName)}/${encodeURIComponent(dayName)}`);
+    return 'ok';
   }
 
   function handleUpdateSession(updated: LiftSession): void {
