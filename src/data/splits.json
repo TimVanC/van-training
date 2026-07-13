@@ -37,7 +37,8 @@
         { "exercise": "Single Arm Dumbbell Row", "sets": 3, "repRange": "8-12" },
         { "exercise": "Back Extension", "sets": 3, "repRange": "12-15" },
         { "exercise": "Cable Rear Delt Fly", "sets": 3, "repRange": "12-20" },
-        { "exercise": "Hammer Curls", "sets": 3, "repRange": "8-12" }
+        { "exercise": "Hammer Curls", "sets": 3, "repRange": "8-12" },
+        { "exercise": "Preacher Curls", "sets": 3, "repRange": "6-10" }
       ],
       "Legs": [
         { "exercise": "Leg Press", "sets": 4, "repRange": "6-10", "inputMode": "plates" },
