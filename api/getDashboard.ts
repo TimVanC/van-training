@@ -8,8 +8,8 @@ import {
   type AnalysisSessionRow,
   type AnalysisSetRow,
   type CheckinRow,
-} from '../src/lib/analysis';
-import { computeNextDayName, type RotationDay } from '../src/lib/rotation';
+} from '../src/lib/analysis.js';
+import { computeNextDayName, type RotationDay } from '../src/lib/rotation.js';
 
 interface SessionQueryRow {
   id: string;

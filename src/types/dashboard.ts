@@ -1,5 +1,5 @@
-import type { MuscleGroup } from '../lib/muscles';
-import type { TrendVerdict, CheckinInsight, PrEntry, WeekStats } from '../lib/analysis';
+import type { MuscleGroup } from '../lib/muscles.js';
+import type { TrendVerdict, CheckinInsight, PrEntry, WeekStats } from '../lib/analysis.js';
 
 export interface DashboardSession {
   id: string;

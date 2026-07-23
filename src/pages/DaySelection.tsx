@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
-import { computeNextDayName } from '../lib/rotation';
+import { computeNextDayName } from '../lib/rotation.js';
 
 interface WorkoutRow {
   id: string;

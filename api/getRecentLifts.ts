@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
-import { buildProgressionPlan } from '../src/lib/progression';
-import type { ProgressionPhase } from '../src/lib/progression';
+import { buildProgressionPlan } from '../src/lib/progression.js';
+import type { ProgressionPhase } from '../src/lib/progression.js';
 
 interface RecentLiftEntry {
   weight: string | number;

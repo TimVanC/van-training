@@ -6,8 +6,8 @@
  * agree.
  */
 
-import { MUSCLE_GROUPS, classifyExercise, type MuscleGroup } from './muscles';
-import { estimateOneRepMax } from './progression';
+import { MUSCLE_GROUPS, classifyExercise, type MuscleGroup } from './muscles.js';
+import { estimateOneRepMax } from './progression.js';
 
 export interface AnalysisSetRow {
   sessionId: string;

@@ -7,7 +7,7 @@ import type {
   DashboardResponse,
   DashboardSession,
 } from '../types/dashboard';
-import type { TrendVerdict } from '../lib/analysis';
+import type { TrendVerdict } from '../lib/analysis.js';
 
 const numberFormatter = new Intl.NumberFormat('en-US');
 
