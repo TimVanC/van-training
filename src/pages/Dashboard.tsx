@@ -144,9 +144,37 @@ function MuscleGroupCard({
   );
 }
 
-/** Last-4-weeks activity strip for a quick calendar feel on the homepage. */
-function RecentActivityStrip({ sessions }: { sessions: DashboardSession[] }): React.JSX.Element {
-  const cells = useMemo(() => {
+const MINI_WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+function localDateKey(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function dayKind(dayName: string): string {
+  const n = dayName.toLowerCase();
+  if (n.includes('push')) return 'push';
+  if (n.includes('pull')) return 'pull';
+  if (n.includes('leg')) return 'legs';
+  if (n.includes('core')) return 'core';
+  return 'other';
+}
+
+interface MiniCalCell {
+  key: string;
+  day: number;
+  trained: boolean;
+  kind: string;
+  isToday: boolean;
+  isFuture: boolean;
+  label: string;
+}
+
+/** Compact month-style calendar (last 5 weeks) for the homepage. */
+function MiniCalendar({ sessions }: { sessions: DashboardSession[] }): React.JSX.Element {
+  const { weeks, rangeLabel } = useMemo(() => {
     const byDate = new Map<string, DashboardSession[]>();
     for (const s of sessions) {
       const d = s.date.slice(0, 10);
@@ -154,31 +182,72 @@ function RecentActivityStrip({ sessions }: { sessions: DashboardSession[] }): Re
       if (list) list.push(s);
       else byDate.set(d, [s]);
     }
-    const out: Array<{ date: string; trained: boolean; label: string }> = [];
+
     const today = new Date();
-    for (let i = 27; i >= 0; i--) {
-      const d = new Date(today.getTime() - i * 24 * 60 * 60 * 1000);
-      const key = d.toISOString().slice(0, 10);
-      const daySessions = byDate.get(key) ?? [];
-      out.push({
-        date: key,
-        trained: daySessions.length > 0,
-        label: daySessions.map((s) => s.dayName).join(', '),
-      });
+    const todayKey = localDateKey(today);
+    // Sunday of the current week, then back 4 weeks -> 5 aligned week rows.
+    const start = new Date(today);
+    start.setDate(today.getDate() - today.getDay() - 7 * 4);
+
+    const rows: MiniCalCell[][] = [];
+    const cursor = new Date(start);
+    for (let w = 0; w < 5; w++) {
+      const row: MiniCalCell[] = [];
+      for (let d = 0; d < 7; d++) {
+        const key = localDateKey(cursor);
+        const daySessions = byDate.get(key) ?? [];
+        row.push({
+          key,
+          day: cursor.getDate(),
+          trained: daySessions.length > 0,
+          kind: daySessions[0] ? dayKind(daySessions[0].dayName) : 'other',
+          isToday: key === todayKey,
+          isFuture: cursor > today && key !== todayKey,
+          label: daySessions.map((s) => s.dayName).join(', '),
+        });
+        cursor.setDate(cursor.getDate() + 1);
+      }
+      rows.push(row);
     }
-    return out;
+
+    const end = new Date(today);
+    const startMonth = start.toLocaleDateString('en-US', { month: 'short' });
+    const endMonth = end.toLocaleDateString('en-US', { month: 'short' });
+    const label =
+      startMonth === endMonth
+        ? `${endMonth} ${end.getFullYear()}`
+        : `${startMonth} – ${endMonth} ${end.getFullYear()}`;
+
+    return { weeks: rows, rangeLabel: label };
   }, [sessions]);
 
   return (
-    <div className="activity-strip" aria-label="Last 4 weeks of training">
-      {cells.map((cell, i) => (
-        <span
-          key={cell.date}
-          className={`activity-cell ${cell.trained ? 'activity-cell--trained' : ''}`}
-          style={{ animationDelay: `${i * 12}ms` }}
-          title={cell.trained ? `${cell.date}: ${cell.label}` : cell.date}
-        />
-      ))}
+    <div className="mini-cal" aria-label="Recent training calendar">
+      <div className="mini-cal-head">
+        <span className="mini-cal-range">{rangeLabel}</span>
+      </div>
+      <div className="mini-cal-grid">
+        {MINI_WEEKDAYS.map((label, i) => (
+          <span key={`wd-${i}`} className="mini-cal-weekday">{label}</span>
+        ))}
+      </div>
+      <div className="mini-cal-grid">
+        {weeks.flat().map((cell, i) => (
+          <div
+            key={cell.key}
+            className={[
+              'mini-cal-day',
+              cell.trained ? `mini-cal-day--trained mini-cal-day--${cell.kind}` : '',
+              cell.isToday ? 'mini-cal-day--today' : '',
+              cell.isFuture ? 'mini-cal-day--future' : '',
+            ].join(' ')}
+            style={{ animationDelay: `${i * 9}ms` }}
+            title={cell.trained ? `${cell.key}: ${cell.label}` : cell.key}
+          >
+            {cell.day}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -327,14 +396,22 @@ function Dashboard(): React.JSX.Element {
           </section>
         )}
 
-        {/* --- 4-week strip ------------------------------------------------ */}
+        {/* --- Calendar snapshot ------------------------------------------ */}
         <section className="dash-section">
+          <div className="dash-section-head dash-animate">
+            <h2 className="dash-section-title">Calendar</h2>
+          </div>
           <button type="button" className="dash-card dash-strip-card dash-animate" onClick={() => navigate('/calendar')}>
-            <div className="dash-strip-head">
-              <h2 className="dash-section-title">Last 4 weeks</h2>
-              <span className="dash-strip-link">Full calendar →</span>
+            <MiniCalendar sessions={d.sessions} />
+            <div className="mini-cal-footer">
+              <div className="mini-cal-legend">
+                <span className="mini-cal-legend-item"><i className="legend-dot legend-dot--push" /> Push</span>
+                <span className="mini-cal-legend-item"><i className="legend-dot legend-dot--pull" /> Pull</span>
+                <span className="mini-cal-legend-item"><i className="legend-dot legend-dot--legs" /> Legs</span>
+                <span className="mini-cal-legend-item"><i className="legend-dot legend-dot--core" /> Core</span>
+              </div>
+              <span className="dash-strip-link">Open full calendar →</span>
             </div>
-            <RecentActivityStrip sessions={d.sessions} />
           </button>
         </section>
       </>

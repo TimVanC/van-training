@@ -1,7 +1,29 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
 import { computeNextDayName } from '../lib/rotation.js';
+
+function dayKind(dayName: string): string {
+  const n = dayName.toLowerCase();
+  if (n.includes('push')) return 'push';
+  if (n.includes('pull')) return 'pull';
+  if (n.includes('leg')) return 'legs';
+  if (n.includes('core')) return 'core';
+  return 'other';
+}
+
+function relativeLastTrained(value?: string): string {
+  if (!value) return 'Not trained yet';
+  const then = new Date(value);
+  if (Number.isNaN(then.getTime())) return 'Not trained yet';
+  const days = Math.floor((Date.now() - then.getTime()) / 86_400_000);
+  if (days <= 0) return 'Trained today';
+  if (days === 1) return 'Trained yesterday';
+  if (days < 7) return `Trained ${days} days ago`;
+  const weeks = Math.floor(days / 7);
+  if (days < 30) return weeks === 1 ? 'Trained 1 week ago' : `Trained ${weeks} weeks ago`;
+  return `Last trained ${then.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`;
+}
 
 interface WorkoutRow {
   id: string;
@@ -22,6 +44,7 @@ interface DaySelectionProps {
 }
 
 function DaySelection({ onDaySelect }: DaySelectionProps): React.JSX.Element {
+  const navigate = useNavigate();
   const { splitName } = useParams<{ splitName: string }>();
   const [days, setDays] = useState<WorkoutRow[] | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -118,57 +141,86 @@ function DaySelection({ onDaySelect }: DaySelectionProps): React.JSX.Element {
     [days, dayToLastTrained],
   );
 
-  function formatLastTrained(value: string): string {
-    const parsed = new Date(value);
-    if (Number.isNaN(parsed.getTime())) return value;
-    const now = new Date();
-    const includeYear = parsed.getFullYear() !== now.getFullYear();
-    return parsed.toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      ...(includeYear ? { year: 'numeric' } : {}),
-    });
-  }
-
   if (notFound) {
     return (
-      <div className="page">
-        <h1>Split not found</h1>
+      <div className="page selection-page">
+        <div className="selection-header">
+          <button type="button" className="selection-back" onClick={() => navigate('/lift')} aria-label="Back">
+            <IconChevronLeft />
+          </button>
+          <div className="selection-heading">
+            <h1 className="selection-title">Split not found</h1>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="page">
-      <h1>{splitName}</h1>
+    <div className="page selection-page">
+      <div className="selection-header">
+        <button type="button" className="selection-back" onClick={() => navigate('/lift')} aria-label="Back to splits">
+          <IconChevronLeft />
+        </button>
+        <div className="selection-heading">
+          <p className="selection-kicker">Start a workout</p>
+          <h1 className="selection-title">{splitName}</h1>
+        </div>
+      </div>
+
       {days === null ? (
-        <p>Loading…</p>
+        <div className="selection-list">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="day-card day-card--skeleton" style={{ animationDelay: `${i * 60}ms` }} />
+          ))}
+        </div>
       ) : (
-        <div className="button-list">
+        <div className="selection-list">
           {actionError && <div className="submit-error" role="alert">{actionError}</div>}
-          {days.map((day) => {
+          {days.map((day, i) => {
             const isNext = day.name === nextDayName;
+            const kind = dayKind(day.name);
+            const busy = busyDay === day.name;
             return (
-              <div key={day.id} className={`workout-choice ${isNext ? 'workout-choice--next' : ''}`}>
-                <button
-                  className={`nav-button ${isNext ? 'nav-button--next-day' : ''}`}
-                  onClick={() => handleDayClick(day.name)}
-                  disabled={busyDay !== null}
-                >
-                  {isNext && <span className="next-day-badge">Up next</span>}
-                  {day.name}
-                </button>
-                <p className="workout-choice-last-trained">
-                  {dayToLastTrained[day.name]
-                    ? `Last trained: ${formatLastTrained(dayToLastTrained[day.name])}`
-                    : 'Not trained yet'}
-                </p>
-              </div>
+              <button
+                key={day.id}
+                type="button"
+                className={`day-card day-card--${kind} ${isNext ? 'day-card--next' : ''} dash-animate`}
+                style={{ animationDelay: `${i * 55}ms` }}
+                onClick={() => handleDayClick(day.name)}
+                disabled={busyDay !== null}
+              >
+                <span className={`day-card-bar day-card-bar--${kind}`} aria-hidden />
+                <span className="day-card-body">
+                  <span className="day-card-top">
+                    <span className="day-card-name">{day.name}</span>
+                    {isNext && <span className="day-card-badge">Up next</span>}
+                  </span>
+                  <span className="day-card-sub">{relativeLastTrained(dayToLastTrained[day.name])}</span>
+                </span>
+                <span className="day-card-go" aria-hidden>{busy ? '…' : <IconChevronRight />}</span>
+              </button>
             );
           })}
         </div>
       )}
     </div>
+  );
+}
+
+function IconChevronLeft(): React.JSX.Element {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <polyline points="15 18 9 12 15 6" />
+    </svg>
+  );
+}
+
+function IconChevronRight(): React.JSX.Element {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <polyline points="9 18 15 12 9 6" />
+    </svg>
   );
 }
 
