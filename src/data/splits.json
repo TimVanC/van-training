@@ -22,8 +22,7 @@
         { "exercise": "Hamstring Curl", "sets": 3, "repRange": "8-12" },
         { "exercise": "Seated Calf Raise", "sets": 4, "repRange": "8-15" },
         { "exercise": "Seated Dumbbell Shoulder Press", "sets": 3, "repRange": "6-10" },
-        { "exercise": "Cable Lateral Raises", "sets": 4, "repRange": "12-20" },
-        { "exercise": "Cable Rear Delt Fly", "sets": 4, "repRange": "12-20" }
+        { "exercise": "Cable Lateral Raises", "sets": 4, "repRange": "12-20" }
       ],
       "Push B": [
         { "exercise": "Flat Dumbbell Press", "sets": 3, "repRange": "6-10" },

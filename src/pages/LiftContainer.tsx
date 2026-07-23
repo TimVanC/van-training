@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation, useParams } from 'react-router-dom';
 import type { LiftSession } from '../types/session';
 import type { Exercise } from '../types/lift';
 import { loadSession, saveSession, clearSession } from '../utils/storage';
-import { createLiftSession } from '../utils/session';
+import { createLiftSession, mergeLiftSessionWithTemplate } from '../utils/session';
 import { normalizeSessionToRows } from '../utils/normalizeSession';
 import { submitWorkout } from '../utils/submitWorkout';
 import { resolveWorkoutIdForLiftSession } from '../utils/resolveWorkoutId';
@@ -158,6 +158,48 @@ function LiftContainer(): React.JSX.Element {
     const saved = loadSession();
     return saved !== null && saved.activityType === 'Lift';
   });
+
+  // On the day-list view, re-fetch the day's template and fold any changes
+  // into the active session (see mergeLiftSessionWithTemplate). This lets a
+  // mid-workout template edit appear on refresh without discarding logged
+  // sets. Scoped to the list route only, so exercise indexes can't shift
+  // underneath the logging screen.
+  useEffect(() => {
+    const pathParts = location.pathname.split('/').filter(Boolean);
+    if (pathParts.length !== 3 || pathParts[0] !== 'lift') return;
+    const urlSplit = decodeURIComponent(pathParts[1]);
+    const urlDay = decodeURIComponent(pathParts[2]);
+    let cancelled = false;
+    void (async () => {
+      const template = await loadDayExercises(urlSplit, urlDay);
+      if (cancelled || !template || template.length === 0) return;
+      setSession((prev) => {
+        // Prefer committed state; fall back to the saved session for the
+        // first render after a refresh, mirroring resolveRouteSession.
+        let base: LiftSession | null = null;
+        if (prev && prev.split === urlSplit && prev.day === urlDay) {
+          base = prev;
+        } else {
+          const saved = loadSession();
+          if (
+            saved &&
+            saved.activityType === 'Lift' &&
+            saved.split === urlSplit &&
+            saved.day === urlDay
+          ) {
+            base = saved;
+          }
+        }
+        if (!base) return prev;
+        const mergedSession = mergeLiftSessionWithTemplate(base, template);
+        if (mergedSession !== base) saveSession(mergedSession);
+        return mergedSession;
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [location.pathname]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
