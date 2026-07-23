@@ -186,6 +186,7 @@ function RecentActivityStrip({ sessions }: { sessions: DashboardSession[] }): Re
 function Dashboard(): React.JSX.Element {
   const navigate = useNavigate();
   const { data, loading, error } = useDashboardData();
+  const [showMuscleInfo, setShowMuscleInfo] = useState(false);
 
   const nextDay = data?.rotation?.nextDayName ?? null;
   const nextDayLastTrained = useMemo(() => {
@@ -251,9 +252,36 @@ function Dashboard(): React.JSX.Element {
 
         {/* --- Muscle group report ---------------------------------------- */}
         <section className="dash-section">
-          <h2 className="dash-section-title dash-animate" style={{ animationDelay: '100ms' }}>
-            Muscle Groups
-          </h2>
+          <div className="dash-section-head dash-animate" style={{ animationDelay: '100ms' }}>
+            <h2 className="dash-section-title">Muscle Groups</h2>
+            <button
+              type="button"
+              className="dash-info-button"
+              aria-label="What do the muscle group cards show?"
+              aria-expanded={showMuscleInfo}
+              onClick={() => setShowMuscleInfo((v) => !v)}
+            >
+              i
+            </button>
+          </div>
+          {showMuscleInfo && (
+            <div className="dash-card dash-info-panel dash-animate">
+              <p className="dash-info-lead">
+                Each card scores one muscle group by how your strength on its exercises is trending,
+                using your best estimated one-rep max per session.
+              </p>
+              <ul className="dash-info-list">
+                <li><strong>Verdict</strong> — Progressing (gaining), Steady (holding), Plateaued
+                  (flat for 3+ weeks), Regressing (losing), or Needs data (fewer than 3 sessions).</li>
+                <li><strong>%/wk</strong> — average weekly change in estimated strength across the
+                  group's exercises. The arrow shows direction.</li>
+                <li><strong>Sets this week</strong> and the bars — your working sets per week for the
+                  last 8 weeks, so you can see if volume is climbing or dropping.</li>
+                <li><strong>Tap a card</strong> to expand each exercise's last top set and a trend
+                  line of its estimated strength over time.</li>
+              </ul>
+            </div>
+          )}
           <div className="muscle-grid">
             {orderedMuscles.map((group, i) => (
               <MuscleGroupCard key={group.name} group={group} delayMs={120 + i * 55} />
@@ -296,26 +324,6 @@ function Dashboard(): React.JSX.Element {
                 </div>
               </div>
             )}
-          </section>
-        )}
-
-        {/* --- Recent PRs -------------------------------------------------- */}
-        {d.prs.length > 0 && (
-          <section className="dash-section">
-            <h2 className="dash-section-title dash-animate">Recent PRs</h2>
-            <div className="dash-card dash-animate">
-              {d.prs.map((pr) => (
-                <div key={`${pr.exerciseName}-${pr.date}`} className="pr-row">
-                  <span className="pr-trophy" aria-hidden>🏆</span>
-                  <div className="pr-info">
-                    <span className="pr-name">{pr.exerciseName}</span>
-                    <span className="pr-detail">
-                      {numberFormatter.format(pr.weight)} x {pr.reps} · {pr.date}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
           </section>
         )}
 

@@ -12,14 +12,30 @@ export interface RotationDay {
   lastTrained?: string;
 }
 
-/** `days` must already be sorted by the split's order_index. */
+/**
+ * Accessory days are logged like any other workout but are NOT part of the
+ * push/pull/legs cycle — training one shouldn't advance the rotation or ever
+ * be suggested as "up next". Compared case-insensitively.
+ */
+const ACCESSORY_DAY_NAMES = new Set(['core']);
+
+export function isAccessoryDay(name: string): boolean {
+  return ACCESSORY_DAY_NAMES.has(name.trim().toLowerCase());
+}
+
+/**
+ * Returns the next day in the rotation. `days` must already be sorted by the
+ * split's order_index. Accessory days (e.g. Core) are ignored entirely: they
+ * neither advance the rotation nor get returned as the next day.
+ */
 export function computeNextDayName(days: RotationDay[]): string | null {
-  if (days.length === 0) return null;
+  const rotationDays = days.filter((day) => !isAccessoryDay(day.name));
+  if (rotationDays.length === 0) return null;
 
   let lastIndex = -1;
   let lastDate = '';
-  for (let i = 0; i < days.length; i++) {
-    const trained = days[i].lastTrained ?? '';
+  for (let i = 0; i < rotationDays.length; i++) {
+    const trained = rotationDays[i].lastTrained ?? '';
     if (!trained) continue;
     // On a tie (two days trained the same date), prefer the later day in the
     // split order so the rotation keeps moving forward.
@@ -29,6 +45,6 @@ export function computeNextDayName(days: RotationDay[]): string | null {
     }
   }
 
-  if (lastIndex === -1) return days[0].name;
-  return days[(lastIndex + 1) % days.length].name;
+  if (lastIndex === -1) return rotationDays[0].name;
+  return rotationDays[(lastIndex + 1) % rotationDays.length].name;
 }

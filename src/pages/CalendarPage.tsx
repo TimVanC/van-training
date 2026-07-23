@@ -4,7 +4,7 @@ import { useDashboardData } from '../hooks/useDashboardData';
 import type { DashboardSession } from '../types/dashboard';
 
 const numberFormatter = new Intl.NumberFormat('en-US');
-const WEEKDAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 type DayKind = 'push' | 'pull' | 'legs' | 'core' | 'other';
 
@@ -36,8 +36,8 @@ interface CalendarCell {
 function buildMonthCells(year: number, month: number, sessionsByDate: Map<string, DashboardSession[]>): CalendarCell[] {
   const first = new Date(year, month, 1);
   const daysInMonth = new Date(year, month + 1, 0).getDate();
-  // Monday-first offset (getDay: 0=Sun).
-  const leadingBlanks = (first.getDay() + 6) % 7;
+  // Sunday-first offset (getDay: 0=Sun).
+  const leadingBlanks = first.getDay();
   const todayKey = localDateKey(new Date().toISOString());
 
   const cells: CalendarCell[] = [];
@@ -113,7 +113,7 @@ function CalendarPage(): React.JSX.Element {
         <>
           {data.weekStats.weekStreak > 1 && (
             <div className="calendar-streak-banner dash-animate">
-              🔥 {data.weekStats.weekStreak}-week training streak — keep it rolling
+              {data.weekStats.weekStreak}-week training streak — keep it rolling
             </div>
           )}
 

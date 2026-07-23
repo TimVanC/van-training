@@ -39,13 +39,6 @@
         { "exercise": "Cable Rear Delt Fly", "sets": 3, "repRange": "12-20" },
         { "exercise": "Hammer Curls", "sets": 3, "repRange": "8-12" },
         { "exercise": "Preacher Curls", "sets": 3, "repRange": "6-10" }
-      ],
-      "Legs": [
-        { "exercise": "Leg Press", "sets": 4, "repRange": "6-10", "inputMode": "plates" },
-        { "exercise": "Romanian Deadlift", "sets": 4, "repRange": "6-8" },
-        { "exercise": "Leg Extension", "sets": 3, "repRange": "10-15" },
-        { "exercise": "Hamstring Curl", "sets": 3, "repRange": "8-12" },
-        { "exercise": "Seated Calf Raise", "sets": 4, "repRange": "8-15" }
       ]
     }
   }

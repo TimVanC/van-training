@@ -2,8 +2,10 @@ import type { LiftSession } from '../types/session';
 import { supabase } from './supabaseClient';
 
 /**
- * Matches default PPLs bootstrap in ensureUserSetup (workouts.order_index 1–6).
- * Disambiguates duplicate workout names (e.g. two "Legs") within the same split.
+ * Maps the PPLs day names to their workouts.order_index so a workout row can be
+ * recreated on-the-fly if missing. Order indices are non-contiguous because the
+ * standalone "Legs" day (6) was retired; "Core" (7) is an accessory day resolved
+ * by name and intentionally omitted here.
  */
 const PPLS_DAY_TO_ORDER_INDEX: Record<string, number> = {
   'Push A': 1,
@@ -11,7 +13,6 @@ const PPLS_DAY_TO_ORDER_INDEX: Record<string, number> = {
   'Legs + Shoulders': 3,
   'Push B': 4,
   'Pull B': 5,
-  Legs: 6,
 };
 
 /**

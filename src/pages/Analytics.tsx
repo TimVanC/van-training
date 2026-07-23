@@ -463,7 +463,7 @@ function Analytics(): React.JSX.Element {
                             <span className="analytics-tooltip-label">Strength:</span>{' '}
                             {numberFormatter.format(Number(row.topSetStrength.toFixed(1)))}
                           </p>
-                          {row.isPr && <p className="analytics-tooltip-body">PR ✔</p>}
+                          {row.isPr && <p className="analytics-tooltip-body">New PR</p>}
                         </div>
                       );
                     }}
