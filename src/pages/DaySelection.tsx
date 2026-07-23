@@ -12,11 +12,19 @@ function dayKind(dayName: string): string {
   return 'other';
 }
 
+/** Whole calendar days between two dates, compared at LOCAL midnight so an
+ *  evening workout logged yesterday reads as "yesterday", not "today". */
+function calendarDaysAgo(then: Date, now: Date): number {
+  const a = new Date(then.getFullYear(), then.getMonth(), then.getDate());
+  const b = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((b.getTime() - a.getTime()) / 86_400_000);
+}
+
 function relativeLastTrained(value?: string): string {
   if (!value) return 'Not trained yet';
   const then = new Date(value);
   if (Number.isNaN(then.getTime())) return 'Not trained yet';
-  const days = Math.floor((Date.now() - then.getTime()) / 86_400_000);
+  const days = calendarDaysAgo(then, new Date());
   if (days <= 0) return 'Trained today';
   if (days === 1) return 'Trained yesterday';
   if (days < 7) return `Trained ${days} days ago`;

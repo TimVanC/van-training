@@ -24,27 +24,31 @@ export function isAccessoryDay(name: string): boolean {
 }
 
 /**
- * Returns the next day in the rotation. `days` must already be sorted by the
- * split's order_index. Accessory days (e.g. Core) are ignored entirely: they
- * neither advance the rotation nor get returned as the next day.
+ * Returns the day that is "up next": the rotation day that hasn't been trained
+ * for the longest. Never-trained days rank as the oldest, so they come first.
+ * Accessory days (e.g. Core) are ignored entirely.
+ *
+ * This deliberately does NOT assume a fixed A→B sequence — people don't always
+ * finish a full cycle before restarting, and sometimes start on the B days. So
+ * "next" is simply whichever day has gone longest without being done. `days`
+ * should be sorted by order_index so ties break toward the earlier day.
+ *
+ * `lastTrained` values must be comparable date strings (ISO); an empty/absent
+ * value means never trained and sorts before any real date.
  */
 export function computeNextDayName(days: RotationDay[]): string | null {
   const rotationDays = days.filter((day) => !isAccessoryDay(day.name));
   if (rotationDays.length === 0) return null;
 
-  let lastIndex = -1;
-  let lastDate = '';
-  for (let i = 0; i < rotationDays.length; i++) {
-    const trained = rotationDays[i].lastTrained ?? '';
-    if (!trained) continue;
-    // On a tie (two days trained the same date), prefer the later day in the
-    // split order so the rotation keeps moving forward.
-    if (trained >= lastDate) {
-      lastDate = trained;
-      lastIndex = i;
+  let best = rotationDays[0];
+  let bestDate = best.lastTrained ?? '';
+  for (const day of rotationDays.slice(1)) {
+    const date = day.lastTrained ?? '';
+    // Strictly-older wins; equal keeps the earlier order_index (stable).
+    if (date < bestDate) {
+      best = day;
+      bestDate = date;
     }
   }
-
-  if (lastIndex === -1) return rotationDays[0].name;
-  return rotationDays[(lastIndex + 1) % rotationDays.length].name;
+  return best.name;
 }

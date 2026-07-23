@@ -28,7 +28,12 @@ function daysAgoLabel(iso: string | undefined): string {
   if (!iso) return 'Not trained yet';
   const then = new Date(iso);
   if (Number.isNaN(then.getTime())) return 'Not trained yet';
-  const days = Math.floor((Date.now() - then.getTime()) / (24 * 60 * 60 * 1000));
+  // Compare calendar days at LOCAL midnight, not elapsed 24h windows, so an
+  // evening workout logged yesterday doesn't read as "Today".
+  const now = new Date();
+  const a = new Date(then.getFullYear(), then.getMonth(), then.getDate());
+  const b = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const days = Math.round((b.getTime() - a.getTime()) / (24 * 60 * 60 * 1000));
   if (days <= 0) return 'Today';
   if (days === 1) return 'Yesterday';
   return `${days} days ago`;
@@ -177,7 +182,10 @@ function MiniCalendar({ sessions }: { sessions: DashboardSession[] }): React.JSX
   const { weeks, rangeLabel } = useMemo(() => {
     const byDate = new Map<string, DashboardSession[]>();
     for (const s of sessions) {
-      const d = s.date.slice(0, 10);
+      // Bucket by LOCAL calendar date to match the grid cells (which are keyed
+      // by local date); slicing the ISO string would use UTC and misplace
+      // evening workouts by a day.
+      const d = localDateKey(new Date(s.date));
       const list = byDate.get(d);
       if (list) list.push(s);
       else byDate.set(d, [s]);
