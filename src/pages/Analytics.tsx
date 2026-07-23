@@ -9,6 +9,7 @@ import {
   YAxis,
 } from 'recharts';
 import { getSession } from '../utils/auth';
+import BottomNav from '../components/BottomNav';
 
 interface SessionAnalyticsRow {
   sessionId: string;
@@ -317,7 +318,7 @@ function Analytics(): React.JSX.Element {
   }
 
   return (
-    <div className="page">
+    <div className="page page--with-nav">
       <h1>Analytics</h1>
 
       <div ref={containerRef} className="analytics-field-group">
@@ -602,6 +603,7 @@ function Analytics(): React.JSX.Element {
           </div>
         </>
       )}
+      <BottomNav />
     </div>
   );
 }

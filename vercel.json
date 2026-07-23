@@ -1,8 +1,8 @@
 {
   "rewrites": [
     {
-      "source": "/(.*)",
-      "destination": "/"
+      "source": "/((?!api/|assets/|src/|node_modules/|@|favicon|.*\\.\\w+$).*)",
+      "destination": "/index.html"
     }
   ]
 }

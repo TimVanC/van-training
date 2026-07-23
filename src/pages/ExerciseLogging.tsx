@@ -65,6 +65,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   const [lastTrained, setLastTrained] = useState<string | undefined>();
   const [previousNote, setPreviousNote] = useState<string | undefined>();
   const [recommendedPlan, setRecommendedPlan] = useState<RecommendedPlanSet[] | null>(null);
+  const [planRationale, setPlanRationale] = useState<string | undefined>();
   const [sessionHistory, setSessionHistory] = useState<HistorySession[]>([]);
   const [recentLiftsLoading, setRecentLiftsLoading] = useState(false);
   const [selectedExerciseName, setSelectedExerciseName] = useState(
@@ -90,6 +91,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     setLastTrained(undefined);
     setPreviousNote(undefined);
     setRecommendedPlan(null);
+    setPlanRationale(undefined);
     setSessionHistory([]);
     const targetSets = exercise?.targetSets ?? 3;
     const repRangeQuery = exercise?.targetRepRange ?? (exercise?.targetReps != null ? String(exercise.targetReps) : '');
@@ -114,6 +116,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         setLastTrained(mappedLastTrained);
         setPreviousNote(mappedPreviousNote);
         setRecommendedPlan(mappedRecommendedPlan);
+        setPlanRationale(typeof data.planRationale === 'string' && data.planRationale ? data.planRationale : undefined);
         setSessionHistory(mappedSessionHistory);
       } catch {
         setRecentLifts([]);
@@ -805,6 +808,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         loading={recentLiftsLoading}
         previousNote={previousNote}
         recommendedPlan={recommendedPlan}
+        planRationale={planRationale}
         targetSets={totalSets}
         inputMode={inputMode}
         sledBarWeight={isSledExercise(selectedExerciseName) ? 0 : 45}

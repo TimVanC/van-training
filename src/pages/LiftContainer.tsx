@@ -8,6 +8,7 @@ import { normalizeSessionToRows } from '../utils/normalizeSession';
 import { submitWorkout } from '../utils/submitWorkout';
 import { resolveWorkoutIdForLiftSession } from '../utils/resolveWorkoutId';
 import { supabase } from '../utils/supabaseClient';
+import { invalidateDashboardCache } from '../hooks/useDashboardData';
 import SplitSelection from './SplitSelection';
 import DaySelection, { type DaySelectResult } from './DaySelection';
 import ExerciseList from './ExerciseList';
@@ -218,6 +219,7 @@ function LiftContainer(): React.JSX.Element {
     // Capture the split/day before clearing the session so the checkin
     // overlay still has context to display and persist.
     setCheckinContext({ split: session.split, day: session.day });
+    invalidateDashboardCache();
     clearSession();
     setSession(null);
     setIsSubmitting(false);

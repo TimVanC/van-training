@@ -1,5 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
+import { buildProgressionPlan } from '../src/lib/progression';
+import type { ProgressionPhase } from '../src/lib/progression';
 
 interface RecentLiftEntry {
   weight: string | number;
@@ -43,14 +45,6 @@ interface LiftSetQueryRow {
   rir: unknown;
   plate_data?: unknown;
   created_at: unknown;
-}
-
-interface NormalizedLiftSet {
-  setNumber: number;
-  weight: number;
-  reps: number;
-  rir: number;
-  plateBreakdown?: { plate45: number; plate35: number; plate25: number; plate10: number; plate5: number; plate2_5: number; sled: number };
 }
 
 function toDateOnly(isoOrDate: unknown): string | undefined {
@@ -212,116 +206,10 @@ function parseRepRange(
   return { min: single, max: single };
 }
 
-function normalizeLiftSets(rows: LiftSetQueryRow[]): NormalizedLiftSet[] {
-  return rows.map((row, index) => {
-    const parsedSetNumber = Math.trunc(Number(row.set_number));
-    return {
-      setNumber: Number.isFinite(parsedSetNumber) && parsedSetNumber > 0 ? parsedSetNumber : index + 1,
-      weight: toFiniteNumber(row.weight),
-      reps: toFiniteNumber(row.reps),
-      // Missing RIR should be treated as 1 for progression decisions.
-      rir: Number.isFinite(Number(row.rir)) && Number(row.rir) >= 0 ? Number(row.rir) : 1,
-      plateBreakdown: parsePlateData(row.plate_data),
-    };
-  });
-}
-
-function identifyTopSet(sets: NormalizedLiftSet[]): NormalizedLiftSet | undefined {
-  const workingSets = sets.filter((set) => set.weight > 0 && set.reps > 0);
-  if (workingSets.length === 0) return undefined;
-  const firstWorkingSet = workingSets[0];
-  let highestWeightSet = firstWorkingSet;
-  for (const set of workingSets.slice(1)) {
-    if (set.weight > highestWeightSet.weight) highestWeightSet = set;
-  }
-  return highestWeightSet.weight > firstWorkingSet.weight ? highestWeightSet : firstWorkingSet;
-}
-
-function getWeightIncrement(exerciseName: string): number {
-  const normalized = exerciseName.toLowerCase();
-  if (normalized.includes('leg press')) return 20;
-  if (normalized.includes('dumbbell')) return 5;
-  return 10;
-}
-
-function toPlanWeight(value: number): number {
-  return Number.isInteger(value) ? value : Number(value.toFixed(1));
-}
-
-function clampReps(value: number, min: number, max: number): number {
-  if (!Number.isFinite(value)) return min;
-  return Math.max(min, Math.min(max, Math.round(value)));
-}
-
-function buildRecommendedPlan(params: {
-  exerciseName: string;
-  latestRows: LiftSetQueryRow[];
-  previousRows: LiftSetQueryRow[];
-  repRange: { min: number; max: number } | undefined;
-  targetSets: number;
-}): RecommendedPlanSet[] | null {
-  const { exerciseName, latestRows, previousRows, repRange, targetSets } = params;
-  if (!repRange || previousRows.length === 0 || latestRows.length === 0) return null;
-
-  const latestSets = normalizeLiftSets(latestRows).slice(0, targetSets);
-  const previousSets = normalizeLiftSets(previousRows);
-  if (latestSets.length === 0 || previousSets.length === 0) return null;
-
-  const topSet = identifyTopSet(latestSets);
-  const previousTopSet = identifyTopSet(previousSets);
-  if (!topSet || !previousTopSet) return null;
-
-  const repMin = repRange.min;
-  const repMax = repRange.max;
-  const increment = getWeightIncrement(exerciseName);
-
-  let nextTopWeight = topSet.weight;
-  let nextTopReps = clampReps(topSet.reps, repMin, repMax);
-  let nextTopRir = 1;
-
-  const topSetHitRangeCap = topSet.reps >= repMax && topSet.rir <= 1;
-  const sameWeightAsPreviousTop = topSet.weight === previousTopSet.weight;
-  const topSetImproved =
-    sameWeightAsPreviousTop &&
-    (topSet.reps > previousTopSet.reps ||
-      (topSet.reps === previousTopSet.reps && topSet.rir < previousTopSet.rir));
-  const topSetRegressed =
-    sameWeightAsPreviousTop &&
-    (topSet.reps < previousTopSet.reps ||
-      (topSet.reps === previousTopSet.reps && topSet.rir > previousTopSet.rir));
-
-  if (topSetHitRangeCap) {
-    nextTopWeight = topSet.weight + increment;
-    nextTopReps = repMin;
-    nextTopRir = 1;
-  } else if (topSetImproved) {
-    nextTopWeight = topSet.weight;
-    nextTopReps = clampReps(topSet.reps + 1, repMin, repMax);
-    nextTopRir = 1;
-  } else if (topSetRegressed) {
-    const clearRegression = topSet.reps < repMin || topSet.rir - previousTopSet.rir >= 2;
-    nextTopWeight = clearRegression ? Math.max(0, topSet.weight - increment) : topSet.weight;
-    nextTopReps = clampReps(topSet.reps, repMin, repMax);
-    nextTopRir = 1;
-  }
-
-  return latestSets.map((set) => {
-    const isTopSet = set.setNumber === topSet.setNumber;
-    if (isTopSet) {
-      return {
-        setNumber: set.setNumber,
-        weight: toPlanWeight(nextTopWeight),
-        targetReps: nextTopReps,
-        targetRIR: nextTopRir,
-      };
-    }
-    return {
-      setNumber: set.setNumber,
-      weight: toPlanWeight(set.weight),
-      targetReps: clampReps(set.reps + 1, repMin, repMax),
-      targetRIR: set.rir,
-    };
-  });
+/** RIR for progression decisions: missing/invalid values are treated as 1. */
+function toProgressionRir(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : 1;
 }
 
 export default async function handler(
@@ -387,7 +275,6 @@ export default async function handler(
 
     const recentSessions = recentSessionsResult.data;
     const latestSession = recentSessions[0];
-    const previousSession = recentSessions[1];
     if (latestSession) {
       lastTrained = toDateOnly(latestSession.date);
       const latestNote = String(latestSession.notes ?? '').trim();
@@ -429,27 +316,6 @@ export default async function handler(
         };
       }
 
-      if (previousSession) {
-        let previousRowsResult = await fetchLiftRows(supabase, previousSession.id, exerciseName, true, true);
-        if (previousRowsResult.error && isMissingColumnError(previousRowsResult.error, 'set_number')) {
-          previousRowsResult = await fetchLiftRows(supabase, previousSession.id, exerciseName, true, false);
-        }
-        if (previousRowsResult.error && isMissingColumnError(previousRowsResult.error, 'plate_data')) {
-          previousRowsResult = await fetchLiftRows(supabase, previousSession.id, exerciseName, false, true);
-        }
-        if (previousRowsResult.error && isMissingColumnError(previousRowsResult.error, 'set_number')) {
-          previousRowsResult = await fetchLiftRows(supabase, previousSession.id, exerciseName, false, false);
-        }
-        if (previousRowsResult.error) throw previousRowsResult.error;
-
-        recommendedPlan = buildRecommendedPlan({
-          exerciseName,
-          latestRows: latestSessionRows,
-          previousRows: previousRowsResult.data ?? [],
-          repRange,
-          targetSets,
-        });
-      }
     }
 
     try {
@@ -482,7 +348,31 @@ export default async function handler(
       sessionHistory = [];
     }
 
-    res.status(200).json({ lastTrained, sets, previousNote, recommendedPlan, progressionMetrics, sessionHistory });
+    // The progression engine reads the ladder position straight from history
+    // (most recent session first) — no stored state needed.
+    let planPhase: ProgressionPhase | undefined;
+    let planRationale: string | undefined;
+    if (sessionHistory.length > 0) {
+      const plan = buildProgressionPlan({
+        exerciseName,
+        history: sessionHistory.map((entry) =>
+          entry.sets.map((set) => ({
+            weight: toFiniteNumber(set.weight),
+            reps: toFiniteNumber(set.reps),
+            rir: toProgressionRir(set.rir),
+          })),
+        ),
+        repRange,
+        targetSets,
+      });
+      if (plan) {
+        recommendedPlan = plan.sets;
+        planPhase = plan.phase;
+        planRationale = plan.rationale;
+      }
+    }
+
+    res.status(200).json({ lastTrained, sets, previousNote, recommendedPlan, planPhase, planRationale, progressionMetrics, sessionHistory });
   } catch (error) {
     console.error('Error in getRecentLifts:', error);
     res.status(500).json({ error: 'Internal Server Error' });

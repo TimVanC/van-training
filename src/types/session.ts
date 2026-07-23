@@ -36,11 +36,17 @@ export interface HistorySession {
   sets: RecentLift[];
 }
 
+export type ProgressionPhase = 'baseline' | 'ladder' | 'hold' | 'rep-ladder' | 'deload';
+
 export interface RecentLiftsResponse {
   lastTrained?: string;
   sets: RecentLift[];
   previousNote?: string;
   recommendedPlan?: RecommendedPlanSet[] | null;
+  /** Which progression strategy produced the plan. */
+  planPhase?: ProgressionPhase;
+  /** Human-readable explanation of why this plan was recommended. */
+  planRationale?: string;
   progressionMetrics?: ProgressionMetrics;
   /** Up to 10 recent sessions for the side-drawer history view. */
   sessionHistory?: HistorySession[];

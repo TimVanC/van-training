@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
+import { computeNextDayName } from '../lib/rotation';
 
 interface WorkoutRow {
   id: string;
@@ -107,6 +108,16 @@ function DaySelection({ onDaySelect }: DaySelectionProps): React.JSX.Element {
     };
   }, [splitName]);
 
+  // Which day is up next in the rotation: the one after the most recently
+  // trained day, in the split's configured order.
+  const nextDayName = useMemo(
+    () =>
+      computeNextDayName(
+        (days ?? []).map((day) => ({ name: day.name, lastTrained: dayToLastTrained[day.name] })),
+      ),
+    [days, dayToLastTrained],
+  );
+
   function formatLastTrained(value: string): string {
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) return value;
@@ -135,22 +146,26 @@ function DaySelection({ onDaySelect }: DaySelectionProps): React.JSX.Element {
       ) : (
         <div className="button-list">
           {actionError && <div className="submit-error" role="alert">{actionError}</div>}
-          {days.map((day) => (
-            <div key={day.id} className="workout-choice">
-              <button
-                className="nav-button"
-                onClick={() => handleDayClick(day.name)}
-                disabled={busyDay !== null}
-              >
-                {day.name}
-              </button>
-              <p className="workout-choice-last-trained">
-                {dayToLastTrained[day.name]
-                  ? `Last trained: ${formatLastTrained(dayToLastTrained[day.name])}`
-                  : 'Not trained yet'}
-              </p>
-            </div>
-          ))}
+          {days.map((day) => {
+            const isNext = day.name === nextDayName;
+            return (
+              <div key={day.id} className={`workout-choice ${isNext ? 'workout-choice--next' : ''}`}>
+                <button
+                  className={`nav-button ${isNext ? 'nav-button--next-day' : ''}`}
+                  onClick={() => handleDayClick(day.name)}
+                  disabled={busyDay !== null}
+                >
+                  {isNext && <span className="next-day-badge">Up next</span>}
+                  {day.name}
+                </button>
+                <p className="workout-choice-last-trained">
+                  {dayToLastTrained[day.name]
+                    ? `Last trained: ${formatLastTrained(dayToLastTrained[day.name])}`
+                    : 'Not trained yet'}
+                </p>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

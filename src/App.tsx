@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import ActivitySelection from './pages/ActivitySelection';
+import Dashboard from './pages/Dashboard';
+import CalendarPage from './pages/CalendarPage';
 import LiftContainer from './pages/LiftContainer';
 import Run from './pages/Run';
 import Bike from './pages/Bike';
@@ -92,7 +94,9 @@ function App(): React.JSX.Element {
       <Route path="/signup" element={user ? <Navigate to="/" replace /> : <Signup />} />
       <Route path="/forgot-password" element={user ? <Navigate to="/" replace /> : <ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
-      <Route path="/" element={user ? <ActivitySelection /> : <Navigate to="/login" replace />} />
+      <Route path="/" element={user ? <Dashboard /> : <Navigate to="/login" replace />} />
+      <Route path="/calendar" element={user ? <CalendarPage /> : <Navigate to="/login" replace />} />
+      <Route path="/activities" element={user ? <ActivitySelection /> : <Navigate to="/login" replace />} />
       <Route path="/lift/*" element={user ? <LiftContainer /> : <Navigate to="/login" replace />} />
       <Route path="/run" element={user ? <Run /> : <Navigate to="/login" replace />} />
       <Route path="/bike" element={user ? <Bike /> : <Navigate to="/login" replace />} />

@@ -196,30 +196,18 @@ export default async function handler(
           return;
         }
 
-        let exerciseIdToUse: string | null = null;
-        const exerciseSelect = await supabase
-          .from('exercises')
-          .select('id')
-          .limit(1)
-          .maybeSingle();
-
-        if (exerciseSelect.error) {
-          console.error(exerciseSelect.error);
-          throw exerciseSelect.error;
+        // Resolve real exercise ids by name so lift_sets.exercise_id is
+        // meaningful (it used to be a single arbitrary catalog row for every
+        // set). Unknown names (custom swaps) stay null — exercise_name is the
+        // analytical source of truth either way.
+        const exerciseCatalog = await supabase.from('exercises').select('id, name');
+        if (exerciseCatalog.error) {
+          console.error(exerciseCatalog.error);
+          throw exerciseCatalog.error;
         }
-        if (exerciseSelect.data?.id) {
-          exerciseIdToUse = exerciseSelect.data.id;
-        } else {
-          const exerciseInsert = await supabase
-            .from('exercises')
-            .insert({ name: 'Test Exercise' })
-            .select('id')
-            .single();
-          if (exerciseInsert.error || !exerciseInsert.data?.id) {
-            console.error(exerciseInsert.error ?? new Error('Failed to create fallback exercise'));
-            throw exerciseInsert.error ?? new Error('Failed to create fallback exercise');
-          }
-          exerciseIdToUse = exerciseInsert.data.id;
+        const exerciseIdByName = new Map<string, string>();
+        for (const row of (exerciseCatalog.data ?? []) as Array<{ id: string; name: string }>) {
+          exerciseIdByName.set(row.name.trim().toLowerCase(), row.id);
         }
 
         const sessionDate = String(firstDate ?? new Date().toISOString());
@@ -259,15 +247,22 @@ export default async function handler(
         console.log('Session insert success:', { session_id: sessionInsert.data.id });
 
         const sessionId = sessionInsert.data.id;
+        // Number sets 1..n within each exercise, preserving submitted order
+        // (heaviest set first) — the progression engine reads this back.
+        const setCounters = new Map<string, number>();
         const liftSetsPayload = rows.map((r) => {
           const parsedWeight = Number(r.weight);
           const parsedReps = Number(r.reps);
           const parsedRir = Number(r.rir);
+          const exerciseName = String(r.exercise ?? '');
+          const setNumber = (setCounters.get(exerciseName) ?? 0) + 1;
+          setCounters.set(exerciseName, setNumber);
 
           return {
             session_id: sessionId,
-            exercise_id: exerciseIdToUse,
-            exercise_name: String(r.exercise ?? ''),
+            exercise_id: exerciseIdByName.get(exerciseName.trim().toLowerCase()) ?? null,
+            exercise_name: exerciseName,
+            set_number: setNumber,
             weight: Number.isFinite(parsedWeight) ? parsedWeight : 0,
             reps: Number.isFinite(parsedReps) ? parsedReps : 0,
             rir: Number.isFinite(parsedRir) ? parsedRir : 0,
@@ -282,6 +277,7 @@ export default async function handler(
             session_id: row.session_id,
             exercise_id: row.exercise_id,
             exercise_name: row.exercise_name,
+            set_number: row.set_number,
             weight: row.weight,
             reps: row.reps,
             rir: row.rir,

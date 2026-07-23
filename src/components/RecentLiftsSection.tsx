@@ -24,6 +24,8 @@ interface RecentLiftsSectionProps {
   loading: boolean;
   previousNote?: string;
   recommendedPlan?: RecommendedPlanSet[] | null;
+  /** Why the engine chose this plan — shown under the recommended sets. */
+  planRationale?: string;
   targetSets?: number;
   inputMode?: 'weight' | 'plates';
   /**
@@ -81,6 +83,7 @@ function RecentLiftsSection({
   loading,
   previousNote,
   recommendedPlan,
+  planRationale,
   targetSets = 3,
   inputMode = 'weight',
   sledBarWeight = 45,
@@ -256,13 +259,16 @@ function RecentLiftsSection({
             {loading ? (
               <p className="recent-lifts-loading">Loading progression...</p>
             ) : recommendedPlan && recommendedPlan.length > 0 ? (
-              recommendedPlan.map((planSet) => (
-                <div key={`${planSet.setNumber}-${planSet.weight}`} className="recent-lifts-item">
-                  Set {planSet.setNumber} - {inputMode === 'plates'
-                    ? decomposeWeightToPlates(planSet.weight, sledBarWeight)
-                    : `${planSet.weight} lbs`} {'->'} {planSet.targetReps} reps (Target RIR: {planSet.targetRIR})
-                </div>
-              ))
+              <>
+                {recommendedPlan.map((planSet) => (
+                  <div key={`${planSet.setNumber}-${planSet.weight}`} className="recent-lifts-item">
+                    Set {planSet.setNumber} - {inputMode === 'plates'
+                      ? decomposeWeightToPlates(planSet.weight, sledBarWeight)
+                      : `${planSet.weight} lbs`} {'->'} {planSet.targetReps} reps (Target RIR: {planSet.targetRIR})
+                  </div>
+                ))}
+                {planRationale && <p className="recent-lifts-rationale">{planRationale}</p>}
+              </>
             ) : (
               <p className="recent-lifts-empty">Not enough data to generate progression.</p>
             )}
