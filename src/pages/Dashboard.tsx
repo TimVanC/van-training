@@ -443,18 +443,57 @@ function Dashboard(): React.JSX.Element {
         {/* --- Weight moved comparisons ----------------------------------- */}
         {(() => {
           const now = new Date();
-          const monthVolume = d.sessions.reduce((sum, s) => {
+          // Local Monday of the week containing the given date.
+          const weekStartOf = (dt: Date): Date => {
+            const day = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+            day.setDate(day.getDate() - ((day.getDay() + 6) % 7));
+            return day;
+          };
+          const volumeByMonth = new Map<string, { volume: number; start: Date }>();
+          const volumeByWeek = new Map<string, { volume: number; start: Date }>();
+          let monthVolume = 0;
+          let allTimeVolume = 0;
+          for (const s of d.sessions) {
             const dt = new Date(s.date);
-            return dt.getFullYear() === now.getFullYear() && dt.getMonth() === now.getMonth()
-              ? sum + s.totalVolume
-              : sum;
-          }, 0);
-          const allTimeVolume = d.sessions.reduce((sum, s) => sum + s.totalVolume, 0);
+            if (Number.isNaN(dt.getTime())) continue;
+            allTimeVolume += s.totalVolume;
+            if (dt.getFullYear() === now.getFullYear() && dt.getMonth() === now.getMonth()) {
+              monthVolume += s.totalVolume;
+            }
+            const monthStart = new Date(dt.getFullYear(), dt.getMonth(), 1);
+            const monthKey = monthStart.toISOString();
+            const m = volumeByMonth.get(monthKey);
+            if (m) m.volume += s.totalVolume;
+            else volumeByMonth.set(monthKey, { volume: s.totalVolume, start: monthStart });
+            const weekStart = weekStartOf(dt);
+            const weekKey = weekStart.toISOString();
+            const w = volumeByWeek.get(weekKey);
+            if (w) w.volume += s.totalVolume;
+            else volumeByWeek.set(weekKey, { volume: s.totalVolume, start: weekStart });
+          }
+          const best = (buckets: Map<string, { volume: number; start: Date }>) =>
+            [...buckets.values()].reduce<{ volume: number; start: Date } | null>(
+              (top, b) => (top === null || b.volume > top.volume ? b : top),
+              null,
+            );
+          const bestWeek = best(volumeByWeek);
+          const bestMonth = best(volumeByMonth);
           const rows = [
-            { label: 'This week', volume: weekStats.volumeThisWeek },
-            { label: 'This month', volume: monthVolume },
-            { label: 'All time', volume: allTimeVolume },
+            { label: 'This week', when: '', volume: weekStats.volumeThisWeek },
+            bestWeek && {
+              label: 'Best week',
+              when: `wk of ${bestWeek.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`,
+              volume: bestWeek.volume,
+            },
+            { label: 'This month', when: '', volume: monthVolume },
+            bestMonth && {
+              label: 'Best month',
+              when: bestMonth.start.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+              volume: bestMonth.volume,
+            },
+            { label: 'All time', when: '', volume: allTimeVolume },
           ]
+            .filter((r): r is { label: string; when: string; volume: number } => Boolean(r))
             .map((r) => ({ ...r, fun: funComparisonLabel(r.volume) }))
             .filter((r) => r.volume > 0 && r.fun);
           if (rows.length === 0) return null;
@@ -464,7 +503,10 @@ function Dashboard(): React.JSX.Element {
               <div className="dash-card weight-moved-card dash-animate">
                 {rows.map((r) => (
                   <div key={r.label} className="weight-moved-row">
-                    <span className="weight-moved-label">{r.label}</span>
+                    <span className="weight-moved-label">
+                      {r.label}
+                      {r.when && <span className="weight-moved-when"> · {r.when}</span>}
+                    </span>
                     <span className="weight-moved-lbs">{numberFormatter.format(Math.round(r.volume))} lbs</span>
                     <span className="weight-moved-fun">{r.fun}</span>
                   </div>

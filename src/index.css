@@ -2031,6 +2031,12 @@ body {
   color: var(--text-secondary);
 }
 
+.weight-moved-when {
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-muted);
+}
+
 .weight-moved-lbs {
   font-family: var(--font-display);
   font-size: 1.05rem;
