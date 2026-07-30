@@ -260,9 +260,61 @@ function MiniCalendar({ sessions }: { sessions: DashboardSession[] }): React.JSX
   );
 }
 
+/** Placeholder layout shown while dashboard data loads; mirrors the real page structure. */
+function DashboardSkeleton(): React.JSX.Element {
+  return (
+    <>
+      <section className="dash-card dash-hero skel-card" aria-hidden>
+        <div className="skel skel-line" style={{ width: '38%', height: '0.75rem' }} />
+        <div className="skel skel-line" style={{ width: '55%', height: '1.9rem', margin: '0.35rem 0' }} />
+        <div className="skel skel-line" style={{ width: '45%', height: '0.8rem', marginBottom: '0.85rem' }} />
+        <div className="skel skel-block" style={{ height: '48px' }} />
+      </section>
+
+      <section className="dash-stat-grid" aria-hidden>
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="dash-stat">
+            <div className="skel skel-line" style={{ width: '2.2rem', height: '1.5rem' }} />
+            <div className="skel skel-line" style={{ width: '80%', height: '0.6rem', marginTop: '0.3rem' }} />
+            <div className="skel skel-line" style={{ width: '60%', height: '0.55rem', marginTop: '0.2rem' }} />
+          </div>
+        ))}
+      </section>
+
+      <section className="dash-section" aria-hidden>
+        <div className="skel skel-line" style={{ width: '9rem', height: '0.95rem', margin: '0 0 0.6rem' }} />
+        <div className="muscle-grid">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="muscle-card skel-card" style={{ padding: '0.8rem 1rem' }}>
+              <div className="muscle-card-title-row">
+                <div className="skel skel-line" style={{ width: '30%', height: '1.05rem' }} />
+                <div className="skel skel-pill" style={{ width: '5.5rem', height: '1.2rem' }} />
+              </div>
+              <div className="muscle-card-body-row">
+                <div className="muscle-card-stats">
+                  <div className="skel skel-line" style={{ width: '4.5rem', height: '0.85rem' }} />
+                  <div className="skel skel-line" style={{ width: '6rem', height: '0.7rem', marginTop: '0.2rem' }} />
+                </div>
+                <div className="skel skel-block" style={{ width: '96px', height: '30px' }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="dash-section" aria-hidden>
+        <div className="skel skel-line" style={{ width: '6rem', height: '0.95rem', margin: '0 0 0.6rem' }} />
+        <div className="dash-card skel-card">
+          <div className="skel skel-block" style={{ height: '180px' }} />
+        </div>
+      </section>
+    </>
+  );
+}
+
 function Dashboard(): React.JSX.Element {
   const navigate = useNavigate();
-  const { data, loading, error } = useDashboardData();
+  const { data, loading, error, retry } = useDashboardData();
   const [showMuscleInfo, setShowMuscleInfo] = useState(false);
 
   const nextDay = data?.rotation?.nextDayName ?? null;
@@ -303,6 +355,17 @@ function Dashboard(): React.JSX.Element {
             >
               Start Workout
             </button>
+            {(d.otherRotations ?? []).map((other) => (
+              <button
+                key={other.splitName}
+                type="button"
+                className="dash-hero-alt-link"
+                onClick={() => navigate(`/lift/${encodeURIComponent(other.splitName)}`)}
+              >
+                Train {other.splitName} instead
+                {other.nextDayName ? ` · ${other.nextDayName} is up` : ''} →
+              </button>
+            ))}
           </section>
         )}
 
@@ -434,8 +497,17 @@ function Dashboard(): React.JSX.Element {
           {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
         </p>
       </div>
-      {loading && <p className="analytics-empty-state">Loading your training data...</p>}
-      {!loading && error && <p className="analytics-empty-state">Couldn't load dashboard. Pull to refresh or try again later.</p>}
+      {loading && <DashboardSkeleton />}
+      {!loading && error && !data && (
+        <section className="dash-card dash-error-card dash-animate">
+          <span className="dash-error-icon" aria-hidden>!</span>
+          <p className="dash-error-title">Couldn't load your dashboard</p>
+          <p className="dash-error-detail">Check your connection, then give it another shot.</p>
+          <button type="button" className="nav-button dash-error-retry" onClick={retry}>
+            Try Again
+          </button>
+        </section>
+      )}
       {!loading && data && renderBody(data)}
       <BottomNav />
     </div>

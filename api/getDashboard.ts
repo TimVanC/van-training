@@ -188,17 +188,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       .eq('user_id', userId);
     if (splitError) throw splitError;
 
-    let rotation: { splitName: string; days: RotationDay[]; nextDayName: string | null } | null = null;
     const realSplits = ((splitRows ?? []) as Array<{
       id: string;
       name: string;
       workouts: Array<{ id: string; name: string; order_index: number }> | null;
     }>).filter((s) => s.name.trim().toLowerCase() !== 'import split');
 
-    const split = realSplits[0];
-    if (split) {
+    // Last-trained dates are scoped per split — two splits can both have a
+    // "Push A", and one split's session must not advance the other's rotation.
+    // Sessions from before the split join existed (empty splitName) count
+    // toward every split so history keeps working.
+    function buildRotation(split: (typeof realSplits)[number]): {
+      splitName: string;
+      days: RotationDay[];
+      nextDayName: string | null;
+    } {
       const lastTrainedByDayName = new Map<string, string>();
       for (const session of sessions) {
+        if (session.splitName && session.splitName !== split.name) continue;
         const existing = lastTrainedByDayName.get(session.dayName) ?? '';
         if (session.date > existing) lastTrainedByDayName.set(session.dayName, session.date);
       }
@@ -211,8 +218,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         seen.add(w.name);
         days.push({ name: w.name, lastTrained: lastTrainedByDayName.get(w.name) });
       }
-      rotation = { splitName: split.name, days, nextDayName: computeNextDayName(days) };
+      return { splitName: split.name, days, nextDayName: computeNextDayName(days) };
     }
+
+    // The hero follows whichever split was trained most recently, so switching
+    // splits is self-correcting: complete one workout in the new split and it
+    // becomes the default. Brand-new users fall back to the first split.
+    let activeSplitName: string | null = null;
+    for (let i = sessions.length - 1; i >= 0; i--) {
+      const name = sessions[i].splitName;
+      if (name && realSplits.some((s) => s.name === name)) {
+        activeSplitName = name;
+        break;
+      }
+    }
+
+    const rotations = realSplits.map(buildRotation);
+    const activeIndex = Math.max(
+      0,
+      rotations.findIndex((r) => r.splitName === activeSplitName),
+    );
+    const rotation = rotations[activeIndex] ?? null;
+    const otherRotations = rotations.filter((_, i) => i !== activeIndex);
 
     // Check-in averages over the last 30 days for the wellness tiles.
     const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
@@ -244,6 +271,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       insights,
       weekStats,
       rotation,
+      otherRotations,
       checkinSummary,
     });
   } catch (error) {

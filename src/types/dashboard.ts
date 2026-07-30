@@ -53,5 +53,7 @@ export interface DashboardResponse {
   insights: CheckinInsight[];
   weekStats: WeekStats;
   rotation: DashboardRotation | null;
+  /** Rotations for the user's other splits (empty with a single split). */
+  otherRotations?: DashboardRotation[];
   checkinSummary: DashboardCheckinSummary;
 }

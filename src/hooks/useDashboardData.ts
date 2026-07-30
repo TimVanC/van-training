@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../utils/supabaseClient';
 import type { DashboardResponse } from '../types/dashboard';
 
@@ -33,12 +33,14 @@ export function useDashboardData(): {
   data: DashboardResponse | null;
   loading: boolean;
   error: boolean;
+  retry: () => void;
 } {
   // Cached data renders immediately; the effect below decides whether it is
   // fresh enough to keep (checking the clock is impure, so it stays out of render).
   const [data, setData] = useState<DashboardResponse | null>(cache?.data ?? null);
   const [loading, setLoading] = useState(cache === null);
   const [error, setError] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (cache && Date.now() - cache.fetchedAt < CACHE_TTL_MS) return;
@@ -61,7 +63,14 @@ export function useDashboardData(): {
     return () => {
       cancelled = true;
     };
+  }, [attempt]);
+
+  const retry = useCallback(() => {
+    cache = null;
+    setError(false);
+    setLoading(true);
+    setAttempt((n) => n + 1);
   }, []);
 
-  return { data, loading, error };
+  return { data, loading, error, retry };
 }
