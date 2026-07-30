@@ -4,6 +4,7 @@ import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import ActivitySelection from './pages/ActivitySelection';
 import Dashboard from './pages/Dashboard';
 import CalendarPage from './pages/CalendarPage';
+import MuscleLab from './pages/MuscleLab';
 import LiftContainer from './pages/LiftContainer';
 import Run from './pages/Run';
 import Bike from './pages/Bike';
@@ -96,6 +97,7 @@ function App(): React.JSX.Element {
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/" element={user ? <Dashboard /> : <Navigate to="/login" replace />} />
       <Route path="/calendar" element={user ? <CalendarPage /> : <Navigate to="/login" replace />} />
+      <Route path="/muscles" element={user ? <MuscleLab /> : <Navigate to="/login" replace />} />
       <Route path="/activities" element={user ? <ActivitySelection /> : <Navigate to="/login" replace />} />
       <Route path="/lift/*" element={user ? <LiftContainer /> : <Navigate to="/login" replace />} />
       <Route path="/run" element={user ? <Run /> : <Navigate to="/login" replace />} />

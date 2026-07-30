@@ -7,7 +7,8 @@ import type {
   DashboardResponse,
   DashboardSession,
 } from '../types/dashboard';
-import type { TrendVerdict } from '../lib/analysis.js';
+import { verdictExplanation, type TrendVerdict } from '../lib/analysis.js';
+import { funComparisonLabel } from '../data/weightComparisons';
 
 const numberFormatter = new Intl.NumberFormat('en-US');
 
@@ -126,6 +127,9 @@ function MuscleGroupCard({
       </button>
       {expanded && (
         <div className="muscle-card-detail">
+          <p className={`muscle-card-blurb ${VERDICT_META[group.verdict].className}`}>
+            {verdictExplanation(group)}
+          </p>
           {group.exercises.length === 0 ? (
             <p className="muscle-card-empty">No lifts logged recently for this group.</p>
           ) : (
@@ -335,9 +339,13 @@ function Dashboard(): React.JSX.Element {
 
   function renderBody(d: DashboardResponse): React.JSX.Element {
     const { weekStats, checkinSummary } = d;
+    // Compare against the same elapsed portion of last week (Mon → this
+    // weekday), not the full week — a Thursday shouldn't lose to a Sunday.
+    // Fall back to the full week for API responses that predate the field.
+    const lastWeekBaseline = weekStats.volumeLastWeekToDate ?? weekStats.volumeLastWeek;
     const volumeDeltaPct =
-      weekStats.volumeLastWeek > 0
-        ? Math.round(((weekStats.volumeThisWeek - weekStats.volumeLastWeek) / weekStats.volumeLastWeek) * 100)
+      lastWeekBaseline > 0
+        ? Math.round(((weekStats.volumeThisWeek - lastWeekBaseline) / lastWeekBaseline) * 100)
         : null;
 
     return (
@@ -380,7 +388,7 @@ function Dashboard(): React.JSX.Element {
             <span className="dash-stat-value">{formatVolume(weekStats.volumeThisWeek)}</span>
             <span className="dash-stat-label">lbs moved this week</span>
             <span className="dash-stat-sub">
-              {volumeDeltaPct == null ? ' ' : `${volumeDeltaPct >= 0 ? '+' : ''}${volumeDeltaPct}% vs last week`}
+              {volumeDeltaPct == null ? ' ' : `${volumeDeltaPct >= 0 ? '+' : ''}${volumeDeltaPct}% vs same point last wk`}
             </span>
           </div>
           <div className="dash-stat">
@@ -402,6 +410,9 @@ function Dashboard(): React.JSX.Element {
               onClick={() => setShowMuscleInfo((v) => !v)}
             >
               i
+            </button>
+            <button type="button" className="dash-section-link" onClick={() => navigate('/muscles')}>
+              Muscle Lab →
             </button>
           </div>
           {showMuscleInfo && (
@@ -428,6 +439,40 @@ function Dashboard(): React.JSX.Element {
             ))}
           </div>
         </section>
+
+        {/* --- Weight moved comparisons ----------------------------------- */}
+        {(() => {
+          const now = new Date();
+          const monthVolume = d.sessions.reduce((sum, s) => {
+            const dt = new Date(s.date);
+            return dt.getFullYear() === now.getFullYear() && dt.getMonth() === now.getMonth()
+              ? sum + s.totalVolume
+              : sum;
+          }, 0);
+          const allTimeVolume = d.sessions.reduce((sum, s) => sum + s.totalVolume, 0);
+          const rows = [
+            { label: 'This week', volume: weekStats.volumeThisWeek },
+            { label: 'This month', volume: monthVolume },
+            { label: 'All time', volume: allTimeVolume },
+          ]
+            .map((r) => ({ ...r, fun: funComparisonLabel(r.volume) }))
+            .filter((r) => r.volume > 0 && r.fun);
+          if (rows.length === 0) return null;
+          return (
+            <section className="dash-section">
+              <h2 className="dash-section-title dash-animate">Weight Moved</h2>
+              <div className="dash-card weight-moved-card dash-animate">
+                {rows.map((r) => (
+                  <div key={r.label} className="weight-moved-row">
+                    <span className="weight-moved-label">{r.label}</span>
+                    <span className="weight-moved-lbs">{numberFormatter.format(Math.round(r.volume))} lbs</span>
+                    <span className="weight-moved-fun">{r.fun}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          );
+        })()}
 
         {/* --- Insights ---------------------------------------------------- */}
         {(d.insights.length > 0 || checkinSummary.count30d > 0) && (

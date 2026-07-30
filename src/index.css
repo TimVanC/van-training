@@ -1974,6 +1974,165 @@ body {
   box-shadow: var(--shadow-card);
 }
 
+/* --- Verdict blurb inside expanded muscle cards --- */
+.muscle-card-blurb {
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  padding: 0.6rem 0.7rem;
+  margin: 0.6rem 0 0.35rem;
+  border-left: 3px solid var(--border);
+  border-radius: 6px;
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.muscle-card-blurb.verdict--progressing { border-left-color: #2fbf71; }
+.muscle-card-blurb.verdict--plateaued { border-left-color: #e6b23a; }
+.muscle-card-blurb.verdict--regressing { border-left-color: #e05252; }
+.muscle-card-blurb.verdict--steady { border-left-color: var(--accent-blue); }
+
+/* --- Section header link (e.g. Muscle Lab) --- */
+.dash-section-link {
+  margin-left: auto;
+  background: none;
+  border: none;
+  padding: 0.15rem 0;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.dash-section-link:hover {
+  color: var(--accent-hover);
+}
+
+/* --- Weight moved comparisons --- */
+.weight-moved-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  max-width: 480px;
+}
+
+.weight-moved-row {
+  display: grid;
+  grid-template-columns: auto auto;
+  justify-content: space-between;
+  align-items: baseline;
+  row-gap: 0.1rem;
+}
+
+.weight-moved-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.weight-moved-lbs {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-align: right;
+}
+
+.weight-moved-fun {
+  grid-column: 1 / -1;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.weight-moved-row + .weight-moved-row {
+  padding-top: 0.7rem;
+  border-top: 1px solid var(--border);
+}
+
+/* --- Muscle Lab --- */
+.muscle-lab-intro {
+  width: 100%;
+  max-width: 480px;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin-bottom: 1rem;
+}
+
+.muscle-lab-card {
+  padding: 0.9rem 1rem;
+}
+
+.muscle-lab-sets {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.head-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.head-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.head-row-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.head-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.head-share {
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.head-bar-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.head-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  animation: head-bar-grow 0.6s ease-out;
+  transform-origin: left;
+}
+
+@keyframes head-bar-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+.head-sources {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.muscle-lab-footnote {
+  width: 100%;
+  max-width: 480px;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+  margin-top: 0.75rem;
+}
+
 /* --- Dashboard error card --- */
 .dash-error-card {
   display: flex;

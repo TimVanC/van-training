@@ -10,6 +10,7 @@ import {
   type CheckinRow,
 } from '../src/lib/analysis.js';
 import { computeNextDayName, type RotationDay } from '../src/lib/rotation.js';
+import { computeMuscleHeadReport } from '../src/lib/muscleHeads.js';
 
 interface SessionQueryRow {
   id: string;
@@ -163,6 +164,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const prs = computeRecentPrs(sessions, sets, now);
     const insights = buildCheckinInsights(sessions, sets, checkins);
     const weekStats = computeWeekStats(sessions, sets, now);
+    const muscleHeads = computeMuscleHeadReport(sessions, sets, now);
 
     // Per-session summary for the calendar and recent-activity views.
     const volumeBySession = new Map<string, { volume: number; sets: number }>();
@@ -270,6 +272,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       prs,
       insights,
       weekStats,
+      muscleHeads,
       rotation,
       otherRotations,
       checkinSummary,

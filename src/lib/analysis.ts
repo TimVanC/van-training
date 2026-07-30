@@ -172,6 +172,46 @@ function verdictFor(slope: number, totalSessions: number, spanWeeks: number): Tr
   return 'steady';
 }
 
+/**
+ * Plain-English reason for a group's verdict, shown when the card is expanded.
+ * Wording must stay in sync with the thresholds in `verdictFor` above.
+ */
+export function verdictExplanation(summary: {
+  verdict: TrendVerdict;
+  slopePctPerWeek: number;
+  bestMover?: { name: string; slopePctPerWeek: number };
+  worstMover?: { name: string; slopePctPerWeek: number };
+}): string {
+  const { verdict, slopePctPerWeek, bestMover, worstMover } = summary;
+  const pct = Math.abs(slopePctPerWeek).toFixed(1);
+  switch (verdict) {
+    case 'progressing':
+      return (
+        `Your estimated strength across this group is climbing about ${pct}% per week ` +
+        `(anything over 0.4%/wk counts as progressing)` +
+        (bestMover ? ` — ${bestMover.name} is leading the way at ${bestMover.slopePctPerWeek > 0 ? '+' : ''}${bestMover.slopePctPerWeek.toFixed(1)}%/wk.` : '.')
+      );
+    case 'regressing':
+      return (
+        `Your estimated strength here is dropping about ${pct}% per week over the recent window` +
+        (worstMover ? ` — ${worstMover.name} is sliding fastest (${worstMover.slopePctPerWeek.toFixed(1)}%/wk). ` : '. ') +
+        `Check recovery, sleep, and whether loads got cut.`
+      );
+    case 'plateaued':
+      return (
+        `Strength has been flat (within ±0.4%/wk) for 3+ weeks of training. ` +
+        `That usually means it's time to change a rep range, swap a variation, or take a deload.`
+      );
+    case 'steady':
+      return (
+        `Change is inside the noise band (between −0.6 and +0.4%/wk) and the trend window is still short — ` +
+        `holding ground, not yet a plateau.`
+      );
+    case 'insufficient':
+      return `Not enough data yet — a trend needs at least 3 logged sessions per exercise in the last 8 weeks.`;
+  }
+}
+
 export function summarizeMuscleGroups(
   sessions: AnalysisSessionRow[],
   sets: AnalysisSetRow[],
@@ -463,6 +503,12 @@ export interface WeekStats {
   sessionsLastWeek: number;
   volumeThisWeek: number;
   volumeLastWeek: number;
+  /**
+   * Last week's volume counting only the portion already elapsed this week
+   * (Monday through this same weekday/time), so a Thursday comparison is
+   * Mon–Thu vs Mon–Thu instead of a part-week vs a full week.
+   */
+  volumeLastWeekToDate: number;
   /** Consecutive calendar weeks (including this one) with at least one session. */
   weekStreak: number;
   totalSessions: number;
@@ -482,7 +528,12 @@ export function computeWeekStats(
   let sessionsLastWeek = 0;
   let volumeThisWeek = 0;
   let volumeLastWeek = 0;
+  let volumeLastWeekToDate = 0;
   const trainedWeeks = new Set<string>();
+  // "This point in the week, one week ago" — sessions after this moment last
+  // week hadn't happened yet at the equivalent time, so a to-date comparison
+  // must exclude them.
+  const sameTimeLastWeek = now.getTime() - 7 * DAY_MS;
 
   for (const session of sessions) {
     const date = dateOnly(session.date);
@@ -493,7 +544,11 @@ export function computeWeekStats(
       volumeThisWeek += volumeByDate.get(date) ?? 0;
     } else if (week === lastWeek) {
       sessionsLastWeek += 1;
-      volumeLastWeek += volumeByDate.get(date) ?? 0;
+      const dayVolume = volumeByDate.get(date) ?? 0;
+      volumeLastWeek += dayVolume;
+      if (new Date(session.date).getTime() <= sameTimeLastWeek) {
+        volumeLastWeekToDate += dayVolume;
+      }
     }
   }
 
@@ -512,6 +567,7 @@ export function computeWeekStats(
     sessionsLastWeek,
     volumeThisWeek: Math.round(volumeThisWeek),
     volumeLastWeek: Math.round(volumeLastWeek),
+    volumeLastWeekToDate: Math.round(volumeLastWeekToDate),
     weekStreak,
     totalSessions: sessions.length,
     firstSessionDate: ordered[0] ? dateOnly(ordered[0].date) : undefined,

@@ -1,5 +1,6 @@
 import type { MuscleGroup } from '../lib/muscles.js';
 import type { TrendVerdict, CheckinInsight, PrEntry, WeekStats } from '../lib/analysis.js';
+import type { MuscleHeadReport } from '../lib/muscleHeads.js';
 
 export interface DashboardSession {
   id: string;
@@ -52,6 +53,8 @@ export interface DashboardResponse {
   prs: PrEntry[];
   insights: CheckinInsight[];
   weekStats: WeekStats;
+  /** Per-head training-emphasis report for the Muscle Lab page. */
+  muscleHeads?: MuscleHeadReport[];
   rotation: DashboardRotation | null;
   /** Rotations for the user's other splits (empty with a single split). */
   otherRotations?: DashboardRotation[];
