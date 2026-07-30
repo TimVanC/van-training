@@ -37,13 +37,13 @@ export function classifyExercise(exerciseName: string): MuscleClassification | n
     return { primary: 'Hamstrings', secondary: [] };
   }
   if (has('leg extension')) return { primary: 'Quads', secondary: [] };
-  if (has('leg press', 'squat', 'hack', 'lunge', 'bulgarian')) {
+  if (has('leg press', 'squat', 'sqaut', 'hack', 'lunge', 'bulgarian')) {
     return { primary: 'Quads', secondary: ['Hamstrings'] };
   }
-  if (has('crunch', 'oblique', 'woodchopper', 'knee raise', 'leg raise', 'plank', 'serratus', 'ab wheel', 'situp', 'sit-up')) {
+  if (has('crunch', 'oblique', 'woodchop', 'knee raise', 'leg raise', 'plank', 'serratus', 'ab wheel', 'situp', 'sit-up', 'pallof', 'rollout', 'body saw', 'chair raise', 'landmine rotation', 'machine rotation')) {
     return { primary: 'Core', secondary: [] };
   }
-  if (has('back extension')) return { primary: 'Back', secondary: ['Hamstrings'] };
+  if (has('back extension', 'hyperextension', 'reverse hyper')) return { primary: 'Back', secondary: ['Hamstrings'] };
 
   if (has('rear delt', 'rear dealt', 'face pull', 'reverse fly', 'reverse pec')) {
     return { primary: 'Shoulders', secondary: [] };
@@ -69,7 +69,8 @@ export function classifyExercise(exerciseName: string): MuscleClassification | n
   // Word-boundary check so "flat press" doesn't match "lat".
   if (/\blat\b/.test(n)) return { primary: 'Back', secondary: ['Biceps'] };
 
-  if (has('dip')) return { primary: 'Chest', secondary: ['Triceps'] };
+  if (has('dip', 'push-up', 'push up', 'pushup')) return { primary: 'Chest', secondary: ['Triceps'] };
+  if (has('pullover')) return { primary: 'Chest', secondary: ['Back'] };
   if (has('pec', 'chest', 'bench')) {
     return has('press') || has('dip')
       ? { primary: 'Chest', secondary: ['Triceps'] }

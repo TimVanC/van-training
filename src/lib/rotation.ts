@@ -15,12 +15,11 @@ export interface RotationDay {
 /**
  * Accessory days are logged like any other workout but are NOT part of the
  * push/pull/legs cycle — training one shouldn't advance the rotation or ever
- * be suggested as "up next". Compared case-insensitively.
+ * be suggested as "up next". Matches "Core" and variants like "Core - Full" /
+ * "Core - Short", case-insensitively.
  */
-const ACCESSORY_DAY_NAMES = new Set(['core']);
-
 export function isAccessoryDay(name: string): boolean {
-  return ACCESSORY_DAY_NAMES.has(name.trim().toLowerCase());
+  return name.trim().toLowerCase().startsWith('core');
 }
 
 /**
