@@ -11,3 +11,12 @@ createRoot(document.getElementById('root')!).render(
     </BrowserRouter>
   </StrictMode>,
 );
+
+// The service worker only handles push notifications (see public/sw.js).
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      /* Push simply stays unavailable if registration fails. */
+    });
+  });
+}

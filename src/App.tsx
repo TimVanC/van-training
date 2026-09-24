@@ -11,6 +11,7 @@ import Bike from './pages/Bike';
 import Swim from './pages/Swim';
 import Analytics from './pages/Analytics';
 import AdminPortal from './pages/AdminPortal';
+import Settings from './pages/Settings';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
@@ -105,6 +106,7 @@ function App(): React.JSX.Element {
       <Route path="/swim" element={user ? <Swim /> : <Navigate to="/login" replace />} />
       <Route path="/analytics" element={user ? <Analytics /> : <Navigate to="/login" replace />} />
       <Route path="/admin" element={user ? <AdminPortal /> : <Navigate to="/login" replace />} />
+      <Route path="/settings" element={user ? <Settings /> : <Navigate to="/login" replace />} />
       <Route path="*" element={<Navigate to={user ? '/' : '/login'} replace />} />
     </Routes>
   );
