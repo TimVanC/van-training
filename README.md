@@ -12,7 +12,8 @@ That rewrites `public/icons/icon-180.png` (iPhone home screen), `icon-192.png` a
 
 - Use a square-ish PNG (or SVG) at least 512px wide. Transparent backgrounds are best; any empty margin is trimmed automatically.
 - The artwork is placed on the app's dark theme colour by default. Pick another background with `--bg "#ffffff"` (or `--bg transparent`), and tweak breathing room with `--padding 0.1` (fraction of each edge, default `0.03`).
-- Running `npm run icons` with no path rebuilds from the current trophy at `src/assets/larry-obrien-icon.png`.
+- Full-bleed artwork that already has its own background (like the current van) should skip the auto-crop: `npm run icons -- van.png --no-trim --padding 0 --bg "#fefefb"`.
+- Running `npm run icons` with no path rebuilds from the current source at `src/assets/app-icon.png` (pass the same flags as above).
 - iOS copies the icon at "Add to Home Screen" time, so remove and re-add the app on your phone to see a new icon there. Android and desktop pick it up on the next manifest update.
 
 ---

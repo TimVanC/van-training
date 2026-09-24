@@ -15,13 +15,15 @@
                                      the app's theme colour; iOS ignores transparency)
     --padding <0..0.4>               fraction of each edge left empty around the artwork
                                      on the regular icons (default 0.03)
+    --no-trim                        keep the source's own margins instead of cropping
+                                     empty edges first (use for full-bleed artwork)
 */
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 import sharp from 'sharp';
 
-const DEFAULT_SOURCE = path.join('src', 'assets', 'larry-obrien-icon.png');
+const DEFAULT_SOURCE = path.join('src', 'assets', 'app-icon.png');
 const OUTPUT_DIR = path.join('public', 'icons');
 const DEFAULT_BACKGROUND = '#0a0a0a';
 const DEFAULT_PADDING = 0.03;
@@ -85,6 +87,7 @@ async function main(): Promise<void> {
     options: {
       bg: { type: 'string', default: DEFAULT_BACKGROUND },
       padding: { type: 'string', default: String(DEFAULT_PADDING) },
+      'no-trim': { type: 'boolean', default: false },
     },
   });
 
@@ -95,7 +98,8 @@ async function main(): Promise<void> {
 
   /* Trim any empty margin so padding is consistent whatever the source's own
      whitespace, then everything below scales from the same cropped artwork. */
-  const artwork = await sharp(source).trim({ threshold: 10 }).png().toBuffer();
+  const base = sharp(source);
+  const artwork = await (values['no-trim'] ? base : base.trim({ threshold: 10 })).png().toBuffer();
 
   const specs: IconSpec[] = [
     { file: 'icon-180.png', size: 180, padding },
