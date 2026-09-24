@@ -829,7 +829,9 @@ body {
 
 @media (max-width: 420px) {
   .page {
-    padding: 1.25rem 0.75rem;
+    /* Keep the status-bar inset: in the iOS home-screen app the page runs
+       under the translucent status bar. */
+    padding: calc(1.25rem + env(safe-area-inset-top)) 0.75rem 1.25rem;
   }
 
   .plate-inputs {
