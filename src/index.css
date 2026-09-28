@@ -197,21 +197,6 @@ body {
   animation: submit-button-light-up 0.6s ease-out;
 }
 
-.exercise-target {
-  font-size: 1rem;
-  color: var(--text-secondary);
-  margin-bottom: 1rem;
-}
-
-.exercise-substitute-note {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  text-align: center;
-  width: 100%;
-  max-width: 400px;
-  margin: -0.5rem 0 0.75rem;
-}
-
 .exercise-swap {
   width: 100%;
   max-width: 400px;
@@ -220,34 +205,6 @@ body {
   align-items: center;
   gap: 0.5rem;
   margin-bottom: 1rem;
-}
-
-.swap-button {
-  width: 100%;
-  max-width: 400px;
-  min-height: 44px;
-  padding: 0.625rem 0.875rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-  font-family: inherit;
-  border: 1.5px solid var(--accent-blue);
-  border-radius: var(--radius);
-  background-color: var(--bg-surface);
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: background-color var(--transition), border-color var(--transition), color var(--transition);
-}
-
-.swap-button:active:not(:disabled),
-.swap-button:hover:not(:disabled) {
-  background-color: var(--accent);
-  border-color: var(--accent);
-  color: #1a0d00;
-}
-
-.swap-button:focus-visible {
-  outline: 2px solid var(--accent-focus);
-  outline-offset: 2px;
 }
 
 .exercise-swap-label {
@@ -274,15 +231,6 @@ body {
 
 .exercise-swap-add-actions .skip-button {
   flex: 1;
-}
-
-.exercise-last-trained {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  margin-bottom: 0.5rem;
-  text-align: center;
-  width: 100%;
-  max-width: 400px;
 }
 
 .exercise-last-trained-label {
@@ -3336,6 +3284,128 @@ body {
 .workout-submit.submit-button {
   padding: 1.05rem 1rem;
   border-radius: 12px;
+}
+
+/* --- Exercise logging page --- */
+.logging-page .selection-title {
+  white-space: normal;
+  line-height: 1.15;
+  font-size: clamp(1.2rem, 5.5vw, 1.6rem);
+}
+
+.logging-hero {
+  margin-bottom: 1rem;
+}
+
+.logging-substitute {
+  margin-bottom: 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.logging-target {
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.logging-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.55rem;
+}
+
+.logging-meta-row .workout-progress-sub {
+  margin-top: 0;
+  min-width: 0;
+}
+
+.logging-last-trained .exercise-last-trained-label {
+  color: var(--text-muted);
+}
+
+.logging-swap-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  padding: 0.3rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: border-color var(--transition), color var(--transition), background-color var(--transition);
+}
+
+.logging-swap-toggle:hover:not(:disabled),
+.logging-swap-toggle--open {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.logging-swap-toggle:focus-visible {
+  outline: 2px solid var(--accent-focus);
+  outline-offset: 2px;
+}
+
+.logging-swap-toggle:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.logging-swap {
+  max-width: none;
+  margin: 0.85rem 0 0;
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--border);
+  align-items: stretch;
+  animation: dash-fade-up 0.3s cubic-bezier(0.22, 0.9, 0.35, 1);
+}
+
+.logging-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 480px;
+}
+
+.logging-section .recent-lifts,
+.logging-section .set-list,
+.logging-section .input-group,
+.logging-section .button-list,
+.logging-section .submit-error {
+  max-width: none;
+}
+
+.logging-section .set-row {
+  padding: 0.7rem 0.9rem;
+  border-radius: 12px;
+  box-shadow: var(--shadow-card);
+}
+
+.logging-section .nav-button {
+  padding: 1.05rem 1rem;
+  border-radius: 12px;
+}
+
+.logging-page .exercise-last-trained-spinner {
+  margin-left: 0.15rem;
 }
 
 /* --- Calendar page --- */

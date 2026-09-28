@@ -18,6 +18,25 @@ interface ExerciseLoggingProps {
 
 const ADD_SWAP_OPTION_VALUE = '__add_custom_swap__';
 
+function IconChevronLeft(): React.JSX.Element {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <polyline points="15 18 9 12 15 6" />
+    </svg>
+  );
+}
+
+function IconSwap(): React.JSX.Element {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <polyline points="17 1 21 5 17 9" />
+      <path d="M3 11V9a4 4 0 0 1 4-4h14" />
+      <polyline points="7 23 3 19 7 15" />
+      <path d="M21 13v2a4 4 0 0 1-4 4H3" />
+    </svg>
+  );
+}
+
 function normalizeSwapName(name: string): string {
   return name.trim().toLocaleLowerCase();
 }
@@ -711,24 +730,69 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     });
   }
 
+  const exerciseDone = totalSets > 0 && loggedSets >= totalSets;
+  const progressPct = totalSets > 0 ? Math.min(100, (loggedSets / totalSets) * 100) : 0;
+
   return (
-    <div className="page">
-      <h1>{selectedExerciseName}</h1>
-      {selectedExerciseName !== baseExerciseName && (
-        <p className="exercise-substitute-note">(substitute for {baseExerciseName})</p>
-      )}
-      <p className="exercise-target">Target: {totalSets} sets &times; {repRange} reps</p>
-      <div className="exercise-swap">
+    <div className="page selection-page workout-page logging-page">
+      <div className="selection-header">
         <button
           type="button"
-          className="swap-button"
-          onClick={() => setShowSwapOptions((prev) => !prev)}
-          disabled={isSubmitting || isSavingSwap}
+          className="selection-back"
+          onClick={() => navigate(listPath)}
+          aria-label="Back to workout"
         >
-          Swap Exercise
+          <IconChevronLeft />
         </button>
+        <div className="selection-heading">
+          <p className="selection-kicker">
+            {session.day} &middot; Exercise {index + 1} of {session.exercises.length}
+          </p>
+          <h1 className="selection-title">{selectedExerciseName}</h1>
+        </div>
+      </div>
+
+      <section
+        className={`workout-progress logging-hero dash-animate ${exerciseDone ? 'workout-progress--done' : ''}`}
+        aria-label="Exercise progress"
+      >
+        {selectedExerciseName !== baseExerciseName && (
+          <p className="logging-substitute">Substitute for {baseExerciseName}</p>
+        )}
+        <div className="workout-progress-row">
+          <div className="workout-progress-count">
+            <span className="workout-progress-value">{loggedSets}</span>
+            <span className="workout-progress-total">/ {totalSets} sets</span>
+          </div>
+          <span className="logging-target">{totalSets} &times; {repRange} reps</span>
+        </div>
+        <div className="workout-progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={totalSets} aria-valuenow={loggedSets}>
+          <div className="workout-progress-fill" style={{ width: `${progressPct}%` }} />
+        </div>
+        <div className="logging-meta-row">
+          <p className="workout-progress-sub logging-last-trained">
+            <span className="exercise-last-trained-label">Last trained: </span>
+            {recentLiftsLoading ? (
+              <span className="exercise-last-trained-spinner" aria-hidden />
+            ) : lastTrained ? (
+              formatLastTrainedDate(lastTrained)
+            ) : (
+              'n/a'
+            )}
+          </p>
+          <button
+            type="button"
+            className={`logging-swap-toggle ${showSwapOptions ? 'logging-swap-toggle--open' : ''}`}
+            onClick={() => setShowSwapOptions((prev) => !prev)}
+            disabled={isSubmitting || isSavingSwap}
+            aria-expanded={showSwapOptions}
+          >
+            <IconSwap />
+            <span>{showSwapOptions ? 'Close' : 'Swap'}</span>
+          </button>
+        </div>
         {showSwapOptions && (
-          <>
+          <div className="exercise-swap logging-swap">
             <label className="input-label exercise-swap-label">
               Select exercise
               <select
@@ -784,25 +848,11 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
                 </div>
               </div>
             )}
-          </>
+          </div>
         )}
-      </div>
-      <p className="exercise-last-trained">
-        <span className="exercise-last-trained-label">Last trained: </span>
-        {recentLiftsLoading ? (
-          <span className="exercise-last-trained-spinner" aria-hidden />
-        ) : lastTrained ? (
-          formatLastTrainedDate(lastTrained)
-        ) : (
-          'n/a'
-        )}
-      </p>
-      <div className="progress-bar-container">
-        <div className="progress-bar-label">{loggedSets} / {totalSets} sets completed</div>
-        <div className="progress-bar-track">
-          <div className="progress-bar-fill" style={{ width: `${totalSets > 0 ? (loggedSets / totalSets) * 100 : 0}%` }} />
-        </div>
-      </div>
+      </section>
+
+      <div className="logging-section dash-animate" style={{ animationDelay: '70ms' }}>
       <RecentLiftsSection
         recentLifts={recentLifts}
         loading={recentLiftsLoading}
@@ -814,6 +864,8 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         sledBarWeight={isSledExercise(selectedExerciseName) ? 0 : 45}
         sessionHistory={sessionHistory}
       />
+      </div>
+      <div className="logging-section logging-form dash-animate" style={{ animationDelay: '140ms' }}>
       <SetLoggingForm
         sets={exercise.sets}
         weight={weight}
@@ -892,6 +944,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         }}
         onFinish={handleFinish}
       />
+      </div>
       <LoadingOverlay visible={isSubmitting} />
       <TemporaryOverlay message={overlayMsg} visible={showOverlay} />
       <IncompleteSetModal visible={showIncompleteModal} onDiscard={handleDiscardAndFinish} onGoBack={() => setShowIncompleteModal(false)} />
