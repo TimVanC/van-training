@@ -145,39 +145,6 @@ body {
   color: #ffffff;
 }
 
-.exercise-list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  width: 100%;
-  max-width: 400px;
-  margin-bottom: 1.5rem;
-}
-
-.exercise-card {
-  display: flex;
-  flex-direction: column;
-  padding: 0.75rem 1rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background-color: var(--bg-surface);
-  box-shadow: var(--shadow-card);
-  cursor: pointer;
-  transition: border-color var(--transition), background-color var(--transition), box-shadow var(--transition);
-}
-
-.exercise-card:hover {
-  border-color: var(--accent);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-}
-
-.exercise-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
 .skip-button {
   padding: 0.25rem 0.75rem;
   font-size: 0.75rem;
@@ -199,15 +166,6 @@ body {
   border-color: var(--text-muted);
 }
 
-.exercise-card--completed {
-  border-color: var(--accent);
-  background-color: rgba(245, 132, 38, 0.12);
-}
-
-.exercise-card--completed:hover {
-  border-color: var(--accent);
-}
-
 @keyframes card-complete-pop {
   0% {
     transform: scale(1);
@@ -221,17 +179,6 @@ body {
     transform: scale(1);
     box-shadow: none;
   }
-}
-
-.exercise-card--all-done {
-  border-color: var(--success);
-  background-color: rgba(34, 197, 94, 0.12);
-  animation: card-complete-pop 0.45s ease-out;
-  animation-fill-mode: backwards;
-}
-
-.exercise-card--all-done:hover {
-  border-color: var(--success);
 }
 
 @keyframes submit-button-light-up {
@@ -248,17 +195,6 @@ body {
 
 .submit-button--just-unlocked {
   animation: submit-button-light-up 0.6s ease-out;
-}
-
-.exercise-name {
-  font-weight: 600;
-  font-size: 1rem;
-  color: var(--text-primary);
-}
-
-.exercise-detail {
-  font-size: 0.875rem;
-  color: var(--text-secondary);
 }
 
 .exercise-target {
@@ -3188,6 +3124,218 @@ body {
 @keyframes skeleton-shimmer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
+}
+
+/* --- Workout day (exercise list) --- */
+.workout-page {
+  padding-bottom: calc(2rem + env(safe-area-inset-bottom));
+}
+
+.workout-progress {
+  width: 100%;
+  max-width: 480px;
+  padding: 0.95rem 1rem 0.9rem;
+  margin-bottom: 0.9rem;
+  border: 1px solid rgba(245, 132, 38, 0.45);
+  border-radius: 12px;
+  background: linear-gradient(145deg, #1c1206 0%, var(--bg-surface) 55%);
+  box-shadow: var(--shadow-card);
+  transition: border-color 0.35s ease, background 0.35s ease, box-shadow 0.35s ease;
+}
+
+.workout-progress--done {
+  border-color: rgba(34, 197, 94, 0.5);
+  background: linear-gradient(145deg, #07200f 0%, var(--bg-surface) 55%);
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.25), 0 4px 18px rgba(34, 197, 94, 0.12);
+}
+
+.workout-progress-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.55rem;
+}
+
+.workout-progress-count {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.workout-progress-value {
+  font-family: var(--font-display);
+  font-size: 1.9rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.workout-progress-total {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.workout-progress-pct {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  transition: color 0.35s ease;
+}
+
+.workout-progress--done .workout-progress-pct {
+  color: var(--success);
+}
+
+.workout-progress-track {
+  height: 8px;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.07);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.workout-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), #ff9d4d);
+  transition: width 0.45s cubic-bezier(0.22, 0.9, 0.35, 1), background 0.35s ease;
+}
+
+.workout-progress--done .workout-progress-fill {
+  background: linear-gradient(90deg, var(--success), #4ade80);
+}
+
+.workout-progress-sub {
+  margin-top: 0.55rem;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.workout-list {
+  list-style: none;
+  margin-bottom: 1.25rem;
+}
+
+.workout-item {
+  width: 100%;
+}
+
+.workout-card {
+  position: relative;
+  transition:
+    border-color var(--transition),
+    background-color var(--transition),
+    transform var(--transition),
+    box-shadow var(--transition);
+}
+
+.workout-card:focus-visible {
+  outline: 2px solid var(--accent-focus);
+  outline-offset: 2px;
+}
+
+.workout-card-bar {
+  transition: background-color 0.3s ease;
+}
+
+.workout-card-bar--pending {
+  background: var(--text-muted);
+}
+
+.workout-card-bar--started {
+  background: var(--accent-blue);
+}
+
+.workout-card-bar--completed {
+  background: var(--accent);
+}
+
+.workout-card-bar--all-done {
+  background: var(--success);
+}
+
+.workout-card-name {
+  white-space: normal;
+  line-height: 1.2;
+}
+
+.workout-card-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.workout-card-dot {
+  color: var(--text-muted);
+}
+
+.workout-card-logged {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.workout-card--completed {
+  border-color: rgba(245, 132, 38, 0.55);
+  background: linear-gradient(135deg, rgba(28, 18, 6, 0.9), var(--bg-surface) 60%);
+}
+
+.workout-card--completed .workout-card-go {
+  color: var(--accent);
+}
+
+.workout-card--all-done {
+  border-color: rgba(34, 197, 94, 0.55);
+  background: linear-gradient(135deg, rgba(7, 32, 15, 0.9), var(--bg-surface) 60%);
+  animation: card-complete-pop 0.45s ease-out;
+  animation-fill-mode: backwards;
+}
+
+.workout-card--all-done:hover {
+  border-color: var(--success);
+}
+
+.workout-card--all-done .workout-card-go {
+  color: var(--success);
+}
+
+.workout-card-badge--all-done {
+  color: #04150a;
+  background: linear-gradient(135deg, var(--success), #4ade80);
+}
+
+.workout-skip {
+  margin-left: auto;
+  border-radius: 999px;
+  padding: 0.22rem 0.7rem;
+}
+
+.workout-footer {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 480px;
+}
+
+.workout-notes.notes-label,
+.workout-submit.submit-button,
+.workout-error.submit-error {
+  max-width: none;
+}
+
+.workout-submit.submit-button {
+  padding: 1.05rem 1rem;
+  border-radius: 12px;
 }
 
 /* --- Calendar page --- */
