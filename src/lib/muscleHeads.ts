@@ -1,99 +1,22 @@
 /**
- * Per-head training emphasis: which region of each muscle group the logged
- * work actually hits (e.g. long vs lateral vs medial triceps head).
- *
- * Exercise names are free text, so mapping is keyword-based like
- * `classifyExercise` — deliberately tolerant, most-specific rules first.
- * Weights are relative emphasis (0–1) informed by standard EMG/biomechanics
- * heuristics; they are estimates for training-balance feedback, not clinical
- * measurements.
+ * Per-head training report: which region of each muscle group the logged
+ * work actually hits (e.g. long vs lateral vs medial triceps head), with
+ * compound lifts crediting every group they load (see ./muscles.ts).
  *
  * Pure module — shared by the Vercel API functions and the client.
  */
 
-import { MUSCLE_GROUPS, classifyExercise, type MuscleGroup } from './muscles.js';
+import {
+  MUSCLE_GROUPS,
+  MUSCLE_HEADS,
+  classifyExercise,
+  headEmphasis,
+  type MuscleGroup,
+} from './muscles.js';
 
-export const MUSCLE_HEADS: Record<MuscleGroup, string[]> = {
-  Chest: ['Upper Chest', 'Mid Chest', 'Lower Chest'],
-  Back: ['Lats', 'Upper Traps', 'Mid-Back', 'Lower Back'],
-  Shoulders: ['Front Delt', 'Side Delt', 'Rear Delt'],
-  Biceps: ['Long (Outer) Head', 'Short (Inner) Head', 'Brachialis'],
-  Triceps: ['Long Head', 'Lateral Head', 'Medial Head'],
-  Quads: ['Rectus Femoris', 'Outer Quad (VL)', 'Inner Quad (VMO)'],
-  Hamstrings: ['Biceps Femoris (Outer)', 'Semis (Inner)', 'Glutes (hinge assist)'],
-  Calves: ['Gastrocnemius', 'Soleus'],
-  Core: ['Upper Abs', 'Lower Abs', 'Obliques', 'Serratus'],
-};
-
-/** Relative emphasis of `exerciseName` across `group`'s heads. */
-export function headEmphasis(group: MuscleGroup, exerciseName: string): number[] {
-  const n = exerciseName.toLowerCase();
-  const has = (...keys: string[]) => keys.some((k) => n.includes(k));
-  // Returns weights aligned with MUSCLE_HEADS[group] order.
-  switch (group) {
-    case 'Chest': {
-      if (has('incline', 'low to high', 'low-to-high')) return [1, 0.4, 0];
-      if (has('decline', 'high to low', 'high-to-low', 'dip')) return [0, 0.4, 1];
-      if (has('fly', 'pec')) return [0.2, 1, 0.2];
-      if (has('push-up', 'push up', 'pushup')) return [0.2, 1, 0.4];
-      if (has('flat', 'bench', 'press')) return [0.3, 1, 0.3];
-      return [0.33, 0.34, 0.33];
-    }
-    case 'Back': {
-      if (has('shrug')) return [0, 1, 0.2, 0];
-      if (has('extension', 'hyper', 'good morning')) return [0, 0.2, 0.2, 1];
-      if (has('deadlift')) return [0.2, 0.4, 0.3, 1];
-      if (has('row')) return [0.5, 0.2, 1, 0.1];
-      if (has('pulldown', 'pull down', 'pull-up', 'pull up', 'chin', 'pullover', 'straight arm', /* word */ 'lat ')) return [1, 0, 0.3, 0];
-      return [0.4, 0.2, 0.3, 0.1];
-    }
-    case 'Shoulders': {
-      if (has('rear', 'reverse', 'face pull')) return [0, 0, 1];
-      if (has('lateral', 'lean-away', 'lean away', 'upright')) return [0, 1, 0];
-      if (has('front raise')) return [1, 0.2, 0];
-      if (has('press', 'arnold', 'overhead')) return [1, 0.3, 0];
-      return [0.33, 0.34, 0.33];
-    }
-    case 'Biceps': {
-      if (has('hammer', 'reverse', 'rope')) return [0.4, 0, 1];
-      if (has('incline', 'bayesian', 'drag', 'behind')) return [1, 0.4, 0.1];
-      if (has('preacher', 'spider', 'concentration')) return [0.4, 1, 0.1];
-      if (has('curl')) return [0.7, 0.7, 0.3];
-      return [0.5, 0.4, 0.4];
-    }
-    case 'Triceps': {
-      if (has('overhead', 'skull', 'french')) return [1, 0.3, 0.4];
-      if (has('pushdown', 'push down', 'pressdown', 'kickback')) return [0.2, 1, 0.6];
-      if (has('dip', 'close grip', 'bench', 'press')) return [0.2, 0.6, 0.8];
-      return [0.5, 0.5, 0.5];
-    }
-    case 'Quads': {
-      if (has('extension', 'sissy')) return [1, 0.6, 0.6];
-      if (has('lunge', 'bulgarian', 'split')) return [0.4, 0.8, 1];
-      if (has('squat', 'sqaut', 'press', 'hack', 'pendulum')) return [0.4, 1, 0.8];
-      return [0.5, 0.7, 0.6];
-    }
-    case 'Hamstrings': {
-      if (has('seated')) return [0.7, 1, 0];
-      if (has('curl', 'nordic')) return [1, 0.8, 0];
-      if (has('rdl', 'romanian', 'deadlift', 'good morning', 'hyper', 'extension')) return [0.8, 0.8, 1];
-      if (has('squat', 'press', 'lunge', 'bulgarian')) return [0.5, 0.4, 0.8];
-      return [0.6, 0.6, 0.4];
-    }
-    case 'Calves': {
-      if (has('seated')) return [0.3, 1];
-      return [1, 0.4];
-    }
-    case 'Core': {
-      if (has('serratus')) return [0, 0, 0, 1];
-      if (has('woodchop', 'rotation', 'pallof', 'oblique', 'side bend', 'twist')) return [0, 0, 1, 0.2];
-      if (has('knee raise', 'leg raise', 'reverse crunch', 'chair raise')) return [0.3, 1, 0, 0];
-      if (has('rollout', 'plank', 'body saw')) return [0.7, 0.7, 0.1, 0.3];
-      if (has('crunch', 'situp', 'sit-up')) return [1, 0.3, 0, 0];
-      return [0.4, 0.4, 0.1, 0.1];
-    }
-  }
-}
+// The anatomy tables live in ./muscles.ts; re-exported here so existing
+// imports keep working.
+export { MUSCLE_HEADS, headEmphasis };
 
 export interface MuscleHeadShare {
   head: string;
@@ -125,9 +48,9 @@ interface HeadSessionRow {
 
 /**
  * Estimated per-head training share for each muscle group over the last
- * `windowDays`. Sets count 1 toward the exercise's primary group and 0.5
- * toward secondaries (matching the weekly-sets convention), spread across
- * heads by `headEmphasis`.
+ * `windowDays`. Each set credits every group in the exercise's load profile
+ * (1 for the primary mover, fractional for synergists — matching the
+ * weekly-sets convention), spread across heads by `headEmphasis`.
  */
 export function computeMuscleHeadReport(
   sessions: HeadSessionRow[],
@@ -164,8 +87,9 @@ export function computeMuscleHeadReport(
     if (!Number.isFinite(t) || t < cutoff) continue;
     const cls = classifyExercise(set.exerciseName);
     if (!cls) continue;
-    addSet(cls.primary, set.exerciseName, 1);
-    for (const secondary of cls.secondary) addSet(secondary, set.exerciseName, 0.5);
+    for (const [group, weight] of Object.entries(cls.load) as Array<[MuscleGroup, number]>) {
+      if (weight > 0) addSet(group, set.exerciseName, weight);
+    }
   }
 
   const reports: MuscleHeadReport[] = [];

@@ -238,11 +238,12 @@ export function summarizeMuscleGroups(
     const week = isoWeekStart(new Date(session.date));
     const cls = classifyExercise(set.exerciseName);
     if (!cls) continue;
-    const primaryMap = weeklySetsByGroup.get(cls.primary)!;
-    primaryMap.set(week, (primaryMap.get(week) ?? 0) + 1);
-    for (const secondary of cls.secondary) {
-      const secMap = weeklySetsByGroup.get(secondary)!;
-      secMap.set(week, (secMap.get(week) ?? 0) + 0.5);
+    // Compound lifts credit every group they load: 1 set to the primary
+    // mover, a fraction to each synergist (see muscles.ts for the scale).
+    for (const [group, weight] of Object.entries(cls.load) as Array<[MuscleGroup, number]>) {
+      if (weight <= 0) continue;
+      const map = weeklySetsByGroup.get(group)!;
+      map.set(week, (map.get(week) ?? 0) + weight);
     }
   }
 
