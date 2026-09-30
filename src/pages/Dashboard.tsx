@@ -9,6 +9,7 @@ import type {
 } from '../types/dashboard';
 import { verdictExplanation, type TrendVerdict } from '../lib/analysis.js';
 import { funComparisonLabel } from '../data/weightComparisons';
+import { loadSession } from '../utils/storage';
 
 const numberFormatter = new Intl.NumberFormat('en-US');
 
@@ -322,6 +323,14 @@ function Dashboard(): React.JSX.Element {
   const [showMuscleInfo, setShowMuscleInfo] = useState(false);
 
   const nextDay = data?.rotation?.nextDayName ?? null;
+  // An unfinished lift saved on this device. Checked once per mount so the
+  // home card can send the user straight back into it instead of through a
+  // day picker that would start over.
+  const [savedLift] = useState(() => {
+    const saved = loadSession();
+    return saved && saved.activityType === 'Lift' ? saved : null;
+  });
+  const savedLiftSets = savedLift ? savedLift.exercises.reduce((acc, ex) => acc + ex.sets.length, 0) : 0;
   const nextDayLastTrained = useMemo(() => {
     if (!data?.rotation || !nextDay) return undefined;
     return data.rotation.days.find((d) => d.name === nextDay)?.lastTrained;
@@ -351,7 +360,28 @@ function Dashboard(): React.JSX.Element {
     return (
       <>
         {/* --- Next workout hero ------------------------------------------ */}
-        {d.rotation && nextDay && (
+        {savedLift && (
+          <section className="dash-card dash-hero dash-hero--resume dash-animate">
+            <p className="dash-hero-kicker">Unfinished workout in {savedLift.split}</p>
+            <h2 className="dash-hero-day">{savedLift.day}</h2>
+            <p className="dash-hero-sub">
+              {savedLiftSets === 1 ? '1 set' : `${savedLiftSets} sets`} logged · pick up where you left off
+            </p>
+            <button
+              type="button"
+              className="nav-button nav-button--finish-ready dash-hero-start"
+              onClick={() =>
+                navigate(`/lift/${encodeURIComponent(savedLift.split)}/${encodeURIComponent(savedLift.day)}`)
+              }
+            >
+              Resume Workout
+            </button>
+            <button type="button" className="dash-hero-alt-link" onClick={() => navigate('/lift')}>
+              Start a different workout →
+            </button>
+          </section>
+        )}
+        {!savedLift && d.rotation && nextDay && (
           <section className="dash-card dash-hero dash-animate">
             <p className="dash-hero-kicker">Up next in {d.rotation.splitName}</p>
             <h2 className="dash-hero-day">{nextDay}</h2>

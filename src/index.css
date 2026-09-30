@@ -3408,6 +3408,66 @@ body {
   margin-left: 0.15rem;
 }
 
+/* --- Resume unfinished workout prompt --- */
+.resume-card {
+  margin-bottom: 1rem;
+}
+
+.resume-card-line {
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.resume-card-line strong {
+  font-weight: 700;
+}
+
+.resume-card-sub {
+  margin-top: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.resume-card .submit-error {
+  max-width: none;
+  margin-top: 0.75rem;
+}
+
+.resume-actions {
+  max-width: 480px;
+  gap: 0.7rem;
+}
+
+.resume-actions .nav-button {
+  padding: 1.05rem 1rem;
+  border-radius: 12px;
+}
+
+.resume-actions .resume-discard {
+  border-color: var(--border);
+}
+
+.resume-actions .resume-discard:hover:not(:disabled),
+.resume-actions .resume-discard:active:not(:disabled) {
+  background-color: rgba(239, 68, 68, 0.15);
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.resume-actions .dash-hero-alt-link {
+  margin-top: 0.1rem;
+}
+
+.dash-hero--resume {
+  border-color: rgba(34, 197, 94, 0.5);
+  background: linear-gradient(145deg, #07200f 0%, var(--bg-surface) 55%);
+}
+
+.dash-hero--resume .dash-hero-kicker {
+  color: var(--success);
+}
+
 /* --- Calendar page --- */
 .calendar-streak-banner {
   width: 100%;

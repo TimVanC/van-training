@@ -144,20 +144,32 @@ function LiftContainer(): React.JSX.Element {
     if (pathParts.length < 3) return null;
     const urlSplit = decodeURIComponent(pathParts[1]);
     const urlDay = decodeURIComponent(pathParts[2]);
-    // Only restore if the saved session matches the URL we're actually on;
-    // a mismatched saved session is stale and must be cleared.
-    if (saved.split !== urlSplit || saved.day !== urlDay) {
-      clearSession();
-      return null;
-    }
+    // Only restore into state if the saved session matches the URL we're on.
+    // A mismatch is NOT grounds to delete it: the saved session is the user's
+    // unfinished workout, and the resume prompt below will offer it back.
+    // SessionRoute redirects mismatched URLs to /lift, which shows that prompt.
+    if (saved.split !== urlSplit || saved.day !== urlDay) return null;
     return saved;
   });
 
-  const [showResume, setShowResume] = useState<boolean>(() => {
-    if (!isLiftRoot) return false;
-    const saved = loadSession();
-    return saved !== null && saved.activityType === 'Lift';
-  });
+  // The saved lift session, read fresh each render (a cheap localStorage
+  // read) so the prompt below always reflects what is actually on disk.
+  const savedRaw = loadSession();
+  const savedLift: LiftSession | null = savedRaw && savedRaw.activityType === 'Lift' ? savedRaw : null;
+
+  // On the /lift root, offer to resume whenever an unfinished workout is
+  // saved (derived rather than mount-time state so a redirect back to the
+  // root — e.g. from a mismatched day URL — shows the prompt too).
+  const [resumeDismissed, setResumeDismissed] = useState(false);
+  const showResume = isLiftRoot && !resumeDismissed && savedLift !== null;
+
+  // Set when the user taps a day on the day picker while an unfinished
+  // workout is saved. Every entry point that used to skip the /lift root
+  // (the home-screen Start button, the workout screen's back button) lands
+  // on the day picker, so the resume prompt has to live here too or a single
+  // tap silently overwrites the saved sets.
+  const [pendingDay, setPendingDay] = useState<{ split: string; day: string } | null>(null);
+  const [pendingError, setPendingError] = useState<string | null>(null);
 
   // On the day-list view, re-fetch the day's template and fold any changes
   // into the active session (see mergeLiftSessionWithTemplate). This lets a
@@ -211,17 +223,18 @@ function LiftContainer(): React.JSX.Element {
     const saved = loadSession();
     if (!saved || saved.activityType !== 'Lift') return;
     setSession(saved);
-    setShowResume(false);
+    setPendingDay(null);
+    setPendingError(null);
     navigate(`/lift/${encodeURIComponent(saved.split)}/${encodeURIComponent(saved.day)}`);
   }
 
   function handleDiscard(): void {
     clearSession();
-    setShowResume(false);
+    setResumeDismissed(true);
     setSession(null);
   }
 
-  async function handleDaySelect(splitName: string, dayName: string): Promise<DaySelectResult> {
+  async function startFreshSession(splitName: string, dayName: string): Promise<DaySelectResult> {
     const exercises = await loadDayExercises(splitName, dayName);
     // `null` means the split/workout couldn't be resolved; an empty array means
     // the day exists but has no (non-archived) exercises configured. Both used
@@ -234,6 +247,34 @@ function LiftContainer(): React.JSX.Element {
     saveSession(newSession);
     navigate(`/lift/${encodeURIComponent(splitName)}/${encodeURIComponent(dayName)}`);
     return 'ok';
+  }
+
+  async function handleDaySelect(splitName: string, dayName: string): Promise<DaySelectResult> {
+    const saved = loadSession();
+    if (saved && saved.activityType === 'Lift') {
+      // Never overwrite an unfinished workout on a single tap — ask first.
+      setPendingDay({ split: splitName, day: dayName });
+      return 'ok';
+    }
+    return startFreshSession(splitName, dayName);
+  }
+
+  async function handleDiscardAndStart(): Promise<void> {
+    if (!pendingDay || isSubmitting) return;
+    setPendingError(null);
+    setIsSubmitting(true);
+    const result = await startFreshSession(pendingDay.split, pendingDay.day);
+    setIsSubmitting(false);
+    if (result === 'ok') {
+      // Only drop the old workout once the new one exists and is saved.
+      setPendingDay(null);
+      return;
+    }
+    setPendingError(
+      result === 'empty'
+        ? `"${pendingDay.day}" doesn't have any exercises set up yet.`
+        : `Couldn't open "${pendingDay.day}". Please try again.`,
+    );
   }
 
   function handleUpdateSession(updated: LiftSession): void {
@@ -275,13 +316,53 @@ function LiftContainer(): React.JSX.Element {
     navigate('/');
   }
 
-  if (showResume) {
+  // When the saved session has vanished underneath a pending prompt (another
+  // tab discarded it), there is nothing to protect: fall through.
+  if ((showResume || pendingDay) && savedLift) {
+    const loggedSets = savedLift.exercises.reduce((acc, ex) => acc + ex.sets.length, 0);
+    const doneCount = savedLift.exercises.filter((ex) => ex.completed).length;
+    const sameDay = pendingDay !== null && pendingDay.split === savedLift.split && pendingDay.day === savedLift.day;
     return (
-      <div className="page">
-        <h1>Resume unfinished workout?</h1>
-        <div className="button-list">
-          <button className="nav-button" onClick={handleResume}>Resume</button>
-          <button className="nav-button" onClick={handleDiscard}>Discard</button>
+      <div className="page selection-page">
+        <div className="selection-header">
+          <div className="selection-heading">
+            <p className="selection-kicker">Unfinished workout</p>
+            <h1 className="selection-title">{savedLift.day}</h1>
+          </div>
+        </div>
+        <section className="workout-progress resume-card dash-animate" aria-label="Unfinished workout">
+          <p className="resume-card-line">
+            <strong>{savedLift.split}</strong> &middot; {savedLift.day}
+          </p>
+          <p className="resume-card-line resume-card-sub">
+            {loggedSets === 1 ? '1 set' : `${loggedSets} sets`} logged &middot;{' '}
+            {doneCount} of {savedLift.exercises.length} exercises done
+          </p>
+          {pendingDay && !sameDay && (
+            <p className="resume-card-line resume-card-sub">
+              You tapped <strong>{pendingDay.day}</strong>. Resuming keeps your logged sets; starting fresh deletes them.
+            </p>
+          )}
+          {pendingError && <div className="submit-error" role="alert">{pendingError}</div>}
+        </section>
+        <div className="button-list resume-actions dash-animate" style={{ animationDelay: '70ms' }}>
+          <button type="button" className="nav-button nav-button--finish-ready" onClick={handleResume} disabled={isSubmitting}>
+            Resume {savedLift.day}
+          </button>
+          {pendingDay ? (
+            <button type="button" className="nav-button resume-discard" onClick={handleDiscardAndStart} disabled={isSubmitting}>
+              {isSubmitting ? 'Starting…' : sameDay ? 'Discard and start over' : `Discard and start ${pendingDay.day}`}
+            </button>
+          ) : (
+            <button type="button" className="nav-button resume-discard" onClick={handleDiscard}>
+              Discard
+            </button>
+          )}
+          {pendingDay && (
+            <button type="button" className="dash-hero-alt-link" onClick={() => { setPendingDay(null); setPendingError(null); }} disabled={isSubmitting}>
+              Cancel
+            </button>
+          )}
         </div>
       </div>
     );
