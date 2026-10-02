@@ -329,7 +329,7 @@ function PeakStrength(): React.JSX.Element {
     return [...list.filter((g) => g.pctOfPeak != null), ...list.filter((g) => g.pctOfPeak == null)];
   }, [data]);
 
-  const windowWeeks = Math.round((data?.recentWindowDays ?? 42) / 7);
+  const windowWeeks = Math.round((data?.recentWindowDays ?? 21) / 7);
 
   return (
     <div className="page page--with-nav dash-page">

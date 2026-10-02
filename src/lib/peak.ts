@@ -99,7 +99,7 @@ export interface PeakReport {
 
 /** Assumed bodyweight so pull-ups/dips score on total load, not added load. */
 export const BODYWEIGHT_LBS = 200;
-export const RECENT_WINDOW_DAYS = 42;
+export const RECENT_WINDOW_DAYS = 21;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
