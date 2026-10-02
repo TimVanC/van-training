@@ -265,10 +265,11 @@ function GroupCard({
 
   let subline: string;
   if (resting) {
-    subline = `Nothing logged in the last ${windowWeeks} weeks · ${group.totalLifts} lift${group.totalLifts === 1 ? '' : 's'} on record`;
+    subline = `Nothing logged in the last ${windowWeeks} weeks · ${group.atPeakCount} of ${group.totalLifts} at all-time best`;
   } else {
-    const bits = [`${group.atPeakCount} of ${group.activeLifts} at all-time best`];
+    const bits = [`${group.atPeakCount} of ${group.totalLifts} at all-time best`];
     if (group.peakEra) bits.push(`peak era ${group.peakEra}`);
+    if (group.activeLifts < group.totalLifts) bits.push(`${group.activeLifts} in rotation`);
     subline = bits.join(' · ');
   }
 
@@ -395,7 +396,7 @@ function PeakStrength(): React.JSX.Element {
             <div className="peak-hero-stats">
               <div className="peak-hero-stat">
                 <span className="peak-hero-value">{data.liftsAtPeak}</span>
-                <span className="peak-hero-label">lift{data.liftsAtPeak === 1 ? '' : 's'} at all-time best right now</span>
+                <span className="peak-hero-label">of {data.totalLifts} lifts at their all-time best</span>
               </div>
               <div className="peak-hero-stat">
                 <span className="peak-hero-value">{data.activeLifts}</span>
@@ -431,9 +432,9 @@ function PeakStrength(): React.JSX.Element {
           </div>
 
           <p className="muscle-lab-footnote dash-animate">
-            Each session is scored on two things: your best set's strength (load × (1 + reps ÷ 30), so 90 × 10
-            beats 90 × 8) and the total volume you moved on that lift, blended 60/40 — holding the weight across
-            every set counts, not just the top set. "Now" is your most recent session for that lift, good day or bad; lifts not trained in the last {windowWeeks} weeks show as
+            Each session is scored on its strongest set: load × (1 + reps ÷ 30), so 90 × 10 beats 90 × 8. The
+            volume next to each set is total work on that lift that day, shown for context only. "Now" is your
+            most recent session for that lift, good day or bad; lifts not trained in the last {windowWeeks} weeks show as
             resting and stay out of the group scores. Bodyweight moves count {`${200} lb`} of you plus any added or assisted load. Spreadsheet-era
             dates marked ~ are estimated from their position in the log.
           </p>

@@ -313,23 +313,17 @@ interface LiftSession {
   best: { weight: number; reps: number; e1rm: number };
   /** Total work for this lift in the session: Σ load × reps. */
   volume: number;
-  /** Blended session score, see `sessionScore`. */
+  /** Session score, see `sessionScore`. */
   score: number;
 }
 
-/** How much the top set vs the session's total volume count in a session score. */
-export const STRENGTH_WEIGHT = 0.6;
-export const VOLUME_WEIGHT = 0.4;
-
 /**
- * One number per session that rewards both a heavy top set and holding the
- * work across every set: a weighted geometric blend of the best set's e1RM
- * and the session's volume. Only ratios between sessions matter, so the
- * units cancel out in the percent-of-peak figures.
+ * A session is scored by its strongest single set (estimated 1RM). The
+ * session's volume is reported alongside for context but does not score —
+ * the owner tried a strength/volume blend and preferred the top set.
  */
-export function sessionScore(e1rm: number, volume: number): number {
-  if (e1rm <= 0 || volume <= 0) return 0;
-  return Math.pow(e1rm, STRENGTH_WEIGHT) * Math.pow(volume, VOLUME_WEIGHT);
+export function sessionScore(e1rm: number): number {
+  return e1rm > 0 ? e1rm : 0;
 }
 
 function toPoint(s: LiftSession): PeakPoint {
@@ -410,7 +404,7 @@ export function computePeakReport(rows: PeakSetRow[], now: Date, recentWindowDay
     }
   }
   for (const sessions of liftSessions.values()) {
-    for (const s of sessions.values()) s.score = sessionScore(s.best.e1rm, s.volume);
+    for (const s of sessions.values()) s.score = sessionScore(s.best.e1rm);
   }
 
   // --- Per-lift summaries --------------------------------------------------
@@ -451,7 +445,9 @@ export function computePeakReport(rows: PeakSetRow[], now: Date, recentWindowDay
       peak: toPoint(peak),
       pctOfPeak: Number(pct.toFixed(1)),
       stale,
-      atPeak: !stale && current.sessionKey === peak.sessionKey,
+      // "At peak" means the most recent session is the all-time best one,
+      // whether or not the lift is currently in rotation.
+      atPeak: current.sessionKey === peak.sessionKey,
       sessions: ordered.length,
       firstTrained: ordered[0].date,
       lastTrained: latest.date,
@@ -528,7 +524,7 @@ export function computePeakReport(rows: PeakSetRow[], now: Date, recentWindowDay
   return {
     overallPctOfPeak: overall,
     activeLifts: active.length,
-    liftsAtPeak: active.filter((l) => l.atPeak).length,
+    liftsAtPeak: lifts.filter((l) => l.atPeak).length,
     totalLifts: lifts.length,
     firstDate: allDates[0] ?? null,
     recentWindowDays,
