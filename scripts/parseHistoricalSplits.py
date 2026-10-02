@@ -11,9 +11,10 @@ Workbook conventions (owner's shorthand):
       "85, 85(8), 75(8), 75(7)"  -> 85 at target reps, 85x8, 75x8, 75x7
       "60x4"                      -> 4 sets of 60 at target reps
       "20(15)x3"                  -> 3 sets of 20x15
-      "110/99"                    -> drop set (stored, excluded from scoring)
+      "110/99"                    -> drop set, scored at the midpoint (105)
       "6:45 2:25"                 -> leg press plates: 6x45 + 2x25 = 320 lb
       "3 plates"                  -> 3 x 45 per side = 270 lb
+      Leg press / hack squat get the 100 lb sled added to match the app.
       Suffix tokens: S/L (seated/lying) on hamstring curls, S (single-arm)
       elsewhere, DD (dual cable), NH / "no hold". Target reps come from the
       "AxB-C" header (upper bound) or default to 10.
@@ -91,6 +92,10 @@ SKIP_COLUMNS = {
     "oblique or sum",
 }
 BODYWEIGHT_KEYS = ("pull up", "pull-up", "dip", "leg raise", "knee raise")
+# The spreadsheets wrote leg press / hack squat as plates only; the app logs
+# them with the machine's 100 lb sled included, so the import adds it.
+SLED_KEYS = ("leg press", "hack")
+SLED_LBS = 100.0
 TRICEPS_SINGLE_ARM_KEYS = ("pushdown", "tricep extension", "overhead")
 TRICEPS_SINGLE_ARM_MAX = 35  # below this a pushdown/extension is one-handed
 
@@ -307,11 +312,15 @@ def parse_cell(
                     reps = int(first)
             else:
                 weight = first
+                if drop and second is not None:
+                    # "110/99": owner's rule is to score a drop set at the
+                    # midpoint of the two loads, at the target reps.
+                    weight = float(round((first + float(second)) / 2))
+                    note_bits.append(f"drop set {first:g}/{float(second):g}, scored at midpoint")
+                elif drop:
+                    note_bits.append("drop set (second load not written)")
                 if paren:
                     reps = int(float(paren))
-                elif drop:
-                    reps = max(1, target_reps - 2)
-                    note_bits.append("drop set, reps estimated")
 
         if weight is None:
             continue
@@ -475,8 +484,12 @@ def parse_workbook(split: dict, path: Path, parsed: Parsed) -> None:
                     where=where,
                 )
                 finalize_variants(sets, name, carry, abbr)
+                sled = SLED_LBS if any(k in name.lower() for k in SLED_KEYS) else 0
                 for i, s in enumerate(sets, start=1):
                     exercise_name = name if not s["variant"] else f"{name} ({s['variant']})"
+                    if sled:
+                        s["weight"] += sled
+                        s["note"] = "; ".join(filter(None, [s.get("note"), f"incl. {sled} lb sled"]))
                     parsed.rows.append(
                         {
                             "split_name": split["name"],

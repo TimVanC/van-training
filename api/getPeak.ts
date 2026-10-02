@@ -154,7 +154,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         exerciseName: h.exercise_name,
         weight: toNumber(h.weight),
         reps: toNumber(h.reps),
-        excluded: h.is_drop_set === true || h.excluded_reason != null,
+        // Drop sets score at their midpoint load; only flagged outliers sit out.
+        excluded: h.excluded_reason != null,
         source: 'history',
       });
     }
