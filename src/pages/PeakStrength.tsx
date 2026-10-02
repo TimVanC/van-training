@@ -113,6 +113,12 @@ function formatLoad(point: PeakPoint, bodyweight: boolean): string {
   return `BW +${point.weight} × ${point.reps}`;
 }
 
+function formatVolume(volume: number): string {
+  if (volume >= 10000) return `${(volume / 1000).toFixed(1)}k lb`;
+  if (volume >= 1000) return `${(volume / 1000).toFixed(2).replace(/0+$/, '').replace(/\.$/, '')}k lb`;
+  return `${Math.round(volume)} lb`;
+}
+
 function daysAgo(iso: string, now: Date): number {
   const d = new Date(`${iso.slice(0, 10)}T00:00:00`);
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -203,11 +209,13 @@ function LiftRow({ lift, now }: { lift: PeakLiftSummary; now: Date }): React.JSX
           </span>
           <span className="peak-lift-line">
             <span className="peak-lift-k">Now</span> {formatLoad(lift.current, lift.bodyweight)}
+            <span className="peak-lift-vol">{formatVolume(lift.current.volume)}</span>
             <span className="peak-lift-tag">{lift.current.splitAbbr}</span>
             <span className="peak-lift-when">{relativeLabel(lift.current.date, now)}</span>
           </span>
           <span className="peak-lift-line peak-lift-line--peak">
             <span className="peak-lift-k">Peak</span> {formatLoad(lift.peak, lift.bodyweight)}
+            <span className="peak-lift-vol">{formatVolume(lift.peak.volume)}</span>
             <span className="peak-lift-tag">{lift.peak.splitAbbr}</span>
             <span className="peak-lift-when">{peakWhen}</span>
           </span>
@@ -423,8 +431,9 @@ function PeakStrength(): React.JSX.Element {
           </div>
 
           <p className="muscle-lab-footnote dash-animate">
-            Score = load × (1 + reps ÷ 30) on your best set, so 90 × 10 beats 90 × 8. "Now" is your most recent
-            session for that lift, good day or bad; lifts not trained in the last {windowWeeks} weeks show as
+            Each session is scored on two things: your best set's strength (load × (1 + reps ÷ 30), so 90 × 10
+            beats 90 × 8) and the total volume you moved on that lift, blended 60/40 — holding the weight across
+            every set counts, not just the top set. "Now" is your most recent session for that lift, good day or bad; lifts not trained in the last {windowWeeks} weeks show as
             resting and stay out of the group scores. Bodyweight moves count {`${200} lb`} of you plus any added or assisted load. Spreadsheet-era
             dates marked ~ are estimated from their position in the log.
           </p>

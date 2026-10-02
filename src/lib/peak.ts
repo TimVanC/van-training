@@ -35,6 +35,8 @@ export interface PeakPoint {
   splitName: string;
   weight: number;
   reps: number;
+  /** Total work for the lift that session (Σ load × reps), in lb. */
+  volume: number;
   score: number;
 }
 
@@ -307,7 +309,27 @@ interface LiftSession {
   dateEstimated: boolean;
   splitAbbr: string;
   splitName: string;
-  best: { weight: number; reps: number; score: number };
+  /** Top set by estimated 1RM. */
+  best: { weight: number; reps: number; e1rm: number };
+  /** Total work for this lift in the session: Σ load × reps. */
+  volume: number;
+  /** Blended session score, see `sessionScore`. */
+  score: number;
+}
+
+/** How much the top set vs the session's total volume count in a session score. */
+export const STRENGTH_WEIGHT = 0.6;
+export const VOLUME_WEIGHT = 0.4;
+
+/**
+ * One number per session that rewards both a heavy top set and holding the
+ * work across every set: a weighted geometric blend of the best set's e1RM
+ * and the session's volume. Only ratios between sessions matter, so the
+ * units cancel out in the percent-of-peak figures.
+ */
+export function sessionScore(e1rm: number, volume: number): number {
+  if (e1rm <= 0 || volume <= 0) return 0;
+  return Math.pow(e1rm, STRENGTH_WEIGHT) * Math.pow(volume, VOLUME_WEIGHT);
 }
 
 function toPoint(s: LiftSession): PeakPoint {
@@ -318,7 +340,8 @@ function toPoint(s: LiftSession): PeakPoint {
     splitName: s.splitName,
     weight: s.best.weight,
     reps: s.best.reps,
-    score: Number(s.best.score.toFixed(1)),
+    volume: Math.round(s.volume),
+    score: Number(s.score.toFixed(1)),
   };
 }
 
@@ -359,8 +382,11 @@ export function computePeakReport(rows: PeakSetRow[], now: Date, recentWindowDay
     if (!key) continue;
     const def = LIFTS[key];
     const weight = normalizeWeight(key, row.weight);
-    const score = peakScore(weight, row.reps, def.bodyweight === true);
-    if (score <= 0) continue;
+    const bodyweight = def.bodyweight === true;
+    const e1rm = peakScore(weight, row.reps, bodyweight);
+    if (e1rm <= 0) continue;
+    const load = bodyweight ? BODYWEIGHT_LBS + weight : weight;
+    const setVolume = load * row.reps;
     let sessions = liftSessions.get(key);
     if (!sessions) {
       sessions = new Map();
@@ -374,11 +400,17 @@ export function computePeakReport(rows: PeakSetRow[], now: Date, recentWindowDay
         dateEstimated: row.dateEstimated,
         splitAbbr: row.splitAbbr,
         splitName: row.splitName,
-        best: { weight, reps: row.reps, score },
+        best: { weight, reps: row.reps, e1rm },
+        volume: setVolume,
+        score: 0,
       });
-    } else if (score > existing.best.score) {
-      existing.best = { weight, reps: row.reps, score };
+    } else {
+      existing.volume += setVolume;
+      if (e1rm > existing.best.e1rm) existing.best = { weight, reps: row.reps, e1rm };
     }
+  }
+  for (const sessions of liftSessions.values()) {
+    for (const s of sessions.values()) s.score = sessionScore(s.best.e1rm, s.volume);
   }
 
   // --- Per-lift summaries --------------------------------------------------
@@ -389,7 +421,7 @@ export function computePeakReport(rows: PeakSetRow[], now: Date, recentWindowDay
     if (ordered.length === 0) continue;
 
     let peak = ordered[0];
-    for (const s of ordered) if (s.best.score > peak.best.score) peak = s;
+    for (const s of ordered) if (s.score > peak.score) peak = s;
 
     const latest = ordered[ordered.length - 1];
     const recent = ordered.filter((s) => new Date(s.date).getTime() >= recentCutoff);
@@ -403,13 +435,13 @@ export function computePeakReport(rows: PeakSetRow[], now: Date, recentWindowDay
     const bestBySplit = new Map<string, LiftSession>();
     for (const s of ordered) {
       const existing = bestBySplit.get(s.splitAbbr);
-      if (!existing || s.best.score > existing.best.score) bestBySplit.set(s.splitAbbr, s);
+      if (!existing || s.score > existing.score) bestBySplit.set(s.splitAbbr, s);
     }
     const bySplit = [...bestBySplit.values()]
       .sort((a, b) => (splitOrder.get(a.splitAbbr) ?? 0) - (splitOrder.get(b.splitAbbr) ?? 0))
       .map(toPoint);
 
-    const pct = peak.best.score > 0 ? Math.min(100, (current.best.score / peak.best.score) * 100) : 0;
+    const pct = peak.score > 0 ? Math.min(100, (current.score / peak.score) * 100) : 0;
     lifts.push({
       key,
       label: def.label,

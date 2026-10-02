@@ -4180,6 +4180,15 @@ body {
   color: var(--text-muted);
 }
 
+.peak-lift-vol {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.peak-lift-vol::before {
+  content: '· ';
+}
+
 .peak-badge {
   display: flex;
   flex-direction: column;
