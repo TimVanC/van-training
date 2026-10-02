@@ -24,7 +24,9 @@ Workbook conventions (owner's shorthand):
   - Sessions carry no dates except the first few WNU rows, so dates are
     interpolated across each split's known date range and flagged estimated.
 
-Usage: python scripts/parseHistoricalSplits.py <workbook-dir> <out.json>
+Usage: python scripts/parseHistoricalSplits.py <workbook-dir> <out.json> [session_dates.json]
+(the dates file, from scripts/deriveSessionDates.py, replaces interpolated
+dates with the day each row first appeared in the sheet's edit history)
 """
 
 from __future__ import annotations
@@ -407,7 +409,7 @@ def interpolate_dates(
     return out
 
 
-def parse_workbook(split: dict, path: Path, parsed: Parsed) -> None:
+def parse_workbook(split: dict, path: Path, parsed: Parsed, date_overrides: dict[str, str] | None = None) -> None:
     wb = openpyxl.load_workbook(path, data_only=True)
     abbr = split["abbr"]
     for ws in wb.worksheets:
@@ -462,6 +464,11 @@ def parse_workbook(split: dict, path: Path, parsed: Parsed) -> None:
             if not cells:
                 continue
             sessions[r] = cells
+            # A date typed into the sheet wins; otherwise the day the row first
+            # appeared in the sheet's edit history (scripts/deriveSessionDates.py).
+            override = (date_overrides or {}).get(f"{abbr}:{ws.title}:{r}")
+            if override:
+                known_dates[r] = dt.date.fromisoformat(override)
             if has_date_col:
                 dv = ws.cell(row=r, column=1).value
                 if isinstance(dv, dt.datetime) and dv.year >= 2020:
@@ -540,9 +547,15 @@ def flag_outliers(rows: list[dict], problems: list[str]) -> None:
 def main() -> None:
     src_dir = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("backups/historical-splits")
     out_path = Path(sys.argv[2]) if len(sys.argv) > 2 else src_dir / "historical_lifts.json"
+    dates_path = Path(sys.argv[3]) if len(sys.argv) > 3 else src_dir / "session_dates.json"
+    date_overrides: dict[str, str] = {}
+    if dates_path.exists():
+        raw = json.loads(dates_path.read_text(encoding="utf-8"))
+        date_overrides = {k: v["date"] if isinstance(v, dict) else v for k, v in raw.items()}
+        print(f"using {len(date_overrides)} dated rows from {dates_path}")
     parsed = Parsed()
     for split in SPLITS:
-        parse_workbook(split, src_dir / split["file"], parsed)
+        parse_workbook(split, src_dir / split["file"], parsed, date_overrides)
     flag_outliers(parsed.rows, parsed.problems)
     out_path.write_text(json.dumps(parsed.rows, indent=1), encoding="utf-8")
 
