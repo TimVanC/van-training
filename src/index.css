@@ -3846,3 +3846,418 @@ body {
   color: var(--warning);
   background: rgba(245, 158, 11, 0.1);
 }
+
+/* --- Peak Strength --- */
+.dash-section-link--sibling {
+  margin-left: 0.9rem;
+}
+
+.peak-crosslink {
+  width: 100%;
+  max-width: 480px;
+  margin-top: 1rem;
+  padding: 0.8rem 1rem;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: none;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--transition), color var(--transition);
+}
+
+.peak-crosslink strong {
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.peak-crosslink:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+/* Bands: how close to peak */
+.peak-band--at { --band: #2fbf71; --band-soft: rgba(47, 191, 113, 0.16); }
+.peak-band--near { --band: #4aa3ff; --band-soft: rgba(0, 107, 182, 0.22); }
+.peak-band--below { --band: #e6b23a; --band-soft: rgba(245, 158, 11, 0.16); }
+.peak-band--far { --band: #e05252; --band-soft: rgba(239, 68, 68, 0.16); }
+.peak-band--none { --band: var(--text-muted); --band-soft: rgba(107, 107, 107, 0.16); }
+
+.peak-text--at { color: #4ade80; }
+.peak-text--near { color: #7cc4ff; }
+.peak-text--below { color: #fbbf24; }
+.peak-text--far { color: #f87171; }
+.peak-text--none { color: var(--text-muted); }
+
+.verdict-badge.peak-band--at { color: #4ade80; background-color: var(--band-soft); }
+.verdict-badge.peak-band--near { color: #7cc4ff; background-color: var(--band-soft); }
+.verdict-badge.peak-band--below { color: #fbbf24; background-color: var(--band-soft); }
+.verdict-badge.peak-band--far { color: #f87171; background-color: var(--band-soft); }
+.verdict-badge.peak-band--none { color: var(--text-muted); background-color: var(--band-soft); }
+
+/* Hero */
+.peak-hero {
+  display: flex;
+  align-items: center;
+  gap: 1.1rem;
+  width: 100%;
+  max-width: 480px;
+}
+
+.peak-ring {
+  position: relative;
+  flex-shrink: 0;
+  width: 118px;
+  height: 118px;
+}
+
+.peak-ring-track {
+  stroke: rgba(255, 255, 255, 0.07);
+}
+
+.peak-ring-fill {
+  stroke: var(--band);
+  transition: stroke-dashoffset 0.9s cubic-bezier(0.22, 0.9, 0.35, 1);
+  animation: peak-ring-draw 0.9s cubic-bezier(0.22, 0.9, 0.35, 1);
+}
+
+@keyframes peak-ring-draw {
+  from {
+    stroke-dashoffset: 360;
+  }
+}
+
+.peak-ring-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.05rem;
+}
+
+.peak-ring-value {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--band);
+}
+
+.peak-ring-caption {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+
+.peak-hero-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.peak-hero-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.peak-hero-value {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--accent);
+  min-width: 1.6rem;
+  text-align: right;
+}
+
+.peak-hero-label {
+  font-size: 0.78rem;
+  line-height: 1.3;
+  color: var(--text-secondary);
+}
+
+/* Era timeline */
+.peak-eras {
+  display: flex;
+  gap: 0.4rem;
+  width: 100%;
+  max-width: 480px;
+  margin: 0.7rem 0 1rem;
+  overflow-x: auto;
+  padding-bottom: 0.2rem;
+  scrollbar-width: none;
+}
+
+.peak-eras::-webkit-scrollbar {
+  display: none;
+}
+
+.peak-era {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  flex-shrink: 0;
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background-color: var(--bg-surface);
+}
+
+.peak-era--history {
+  border-style: dashed;
+}
+
+.peak-era-abbr {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+.peak-era-range {
+  font-size: 0.62rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* Group cards */
+.peak-card--resting {
+  opacity: 0.8;
+}
+
+.peak-card-body {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.peak-card-pct {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1;
+  min-width: 3.4rem;
+}
+
+.peak-card-bar-wrap {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.peak-card-sub {
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+}
+
+.peak-bar-track {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.peak-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background-color: var(--band);
+  transform-origin: left;
+  animation: head-bar-grow 0.6s ease-out;
+}
+
+.peak-section-label {
+  margin: 0.75rem 0 0.5rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.peak-heads {
+  margin-bottom: 0.25rem;
+}
+
+/* Lift rows */
+.peak-lift-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.peak-lift {
+  border-bottom: 1px solid rgba(43, 43, 43, 0.5);
+}
+
+.peak-lift:last-child {
+  border-bottom: none;
+}
+
+.peak-lift-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.6rem 0;
+  background: none;
+  border: none;
+  color: inherit;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.peak-lift--stale .peak-lift-main {
+  opacity: 0.6;
+}
+
+.peak-lift-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.peak-lift-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.peak-lift-star {
+  margin-left: 0.3rem;
+  color: #4ade80;
+  font-size: 0.8em;
+}
+
+.peak-lift-line {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.peak-lift-line--peak {
+  color: var(--text-secondary);
+}
+
+.peak-lift-k {
+  width: 2.1rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.peak-lift-tag {
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.07);
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+.peak-lift-when {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.peak-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  flex-shrink: 0;
+  min-width: 3.2rem;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--band);
+}
+
+.peak-badge-word {
+  margin-top: 0.15rem;
+  font-family: inherit;
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+/* Per-split trail under an expanded lift */
+.peak-split-trail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.1rem 0 0.7rem;
+}
+
+.peak-split-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.peak-split-arrow {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.peak-split-chip {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background-color: var(--bg-primary);
+}
+
+.peak-split-chip--peak {
+  border-color: #2fbf71;
+  box-shadow: 0 0 0 1px rgba(47, 191, 113, 0.35);
+}
+
+.peak-split-abbr {
+  font-family: var(--font-display);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.peak-split-chip--peak .peak-split-abbr {
+  color: #4ade80;
+}
+
+.peak-split-load {
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.peak-split-note {
+  flex-basis: 100%;
+  font-size: 0.66rem;
+  color: var(--text-muted);
+}

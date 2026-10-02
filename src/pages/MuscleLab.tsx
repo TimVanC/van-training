@@ -119,6 +119,12 @@ function MuscleLab(): React.JSX.Element {
         </p>
       )}
 
+      {!loading && (
+        <button type="button" className="peak-crosslink dash-animate" onClick={() => navigate('/peak')}>
+          How does today stack up against your all-time best? <strong>Peak Strength →</strong>
+        </button>
+      )}
+
       <BottomNav />
     </div>
   );

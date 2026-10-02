@@ -444,6 +444,9 @@ function Dashboard(): React.JSX.Element {
             <button type="button" className="dash-section-link" onClick={() => navigate('/muscles')}>
               Muscle Lab →
             </button>
+            <button type="button" className="dash-section-link dash-section-link--sibling" onClick={() => navigate('/peak')}>
+              Peak →
+            </button>
           </div>
           {showMuscleInfo && (
             <div className="dash-card dash-info-panel dash-animate">
