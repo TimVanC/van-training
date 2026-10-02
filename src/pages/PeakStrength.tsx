@@ -345,7 +345,7 @@ function PeakStrength(): React.JSX.Element {
 
       <p className="muscle-lab-intro dash-animate">
         Every lift you've ever logged, from the old spreadsheets through today, scored on its best set
-        each session. Each number is how close your recent training sits to the strongest you've ever been.
+        each session. Each number is how close your latest session sits to the strongest you've ever been.
       </p>
 
       {loading && (
@@ -423,9 +423,9 @@ function PeakStrength(): React.JSX.Element {
           </div>
 
           <p className="muscle-lab-footnote dash-animate">
-            Score = load × (1 + reps ÷ 30) on your best set, so 90 × 10 beats 90 × 8. "Now" is your best session
-            in the last {windowWeeks} weeks; lifts outside that window show as resting and stay out of the group
-            scores. Bodyweight moves count {`${200} lb`} of you plus any added or assisted load. Spreadsheet-era
+            Score = load × (1 + reps ÷ 30) on your best set, so 90 × 10 beats 90 × 8. "Now" is your most recent
+            session for that lift, good day or bad; lifts not trained in the last {windowWeeks} weeks show as
+            resting and stay out of the group scores. Bodyweight moves count {`${200} lb`} of you plus any added or assisted load. Spreadsheet-era
             dates marked ~ are estimated from their position in the log.
           </p>
         </>

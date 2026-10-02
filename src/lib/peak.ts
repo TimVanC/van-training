@@ -43,7 +43,7 @@ export interface PeakLiftSummary {
   label: string;
   group: MuscleGroup;
   bodyweight: boolean;
-  /** Best session inside the recent window, or the latest session when stale. */
+  /** The most recent session for this lift. */
   current: PeakPoint;
   peak: PeakPoint;
   /** current.score / peak.score, 0–100. */
@@ -393,13 +393,11 @@ export function computePeakReport(rows: PeakSetRow[], now: Date, recentWindowDay
 
     const latest = ordered[ordered.length - 1];
     const recent = ordered.filter((s) => new Date(s.date).getTime() >= recentCutoff);
-    // "Current" is the best session inside the recent window; a lift that
-    // hasn't been trained in that window falls back to its latest session
-    // and is marked stale so it stays out of the group roll-ups.
-    const current =
-      recent.length > 0
-        ? recent.reduce((best, s) => (s.best.score > best.best.score ? s : best), recent[0])
-        : latest;
+    // "Current" is the most recent session, good day or bad — the owner wants
+    // to see a weak session for what it is. A lift that hasn't been trained
+    // inside the recent window is marked stale so it stays out of the
+    // group roll-ups.
+    const current = latest;
     const stale = recent.length === 0;
 
     const bestBySplit = new Map<string, LiftSession>();
