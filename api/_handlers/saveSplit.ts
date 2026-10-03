@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { authenticate } from './_lib/auth.js';
-import { sanitizeSplitDraft } from '../src/lib/splitDraft.js';
+import { authenticate } from '../_lib/auth.js';
+import { sanitizeSplitDraft } from '../../src/lib/splitDraft.js';
 
 const MAX_SPLITS_PER_USER = 12;
 

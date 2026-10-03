@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { authenticate } from './_lib/auth.js';
+import { authenticate } from '../_lib/auth.js';
 
 /**
  * Permanently delete the caller's account and everything attached to it.

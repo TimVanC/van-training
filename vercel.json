@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/api/(coachChat|coachStatus|deleteAccount|exportData|onboardingChat|saveSplit)",
+      "destination": "/api/app?route=$1"
+    },
+    {
       "source": "/((?!api/|assets/|src/|node_modules/|@|favicon|.*\\.\\w+$).*)",
       "destination": "/index.html"
     }

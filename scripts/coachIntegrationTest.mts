@@ -1,4 +1,6 @@
 // End-to-end checks against the local dev server and the real database, as the coach test account.
+// Run with `vercel dev` on :3000:  npx tsx --env-file=.env.local scripts/coachIntegrationTest.mts
+// Needs TEST_COACH_EMAIL / TEST_COACH_PASSWORD in .env.local. Starts from an empty account and leaves it empty.
 import { createClient } from '@supabase/supabase-js';
 
 
@@ -40,6 +42,32 @@ async function call(path: string, init: { method?: string; body?: unknown; token
   try { json = JSON.parse(text); } catch { /* not json */ }
   return { status: res.status, json, text };
 }
+
+// --- start from a clean account with one coach-built split ---
+async function wipeAccount(): Promise<void> {
+  await admin.from('sessions').delete().eq('user_id', userId);
+  await admin.from('splits').delete().eq('user_id', userId);
+}
+await wipeAccount();
+const setupDay = (name: string, exercises: Array<[string, number, string]>) => ({
+  name,
+  exercises: exercises.map(([n, sets, repRange]) => ({ name: n, sets, repRange })),
+});
+const setup = await call('/api/saveSplit', {
+  body: {
+    draft: {
+      name: 'Coach Test UL',
+      days: [
+        setupDay('Upper A', [['Flat Dumbbell Press', 4, '6-10'], ['Lat Pulldown', 4, '8-12'], ['Hammer Curls', 3, '10-15']]),
+        setupDay('Lower A', [['Leg Press', 4, '8-12'], ['Seated Leg Curl', 3, '10-15']]),
+        setupDay('Core', [['Cable Crunches', 3, '12-20']]),
+      ],
+    },
+  },
+});
+check('setup: saveSplit on an empty account → 200', setup.status === 200 && setup.json?.splitName === 'Coach Test UL', setup.text);
+check('coachStatus → 200 with a boolean', typeof (await call('/api/coachStatus', { method: 'GET', token: null })).json?.enabled === 'boolean');
+check('unknown app route → 404', (await call('/api/app?route=nope', { method: 'GET' })).status === 404);
 
 // --- auth and method guards on every new endpoint ---
 for (const path of ['/api/saveSplit', '/api/onboardingChat', '/api/coachChat']) {
@@ -101,7 +129,7 @@ for (const s of sessionsToLog) {
   const rows = [
     ...s.press.map(([weight, reps], i) => ({ date: s.date, split: 'Coach Test UL', day: 'Upper A', exercise: 'Flat Dumbbell Press', setNumber: i + 1, weight, reps, rir: 1 })),
     ...s.pull.map(([weight, reps], i) => ({ date: s.date, split: 'Coach Test UL', day: 'Upper A', exercise: 'Lat Pulldown', setNumber: i + 1, weight, reps, rir: 1 })),
-    ...s.curl.map(([weight, reps], i) => ({ date: s.date, split: 'Coach Test UL', day: 'Upper A', exercise: 'Zz Coach Test Curl', setNumber: i + 1, weight, reps, rir: 1 })),
+    ...s.curl.map(([weight, reps], i) => ({ date: s.date, split: 'Coach Test UL', day: 'Upper A', exercise: 'Hammer Curls', setNumber: i + 1, weight, reps, rir: 1 })),
   ];
   const res = await call('/api/appendWorkout', { body: { rows, workout_id: workoutId } });
   check(`appendWorkout ${s.date.slice(0, 10)} → 200`, res.status === 200, res.text.slice(0, 200));
@@ -113,7 +141,7 @@ check('getDashboard → 200', dash.status === 200, dash.text.slice(0, 200));
 const peak = await call('/api/getPeak', { method: 'GET' });
 const peakLabels = (peak.json?.groups ?? []).flatMap((g: any) => g.lifts.map((l: any) => l.label));
 check('getPeak → 200 and scores every logged exercise', peak.status === 200 && peakLabels.length === 3, peakLabels);
-const recent = await call(`/api/getRecentLifts?exercise=${encodeURIComponent('Zz Coach Test Curl')}&targetSets=3&targetRepRange=10-15`, { method: 'GET' });
+const recent = await call(`/api/getRecentLifts?exercise=${encodeURIComponent('Hammer Curls')}&targetSets=3&targetRepRange=10-15`, { method: 'GET' });
 check('getRecentLifts for a custom exercise → 200', recent.status === 200, recent.text.slice(0, 200));
 console.log('   recommended plan for custom exercise:', JSON.stringify(recent.json?.recommendedPlan), recent.json?.planPhase);
 
@@ -139,7 +167,7 @@ const chest = (muscles.result as any[]).find((m: any) => m.group === 'Chest');
 const biceps = (muscles.result as any[]).find((m: any) => m.group === 'Biceps');
 check('get_muscle_summary classifies catalog and custom exercises', chest?.sets === 12 && biceps?.sets === 9, { chest, biceps });
 const records = await tool('get_personal_records');
-check('get_personal_records', (records.result as any[])[0].exercise === 'Lat Pulldown');
+check('get_personal_records', (records.result as any[])[0].exercise === 'Lat Pulldown' && (records.result as any[]).length === 3);
 check('unknown tool → error', (await tool('drop_tables')).isError === true);
 check('show_chart valid', (await tool('show_chart', { type: 'line', title: 'Press', labels: ['Sep 15', 'Sep 22', 'Sep 29'], series: [{ name: 'e1RM', values: [88.7, 93.3, 95] }] })).isError !== true && ctx.charts.length === 1);
 check('show_chart invalid → error fed back to the model', (await tool('show_chart', { type: 'pie', labels: [], series: [] })).isError === true && ctx.charts.length === 1);
@@ -177,8 +205,8 @@ console.log('   coachChat with token →', chat.status, chat.json?.error ?? '');
 const ob = await call('/api/onboardingChat', { body: { messages: [{ role: 'user', content: 'hi' }] } });
 console.log('   onboardingChat with token →', ob.status, ob.json?.error ?? '');
 
-// --- cleanup: remove the extra split made by this script ---
-if (split2) await admin.from('splits').delete().eq('id', (split2 as any).id);
+// --- cleanup: leave the test account empty (new-user state) ---
+await wipeAccount();
 
 console.log(`\n${passed} passed, ${failures.length} failed`);
 for (const f of failures) console.log('  FAILED:', f);

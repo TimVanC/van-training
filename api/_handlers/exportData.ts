@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { authenticate } from './_lib/auth.js';
+import { authenticate } from '../_lib/auth.js';
 
 async function fetchAllPages<T>(
   makeQuery: (from: number, to: number) => PromiseLike<{ data: unknown; error: unknown }>,

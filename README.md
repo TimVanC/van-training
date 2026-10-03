@@ -98,7 +98,8 @@ The onboarding chat (`/onboarding`) and the in-app coach (`/coach`) call the Cla
 
 - Set `ANTHROPIC_API_KEY` in the Vercel project (all environments). A key that is not scoped to one workspace also needs `ANTHROPIC_WORKSPACE_ID`.
 - Until the key is set, `/api/coachStatus` reports `enabled: false` and the app hides the Coach tab and the "Add a split with Coach Van" button.
-- Per-user limits live in `api/onboardingChat.ts` and `api/coachChat.ts` and are counted in the `ai_usage` table.
+- Per-user limits live in `api/_handlers/onboardingChat.ts` and `api/_handlers/coachChat.ts` and are counted in the `ai_usage` table.
+- Vercel's Hobby plan allows 12 serverless functions per deployment, so the coach and account endpoints share one function (`api/app.ts`, routed by `vercel.json`). Add new endpoints under `api/_handlers/`.
 
 ## Tests
 

@@ -1,12 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Anthropic from '@anthropic-ai/sdk';
-import { authenticate } from './_lib/auth.js';
-import { checkAiRateLimit } from './_lib/aiRateLimit.js';
-import { INTAKE_TOPICS, runCoachTurn } from './_lib/coach.js';
-import { sanitizeSplitDraft, type SplitDraft } from '../src/lib/splitDraft.js';
-import type { ChatAttachment, ChatTurn, OnboardingChatResponse } from '../src/types/onboarding.js';
-
-export const config = { maxDuration: 60 };
+import { authenticate } from '../_lib/auth.js';
+import { checkAiRateLimit } from '../_lib/aiRateLimit.js';
+import { INTAKE_TOPICS, runCoachTurn } from '../_lib/coach.js';
+import { sanitizeSplitDraft, type SplitDraft } from '../../src/lib/splitDraft.js';
+import type { ChatAttachment, ChatTurn, OnboardingChatResponse } from '../../src/types/onboarding.js';
 
 const RATE_CAPS = { perMinute: 8, perDay: 40, perMonth: 150 };
 

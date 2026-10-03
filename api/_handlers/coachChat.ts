@@ -1,11 +1,9 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Anthropic from '@anthropic-ai/sdk';
-import { authenticate } from './_lib/auth.js';
-import { checkAiRateLimit } from './_lib/aiRateLimit.js';
-import { answerCoachQuestion } from './_lib/coachChat.js';
-import type { CoachChatResponse, CoachChatTurn } from '../src/types/onboarding.js';
-
-export const config = { maxDuration: 60 };
+import { authenticate } from '../_lib/auth.js';
+import { checkAiRateLimit } from '../_lib/aiRateLimit.js';
+import { answerCoachQuestion } from '../_lib/coachChat.js';
+import type { CoachChatResponse, CoachChatTurn } from '../../src/types/onboarding.js';
 
 const RATE_CAPS = { perMinute: 6, perDay: 60, perMonth: 400 };
 const MAX_TURNS = 30;
