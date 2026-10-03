@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import AccountSettings from '../components/AccountSettings';
 import BottomNav from '../components/BottomNav';
+import { useCoachEnabled } from '../hooks/useCoachEnabled';
 import NotificationSettings from '../components/NotificationSettings';
 import { supabase } from '../utils/supabaseClient';
 import { isIos, isStandalone } from '../utils/push';
@@ -12,6 +14,7 @@ function Settings(): React.JSX.Element {
   const [userId, setUserId] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
   const standalone = isStandalone();
+  const coachEnabled = useCoachEnabled();
 
   useEffect(() => {
     let cancelled = false;
@@ -25,11 +28,6 @@ function Settings(): React.JSX.Element {
       cancelled = true;
     };
   }, []);
-
-  async function handleLogout(): Promise<void> {
-    await supabase.auth.signOut();
-    navigate('/login', { replace: true });
-  }
 
   return (
     <div className="page page--with-nav settings-page">
@@ -48,28 +46,29 @@ function Settings(): React.JSX.Element {
         </section>
       )}
 
-      <section className="settings-card">
-        <h2 className="settings-card-title">Splits</h2>
-        <p className="settings-note">
-          Upload a program or describe what you want, and the coach sets it up as a new split. Your current splits stay as they are.
-        </p>
-        <button type="button" className="settings-btn" onClick={() => navigate('/onboarding')}>
-          Add a split with the coach
-        </button>
-        {email === ADMIN_EMAIL && (
-          <button type="button" className="settings-btn" onClick={() => navigate('/admin')}>
-            Admin portal
-          </button>
-        )}
-      </section>
+      {(coachEnabled || email === ADMIN_EMAIL) && (
+        <section className="settings-card">
+          <h2 className="settings-card-title">Splits</h2>
+          {coachEnabled && (
+            <>
+              <p className="settings-note">
+                Upload a program or describe what you want, and Coach Van sets it up as a new split. Your current splits stay as
+                they are.
+              </p>
+              <button type="button" className="settings-btn" onClick={() => navigate('/onboarding')}>
+                Add a split with Coach Van
+              </button>
+            </>
+          )}
+          {email === ADMIN_EMAIL && (
+            <button type="button" className="settings-btn" onClick={() => navigate('/admin')}>
+              Admin portal
+            </button>
+          )}
+        </section>
+      )}
 
-      <section className="settings-card">
-        <h2 className="settings-card-title">Account</h2>
-        {email && <p className="settings-note">{email}</p>}
-        <button type="button" className="settings-btn settings-btn--danger" onClick={() => void handleLogout()}>
-          Log out
-        </button>
-      </section>
+      <AccountSettings email={email} />
 
       <BottomNav />
     </div>

@@ -1,4 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useCoachEnabled } from '../hooks/useCoachEnabled';
 
 const TABS = [
   { path: '/analytics', label: 'Lifts' },
@@ -6,13 +7,18 @@ const TABS = [
   { path: '/peak', label: 'Peak' },
 ] as const;
 
+const COACH_TAB = { path: '/coach', label: 'Coach' } as const;
+
 function ProgressTabs(): React.JSX.Element {
   const navigate = useNavigate();
   const location = useLocation();
+  // The coach tab only appears once the server says Coach Van can answer.
+  const coachEnabled = useCoachEnabled();
+  const tabs = coachEnabled ? [...TABS, COACH_TAB] : TABS;
 
   return (
     <nav className="analytics-range-pills progress-tabs" aria-label="Progress views">
-      {TABS.map((tab) => {
+      {tabs.map((tab) => {
         const active = location.pathname === tab.path;
         return (
           <button

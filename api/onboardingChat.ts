@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import Anthropic from '@anthropic-ai/sdk';
 import { authenticate } from './_lib/auth.js';
 import { checkAiRateLimit } from './_lib/aiRateLimit.js';
-import { runCoachTurn } from './_lib/coach.js';
+import { INTAKE_TOPICS, runCoachTurn } from './_lib/coach.js';
 import { sanitizeSplitDraft, type SplitDraft } from '../src/lib/splitDraft.js';
 import type { ChatAttachment, ChatTurn, OnboardingChatResponse } from '../src/types/onboarding.js';
 
@@ -77,7 +77,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       return;
     }
     if (!process.env.ANTHROPIC_API_KEY) {
-      res.status(503).json({ error: "The coach isn't set up yet. Try again later." });
+      res.status(503).json({ error: "Coach Van isn't set up yet. Try again later." });
       return;
     }
 
@@ -139,7 +139,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
     const output = await runCoachTurn(messages, catalog);
     if (!output) {
-      res.status(502).json({ error: "The coach couldn't answer that. Try rephrasing or sending a different file." });
+      res.status(502).json({ error: "Coach Van couldn't answer that. Try rephrasing or sending a different file." });
       return;
     }
 
@@ -148,16 +148,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       const cleaned = sanitizeSplitDraft(output.split);
       if ('draft' in cleaned) split = cleaned.draft;
     }
-    const payload: OnboardingChatResponse = { reply: output.reply.trim(), split };
+    // The counter runs over the intake topics plus one final step: a split to review.
+    const known = Math.min(Math.max(Math.round(Number(output.topicsKnown)) || 0, 0), INTAKE_TOPICS);
+    const payload: OnboardingChatResponse = {
+      reply: output.reply.trim(),
+      split,
+      progress: { current: split ? INTAKE_TOPICS + 1 : known, total: INTAKE_TOPICS + 1 },
+    };
     res.status(200).json(payload);
   } catch (error) {
     if (error instanceof Anthropic.RateLimitError) {
-      res.status(503).json({ error: 'The coach is busy right now. Try again in a minute.' });
+      res.status(503).json({ error: 'Coach Van is busy right now. Try again in a minute.' });
     } else if (error instanceof Anthropic.BadRequestError) {
       console.error('onboardingChat bad request:', error.message);
-      res.status(400).json({ error: "The coach couldn't read that. Try a different file or a screenshot." });
+      res.status(400).json({ error: "Coach Van couldn't read that. Try a different file or a screenshot." });
     } else if (error instanceof Anthropic.APIConnectionError) {
-      res.status(504).json({ error: 'The coach took too long. Try again.' });
+      res.status(504).json({ error: 'Coach Van took too long. Try again.' });
     } else {
       console.error('Error in onboardingChat:', error);
       res.status(500).json({ error: 'Something went wrong. Try again.' });

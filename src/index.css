@@ -4538,10 +4538,29 @@ body {
   font-weight: 700;
 }
 
+.ob-card-anchor {
+  scroll-margin-top: 0.5rem;
+}
+
 .ob-exercise {
+  padding: 0.1rem 0 0.35rem;
+}
+
+.ob-exercise-main,
+.ob-exercise-dose {
   display: flex;
   align-items: center;
   gap: 0.15rem;
+}
+
+.ob-exercise-dose {
+  margin-top: -0.2rem;
+  padding-left: 0.1rem;
+}
+
+.ob-dose-word {
+  font-size: 0.8rem;
+  color: var(--text-muted);
 }
 
 .ob-input--exercise {
@@ -4549,7 +4568,9 @@ body {
 }
 
 .ob-input--num {
-  width: 2.6rem;
+  width: 2.4rem;
+  padding-top: 0.2rem;
+  padding-bottom: 0.2rem;
   text-align: center;
   -moz-appearance: textfield;
   appearance: textfield;
@@ -4562,7 +4583,9 @@ body {
 }
 
 .ob-input--reps {
-  width: 4.2rem;
+  width: 4.6rem;
+  padding-top: 0.2rem;
+  padding-bottom: 0.2rem;
   text-align: center;
 }
 
@@ -4570,11 +4593,6 @@ body {
 .ob-input--reps {
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
-}
-
-.ob-times {
-  color: var(--text-muted);
-  font-size: 0.85rem;
 }
 
 .ob-icon-btn {
@@ -4738,4 +4756,166 @@ body {
   .ob-card {
     animation: none;
   }
+}
+
+.ob-header-lead {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ob-header-back {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin-left: -0.4rem;
+  border: none;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.ob-header-back:hover {
+  color: var(--accent);
+}
+
+.ob-header-skip:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.ob-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.6rem 1.1rem;
+}
+
+.ob-progress-track {
+  flex: 1;
+  height: 6px;
+  border-radius: 6px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.ob-progress-fill {
+  height: 100%;
+  border-radius: 6px;
+  background: var(--accent);
+  transition: width 0.45s ease;
+}
+
+.ob-progress-count {
+  min-width: 2.6rem;
+  text-align: right;
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+/* --- In-app coach --- */
+.coach-suggestions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.coach-suggestion {
+  padding: 0.55rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 0.9rem;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--transition);
+}
+
+.coach-suggestion:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.coach-suggestion:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.coach-answer .ob-coach:not(:last-child) {
+  margin-bottom: 0.75rem;
+}
+
+.coach-chart {
+  margin: 0 0 1.25rem;
+  padding: 0.85rem 0.6rem 0.5rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--bg-surface);
+}
+
+.coach-chart-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0 0.4rem 0.5rem 0.6rem;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.coach-chart-unit {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.coach-chart-plot {
+  width: 100%;
+  height: 210px;
+}
+
+.settings-link-btn {
+  align-self: flex-start;
+  padding: 0.3rem 0;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 0.8rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.settings-link-btn:hover {
+  color: var(--danger);
+}
+
+.settings-delete {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--border);
+}
+
+.settings-delete-input {
+  width: 100%;
+  margin-top: 0;
+}
+
+.settings-delete-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.settings-delete-actions .settings-btn {
+  text-align: center;
 }

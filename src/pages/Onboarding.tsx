@@ -1,48 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ChatComposer from '../components/coach/ChatComposer';
 import { invalidateDashboardCache } from '../hooks/useDashboardData';
 import { MAX_DAYS, MAX_EXERCISES_PER_DAY, MAX_SETS, type SplitDraft } from '../lib/splitDraft.js';
 import type { ChatAttachment, ChatTurn, OnboardingChatResponse } from '../types/onboarding';
 import { ATTACHMENT_ACCEPT, AttachmentError, fileToAttachment } from '../utils/attachments';
-import { supabase } from '../utils/supabaseClient';
+import { postCoachJson } from '../utils/coachApi';
 
 const GREETING =
-  "Hey, I'm your Van Training coach. Show me what you're running right now: a screenshot of your notes, a spreadsheet, a PDF, or just type it out, and I'll set it up for you. No program yet? Tell me how many days a week you can train and what equipment you have, and I'll build one.";
+  "Hey, I'm Coach Van. Show me what you're running right now: a screenshot of your notes, a spreadsheet, a PDF, or just type it out, and I'll set it up for you. No program yet? Tell me your goal and how many days a week you can train, and I'll build one around you.";
+
+/** Four intake topics plus the split to review; the server reports the same total. */
+const INITIAL_PROGRESS = { current: 0, total: 5 };
 
 const MAX_ATTACHMENTS = 4;
 /** Vercel rejects request bodies over ~4.5 MB; stay clear of it. */
 const MAX_REQUEST_CHARS = 4_000_000;
-
-async function postJson<T>(path: string, body: unknown): Promise<{ ok: true; data: T } | { ok: false; error: string }> {
-  try {
-    const { data } = await supabase.auth.getSession();
-    const token = data.session?.access_token;
-    const response = await fetch(path, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-      body: JSON.stringify(body),
-    });
-    const json = (await response.json().catch(() => ({}))) as T & { error?: string };
-    if (!response.ok) return { ok: false, error: json.error ?? 'Something went wrong. Try again.' };
-    return { ok: true, data: json };
-  } catch {
-    return { ok: false, error: 'No connection. Check your signal and try again.' };
-  }
-}
-
-const IconPlus = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
-    <line x1="12" y1="5" x2="12" y2="19" />
-    <line x1="5" y1="12" x2="19" y2="12" />
-  </svg>
-);
-
-const IconArrowUp = () => (
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-    <line x1="12" y1="19" x2="12" y2="5" />
-    <polyline points="5 12 12 5 19 12" />
-  </svg>
-);
 
 const IconX = ({ size = 14 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden>
@@ -103,7 +76,7 @@ function SplitCard({
       />
       <p className="ob-card-sub">
         {draft.days.length} {draft.days.length === 1 ? 'day' : 'days'} · {exerciseCount} exercises. Edit anything here, or tell
-        the coach what to change.
+        Coach Van what to change.
       </p>
 
       {draft.days.map((day, dayIndex) => (
@@ -131,41 +104,46 @@ function SplitCard({
 
           {day.exercises.map((ex, exIndex) => (
             <div key={exIndex} className="ob-exercise">
-              <input
-                className="ob-input ob-input--exercise"
-                value={ex.name}
-                onChange={(e) => setExercise(dayIndex, exIndex, { name: e.target.value })}
-                aria-label="Exercise name"
-                placeholder="Exercise"
-                maxLength={80}
-              />
-              <input
-                className="ob-input ob-input--num"
-                type="number"
-                inputMode="numeric"
-                min={1}
-                max={MAX_SETS}
-                value={ex.sets}
-                onChange={(e) => setExercise(dayIndex, exIndex, { sets: Number(e.target.value) })}
-                aria-label="Sets"
-              />
-              <span className="ob-times" aria-hidden>×</span>
-              <input
-                className="ob-input ob-input--reps"
-                value={ex.repRange}
-                onChange={(e) => setExercise(dayIndex, exIndex, { repRange: e.target.value })}
-                aria-label="Rep range"
-                placeholder="8-12"
-                maxLength={12}
-              />
-              <button
-                type="button"
-                className="ob-icon-btn"
-                onClick={() => setDay(dayIndex, { exercises: day.exercises.filter((_, i) => i !== exIndex) })}
-                aria-label={`Remove ${ex.name || 'exercise'}`}
-              >
-                <IconX />
-              </button>
+              <div className="ob-exercise-main">
+                <input
+                  className="ob-input ob-input--exercise"
+                  value={ex.name}
+                  onChange={(e) => setExercise(dayIndex, exIndex, { name: e.target.value })}
+                  aria-label="Exercise name"
+                  placeholder="Exercise"
+                  maxLength={80}
+                />
+                <button
+                  type="button"
+                  className="ob-icon-btn"
+                  onClick={() => setDay(dayIndex, { exercises: day.exercises.filter((_, i) => i !== exIndex) })}
+                  aria-label={`Remove ${ex.name || 'exercise'}`}
+                >
+                  <IconX />
+                </button>
+              </div>
+              <div className="ob-exercise-dose">
+                <input
+                  className="ob-input ob-input--num"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={MAX_SETS}
+                  value={ex.sets}
+                  onChange={(e) => setExercise(dayIndex, exIndex, { sets: Number(e.target.value) })}
+                  aria-label="Sets"
+                />
+                <span className="ob-dose-word">sets ×</span>
+                <input
+                  className="ob-input ob-input--reps"
+                  value={ex.repRange}
+                  onChange={(e) => setExercise(dayIndex, exIndex, { repRange: e.target.value })}
+                  aria-label="Rep range"
+                  placeholder="8-12"
+                  maxLength={12}
+                />
+                <span className="ob-dose-word">reps</span>
+              </div>
             </div>
           ))}
 
@@ -209,6 +187,7 @@ function Onboarding({ onDone }: { onDone: (saved: boolean) => void }): React.JSX
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [draft, setDraft] = useState<SplitDraft | null>(null);
   const [text, setText] = useState('');
+  const [progress, setProgress] = useState(INITIAL_PROGRESS);
   const [pending, setPending] = useState<ChatAttachment[]>([]);
   const [sending, setSending] = useState(false);
   const [reading, setReading] = useState(false);
@@ -216,22 +195,19 @@ function Onboarding({ onDone }: { onDone: (saved: boolean) => void }): React.JSX
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
+  const cardRef = useRef<HTMLDivElement | null>(null);
 
   // Keep the newest message (or the typing dots) in view.
   const hasDraft = draft !== null;
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    // A fresh draft is read from its top; everything else follows the newest message.
+    if (hasDraft && !sending && cardRef.current) {
+      cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    }
   }, [turns.length, sending, hasDraft]);
-
-  // Grow the composer with its content, up to the CSS max-height.
-  useEffect(() => {
-    const el = textareaRef.current;
-    if (!el) return;
-    el.style.height = 'auto';
-    el.style.height = `${el.scrollHeight}px`;
-  }, [text]);
 
   async function handleFiles(files: FileList | null): Promise<void> {
     if (!files || files.length === 0) return;
@@ -271,7 +247,7 @@ function Onboarding({ onDone }: { onDone: (saved: boolean) => void }): React.JSX
     setText('');
     setPending([]);
     setSending(true);
-    const result = await postJson<OnboardingChatResponse>('/api/onboardingChat', body);
+    const result = await postCoachJson<OnboardingChatResponse>('/api/onboardingChat', body);
     setSending(false);
     if (!result.ok) {
       // Put the message back so nothing the user typed or attached is lost.
@@ -282,6 +258,11 @@ function Onboarding({ onDone }: { onDone: (saved: boolean) => void }): React.JSX
       return;
     }
     setTurns([...nextTurns, { role: 'assistant', content: result.data.reply }]);
+    // The counter only moves forward, even if a later reply reports less.
+    if (result.data.progress) {
+      const next = result.data.progress;
+      setProgress((current) => ({ total: next.total, current: Math.max(current.current, Math.min(next.current, next.total)) }));
+    }
     if (result.data.split) {
       setDraft(result.data.split);
       setSaveError(null);
@@ -292,7 +273,7 @@ function Onboarding({ onDone }: { onDone: (saved: boolean) => void }): React.JSX
     if (!draft || saving) return;
     setSaveError(null);
     setSaving(true);
-    const result = await postJson<{ splitName: string }>('/api/saveSplit', { draft });
+    const result = await postCoachJson<{ splitName: string }>('/api/saveSplit', { draft });
     if (!result.ok) {
       setSaving(false);
       setSaveError(result.error);
@@ -313,11 +294,26 @@ function Onboarding({ onDone }: { onDone: (saved: boolean) => void }): React.JSX
   return (
     <div className="ob-screen">
       <header className="ob-header">
-        <span className="ob-header-title">Coach</span>
+        <span className="ob-header-title">Coach Van</span>
         <button type="button" className="ob-header-skip" onClick={leave}>
           {draft ? 'Close' : 'Skip for now'}
         </button>
       </header>
+      <div
+        className="ob-progress"
+        role="progressbar"
+        aria-label="Setup progress"
+        aria-valuemin={0}
+        aria-valuemax={progress.total}
+        aria-valuenow={progress.current}
+      >
+        <div className="ob-progress-track">
+          <div className="ob-progress-fill" style={{ width: `${(progress.current / progress.total) * 100}%` }} />
+        </div>
+        <span className="ob-progress-count">
+          {progress.current} / {progress.total}
+        </span>
+      </div>
 
       <div className="ob-thread">
         <p className="ob-coach">{GREETING}</p>
@@ -342,7 +338,7 @@ function Onboarding({ onDone }: { onDone: (saved: boolean) => void }): React.JSX
         )}
 
         {sending && (
-          <div className="ob-typing" role="status" aria-label="Coach is thinking">
+          <div className="ob-typing" role="status" aria-label="Coach Van is thinking">
             <span />
             <span />
             <span />
@@ -350,53 +346,33 @@ function Onboarding({ onDone }: { onDone: (saved: boolean) => void }): React.JSX
         )}
 
         {draft && !sending && (
+          <div ref={cardRef} className="ob-card-anchor">
           <SplitCard draft={draft} onChange={setDraft} onSave={() => void save()} saving={saving} error={saveError} />
+          </div>
         )}
 
         <div ref={endRef} />
       </div>
 
-      <div className="ob-composer-wrap">
-        {error && <p className="ob-error">{error}</p>}
-        <div className="ob-composer">
-          {pending.length > 0 && (
-            <div className="ob-pending">
-              {pending.map((a, i) => (
-                <AttachmentChip key={i} attachment={a} onRemove={() => setPending((c) => c.filter((_, j) => j !== i))} />
-              ))}
-            </div>
-          )}
-          <textarea
-            ref={textareaRef}
-            className="ob-textarea"
-            rows={1}
-            placeholder={draft ? 'Ask for a change' : 'Message the coach'}
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-                e.preventDefault();
-                void send();
-              }
-            }}
-            maxLength={4000}
-          />
-          <div className="ob-composer-row">
-            <button
-              type="button"
-              className="ob-round"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={sending || reading}
-              aria-label="Attach a file"
-            >
-              <IconPlus />
-            </button>
-            <span className="ob-composer-hint">{reading ? 'Reading file…' : 'Screenshot, PDF, spreadsheet or text'}</span>
-            <button type="button" className="ob-round ob-round--send" onClick={() => void send()} disabled={!canSend} aria-label="Send">
-              <IconArrowUp />
-            </button>
+      <ChatComposer
+        value={text}
+        onChange={setText}
+        onSend={() => void send()}
+        canSend={canSend}
+        placeholder={draft ? 'Ask for a change' : 'Message Coach Van'}
+        hint={reading ? 'Reading file…' : 'Screenshot, PDF, spreadsheet or text'}
+        error={error}
+        onAttach={() => fileInputRef.current?.click()}
+        attachDisabled={sending || reading}
+      >
+        {pending.length > 0 && (
+          <div className="ob-pending">
+            {pending.map((a, i) => (
+              <AttachmentChip key={i} attachment={a} onRemove={() => setPending((c) => c.filter((_, j) => j !== i))} />
+            ))}
           </div>
-        </div>
+        )}
+      </ChatComposer>
         <input
           ref={fileInputRef}
           type="file"
@@ -405,7 +381,6 @@ function Onboarding({ onDone }: { onDone: (saved: boolean) => void }): React.JSX
           hidden
           onChange={(e) => void handleFiles(e.target.files)}
         />
-      </div>
     </div>
   );
 }

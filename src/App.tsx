@@ -10,6 +10,7 @@ import Analytics from './pages/Analytics';
 import AdminPortal from './pages/AdminPortal';
 import Settings from './pages/Settings';
 import Onboarding from './pages/Onboarding';
+import CoachChat from './pages/CoachChat';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
@@ -151,6 +152,7 @@ function App(): React.JSX.Element {
       <Route path="/muscles" element={user ? <MuscleLab /> : <Navigate to="/login" replace />} />
       <Route path="/peak" element={user ? <PeakStrength /> : <Navigate to="/login" replace />} />
       <Route path="/lift/*" element={user ? <LiftContainer /> : <Navigate to="/login" replace />} />
+      <Route path="/coach" element={user ? <CoachChat /> : <Navigate to="/login" replace />} />
       <Route path="/analytics" element={user ? <Analytics /> : <Navigate to="/login" replace />} />
       <Route path="/admin" element={user ? <AdminPortal /> : <Navigate to="/login" replace />} />
       <Route path="/settings" element={user ? <Settings /> : <Navigate to="/login" replace />} />

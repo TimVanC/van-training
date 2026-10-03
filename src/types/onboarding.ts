@@ -1,3 +1,4 @@
+import type { CoachChart } from '../lib/coachChart.js';
 import type { SplitDraft } from '../lib/splitDraft.js';
 
 /** A file the user attached, already reduced to something the coach can read. */
@@ -21,4 +22,17 @@ export interface OnboardingChatRequest {
 export interface OnboardingChatResponse {
   reply: string;
   split: SplitDraft | null;
+  /** Steps completed so far and the total, for the progress counter. */
+  progress: { current: number; total: number };
+}
+
+/** One turn of the in-app coach conversation, as sent to the server. */
+export interface CoachChatTurn {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export interface CoachChatResponse {
+  reply: string;
+  charts: CoachChart[];
 }

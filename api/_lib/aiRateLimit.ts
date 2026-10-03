@@ -37,7 +37,7 @@ export async function checkAiRateLimit(
   }
   const [minute, day, month] = (data ?? []) as number[];
   if (minute > caps.perMinute) return 'A little too fast. Give it a few seconds and try again.';
-  if (day > caps.perDay) return "You've hit today's coach limit. It resets tomorrow.";
-  if (month > caps.perMonth) return "You've hit this month's coach limit. It resets next month.";
+  if (day > caps.perDay) return "You've hit today's Coach Van limit. It resets tomorrow.";
+  if (month > caps.perMonth) return "You've hit this month's Coach Van limit. It resets next month.";
   return null;
 }
