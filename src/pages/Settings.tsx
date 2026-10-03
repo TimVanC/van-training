@@ -48,17 +48,14 @@ function Settings(): React.JSX.Element {
         </section>
       )}
 
-      <section className="settings-card">
-        <h2 className="settings-card-title">Shortcuts</h2>
-        <button type="button" className="settings-btn" onClick={() => navigate('/activities')}>
-          Log cardio
-        </button>
-        {email === ADMIN_EMAIL && (
+      {email === ADMIN_EMAIL && (
+        <section className="settings-card">
+          <h2 className="settings-card-title">Shortcuts</h2>
           <button type="button" className="settings-btn" onClick={() => navigate('/admin')}>
             Admin portal
           </button>
-        )}
-      </section>
+        </section>
+      )}
 
       <section className="settings-card">
         <h2 className="settings-card-title">Account</h2>

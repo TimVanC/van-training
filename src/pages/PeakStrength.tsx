@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import BottomNav from '../components/BottomNav';
+import ProgressTabs from '../components/ProgressTabs';
 import { supabase } from '../utils/supabaseClient';
 import type {
   PeakGroupSummary,
@@ -136,14 +136,6 @@ function relativeLabel(iso: string, now: Date): string {
 }
 
 // ------------------------------------------------------------ components
-
-function IconChevronLeft(): React.JSX.Element {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <polyline points="15 18 9 12 15 6" />
-    </svg>
-  );
-}
 
 function PeakRing({ pct }: { pct: number | null }): React.JSX.Element {
   const size = 118;
@@ -328,7 +320,6 @@ function GroupCard({
 // ------------------------------------------------------------------ page
 
 function PeakStrength(): React.JSX.Element {
-  const navigate = useNavigate();
   const { data, loading, error, retry } = usePeakData();
   const now = useMemo(() => new Date(), []);
 
@@ -342,10 +333,8 @@ function PeakStrength(): React.JSX.Element {
 
   return (
     <div className="page page--with-nav dash-page">
+      <ProgressTabs />
       <div className="selection-header">
-        <button type="button" className="selection-back" onClick={() => navigate('/')} aria-label="Back to home">
-          <IconChevronLeft />
-        </button>
         <div className="selection-heading">
           <p className="selection-kicker">Peak Strength</p>
           <h1 className="selection-title">You vs. your best</h1>
@@ -353,7 +342,7 @@ function PeakStrength(): React.JSX.Element {
       </div>
 
       <p className="muscle-lab-intro dash-animate">
-        Every lift you've ever logged, from the old spreadsheets through today, scored on its best set
+        Every lift you've ever logged, plus any earlier history you've imported, scored on its best set
         each session. Each number is how close your latest session sits to the strongest you've ever been.
       </p>
 
@@ -435,8 +424,9 @@ function PeakStrength(): React.JSX.Element {
             Each session is scored on its strongest set: load × (1 + reps ÷ 30), so 90 × 10 beats 90 × 8. The
             volume next to each set is total work on that lift that day, shown for context only. "Now" is your
             most recent session for that lift, good day or bad; lifts not trained in the last {windowWeeks} weeks show as
-            resting and stay out of the group scores. Bodyweight moves count {`${200} lb`} of you plus any added or assisted load. Spreadsheet-era
-            dates marked ~ are estimated from their position in the log.
+            resting and stay out of the group scores. Bodyweight moves count {`${200} lb`} of you plus any added or assisted load.
+            {data.splits.some((s) => s.source === 'history') &&
+              ' Imported dates marked ~ are estimated from their position in the log.'}
           </p>
         </>
       )}

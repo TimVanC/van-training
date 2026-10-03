@@ -1,15 +1,11 @@
 import { useEffect, useState } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import ActivitySelection from './pages/ActivitySelection';
 import Dashboard from './pages/Dashboard';
 import CalendarPage from './pages/CalendarPage';
 import MuscleLab from './pages/MuscleLab';
 import PeakStrength from './pages/PeakStrength';
 import LiftContainer from './pages/LiftContainer';
-import Run from './pages/Run';
-import Bike from './pages/Bike';
-import Swim from './pages/Swim';
 import Analytics from './pages/Analytics';
 import AdminPortal from './pages/AdminPortal';
 import Settings from './pages/Settings';
@@ -18,7 +14,7 @@ import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import { supabase } from './utils/supabaseClient';
-import { getCurrentUser } from './utils/auth';
+import { getSession } from './utils/auth';
 import { ensureUserSetup } from './utils/ensureUserSetup';
 
 function App(): React.JSX.Element {
@@ -43,8 +39,12 @@ function App(): React.JSX.Element {
       })();
     }
 
-    getCurrentUser()
-      .then((currentUser) => {
+    // The stored session is read locally, so returning users skip a network
+    // round trip before the first screen; onAuthStateChange below still signs
+    // them out if the token can't be refreshed.
+    getSession()
+      .then((session) => {
+        const currentUser = session?.user ?? null;
         if (!mounted) return;
         if (currentUser?.id) {
           runPostAuthSetup(currentUser.id);
@@ -85,8 +85,11 @@ function App(): React.JSX.Element {
 
   if (loadingAuth) {
     return (
-      <div className="page">
-        <p>Loading...</p>
+      // Same markup index.html ships inside #root, so the splash doesn't flicker
+      // when React takes over.
+      <div className="app-splash" role="status" aria-label="Loading Van Training">
+        <img src="/icons/icon-192.png" alt="" width="76" height="76" />
+        <span className="app-splash-bar" />
       </div>
     );
   }
@@ -101,11 +104,7 @@ function App(): React.JSX.Element {
       <Route path="/calendar" element={user ? <CalendarPage /> : <Navigate to="/login" replace />} />
       <Route path="/muscles" element={user ? <MuscleLab /> : <Navigate to="/login" replace />} />
       <Route path="/peak" element={user ? <PeakStrength /> : <Navigate to="/login" replace />} />
-      <Route path="/activities" element={user ? <ActivitySelection /> : <Navigate to="/login" replace />} />
       <Route path="/lift/*" element={user ? <LiftContainer /> : <Navigate to="/login" replace />} />
-      <Route path="/run" element={user ? <Run /> : <Navigate to="/login" replace />} />
-      <Route path="/bike" element={user ? <Bike /> : <Navigate to="/login" replace />} />
-      <Route path="/swim" element={user ? <Swim /> : <Navigate to="/login" replace />} />
       <Route path="/analytics" element={user ? <Analytics /> : <Navigate to="/login" replace />} />
       <Route path="/admin" element={user ? <AdminPortal /> : <Navigate to="/login" replace />} />
       <Route path="/settings" element={user ? <Settings /> : <Navigate to="/login" replace />} />

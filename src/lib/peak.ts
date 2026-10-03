@@ -9,7 +9,7 @@
  * API function and the client.
  */
 
-import { MUSCLE_GROUPS, type MuscleGroup } from './muscles.js';
+import { MUSCLE_GROUPS, classifyExercise, type MuscleGroup } from './muscles.js';
 import { MUSCLE_HEADS, headEmphasis } from './muscleHeads.js';
 
 export interface PeakSetRow {
@@ -179,17 +179,25 @@ const LIFTS: Record<string, LiftDef> = {
   'cable-woodchop': { label: 'Cable Woodchop', group: 'Core', emphasisHint: 'woodchop' },
 };
 
+function normalizeName(exerciseName: string): string {
+  return exerciseName.toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+/** Things we never score, whatever they're called. */
+const UNSCORED = ['jump rope', 'push up', 'push-up', 'pushup', 'hip adduction', 'hip abduction', 'burn out'];
+
 /**
  * Map a free-text exercise name (from any era) onto its lift lineage key.
- * Returns null for things we don't score (jump rope, push-ups, ...).
+ * Returns null for things we don't score (jump rope, push-ups, ...) and for
+ * names outside the known lineages — see `resolveLift` for those.
  */
 export function canonicalLiftKey(exerciseName: string): string | null {
-  const n = exerciseName.toLowerCase().replace(/\s+/g, ' ').trim();
+  const n = normalizeName(exerciseName);
   const has = (...keys: string[]) => keys.some((k) => n.includes(k));
   const single = has('single', 'one-arm', 'one arm');
   const dual = has('dual', 'duel', 'double');
 
-  if (has('jump rope', 'push up', 'push-up', 'pushup', 'hip adduction', 'hip abduction', 'burn out')) return null;
+  if (has(...UNSCORED)) return null;
 
   // Chest
   if (has('dip')) return 'chest-dips';
@@ -197,7 +205,7 @@ export function canonicalLiftKey(exerciseName: string): string | null {
   if (has('db bench', 'flat db', 'flat dumbbell', 'dumbbell bench', 'dumbbell press')) return 'flat-db-press';
   if (has('decline') && has('machine', 'press')) return 'decline-machine-press';
   if (has('flat machine', 'machine chest press')) return 'flat-machine-press';
-  if (has('pec deck', 'mid chest fly machine')) return single ? 'single-arm-pec-deck' : 'pec-deck';
+  if (has('pec dec', 'mid chest fly machine')) return single ? 'single-arm-pec-deck' : 'pec-deck';
   if (has('reverse pec')) return 'reverse-pec-deck';
   if (has('high to low', 'h to l')) return 'high-to-low-fly';
   if (has('low to high', 'l to h')) return 'low-to-high-fly';
@@ -260,6 +268,22 @@ export function canonicalLiftKey(exerciseName: string): string | null {
   if (has('crunch')) return 'cable-crunch';
 
   return null;
+}
+
+/**
+ * Resolve an exercise name to the lift it scores under. Known lineages merge
+ * name drift across eras; anything else a user logs becomes its own lift
+ * (keyed by name), so Peak covers every exercise we can place in a muscle
+ * group rather than only the curated list.
+ */
+function resolveLift(exerciseName: string): { key: string; def: LiftDef } | null {
+  const known = canonicalLiftKey(exerciseName);
+  if (known) return { key: known, def: LIFTS[known] };
+  const n = normalizeName(exerciseName);
+  if (!n || UNSCORED.some((k) => n.includes(k))) return null;
+  const group = classifyExercise(exerciseName)?.primary;
+  if (!group) return null;
+  return { key: `name:${n}`, def: { label: exerciseName.replace(/\s+/g, ' ').trim(), group } };
 }
 
 /** Short tag for a split name: "PPLs" → "PPL", "Ascend with me?" → "AWM". */
@@ -370,11 +394,13 @@ export function computePeakReport(rows: PeakSetRow[], now: Date, recentWindowDay
 
   // --- Best set per (lift, session) ---------------------------------------
   const liftSessions = new Map<string, Map<string, LiftSession>>();
+  const liftDefs = new Map<string, LiftDef>();
   for (const row of rows) {
     if (row.excluded) continue;
-    const key = canonicalLiftKey(row.exerciseName);
-    if (!key) continue;
-    const def = LIFTS[key];
+    const resolved = resolveLift(row.exerciseName);
+    if (!resolved) continue;
+    const { key, def } = resolved;
+    if (!liftDefs.has(key)) liftDefs.set(key, def);
     const weight = normalizeWeight(key, row.weight);
     const bodyweight = def.bodyweight === true;
     const e1rm = peakScore(weight, row.reps, bodyweight);
@@ -410,7 +436,7 @@ export function computePeakReport(rows: PeakSetRow[], now: Date, recentWindowDay
   // --- Per-lift summaries --------------------------------------------------
   const lifts: PeakLiftSummary[] = [];
   for (const [key, sessions] of liftSessions) {
-    const def = LIFTS[key];
+    const def = liftDefs.get(key)!;
     const ordered = [...sessions.values()].sort((a, b) => a.date.localeCompare(b.date));
     if (ordered.length === 0) continue;
 
@@ -477,7 +503,7 @@ export function computePeakReport(rows: PeakSetRow[], now: Date, recentWindowDay
     for (const lift of groupLifts) {
       eraCount.set(lift.peak.splitAbbr, (eraCount.get(lift.peak.splitAbbr) ?? 0) + 1);
       if (lift.stale) continue;
-      const emphasis = headEmphasis(group, LIFTS[lift.key].emphasisHint ?? lift.label);
+      const emphasis = headEmphasis(group, liftDefs.get(lift.key)?.emphasisHint ?? lift.label);
       const ratio = lift.pctOfPeak / 100;
       emphasis.forEach((e, i) => {
         if (e <= 0) return;

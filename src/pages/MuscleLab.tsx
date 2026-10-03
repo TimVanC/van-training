@@ -2,15 +2,8 @@ import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import BottomNav from '../components/BottomNav';
 import { useDashboardData } from '../hooks/useDashboardData';
+import ProgressTabs from '../components/ProgressTabs';
 import type { MuscleHeadReport } from '../lib/muscleHeads.js';
-
-function IconChevronLeft(): React.JSX.Element {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <polyline points="15 18 9 12 15 6" />
-    </svg>
-  );
-}
 
 function HeadBars({ report }: { report: MuscleHeadReport }): React.JSX.Element {
   const heads = [...report.heads].sort((a, b) => b.sharePct - a.sharePct);
@@ -55,10 +48,8 @@ function MuscleLab(): React.JSX.Element {
 
   return (
     <div className="page page--with-nav dash-page">
+      <ProgressTabs />
       <div className="selection-header">
-        <button type="button" className="selection-back" onClick={() => navigate('/')} aria-label="Back to home">
-          <IconChevronLeft />
-        </button>
         <div className="selection-heading">
           <p className="selection-kicker">Muscle Lab</p>
           <h1 className="selection-title">Where your training lands</h1>

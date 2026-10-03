@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 import { getSession } from '../utils/auth';
 import BottomNav from '../components/BottomNav';
+import ProgressTabs from '../components/ProgressTabs';
 import { MUSCLE_GROUPS, classifyExercise } from '../lib/muscles.js';
 
 interface SessionAnalyticsRow {
@@ -688,6 +689,7 @@ function Analytics(): React.JSX.Element {
 
   return (
     <div className="page page--with-nav dash-page">
+      <ProgressTabs />
       <div className="dash-header">
         <h1>Analytics</h1>
         <p className="dash-date">

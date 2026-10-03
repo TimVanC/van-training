@@ -1,5 +1,5 @@
-import type { ActiveSession, LiftSession, EnduranceSession } from '../types/session';
-import type { LiftRow, RunRow, BikeRow, SwimRow, SessionRow } from '../types/rows';
+import type { LiftSession } from '../types/session';
+import type { LiftRow } from '../types/rows';
 import { isSledExercise } from '../data/plateModeExercises';
 
 function normalizeLift(session: LiftSession): LiftRow[] {
@@ -63,57 +63,6 @@ function normalizeLift(session: LiftSession): LiftRow[] {
   return rows;
 }
 
-function normalizeRun(session: EnduranceSession): RunRow[] {
-  const row: RunRow = {
-    date: session.startedAt,
-    distance: session.distance,
-    timeSeconds: session.totalSeconds,
-    pacePerMile: session.derivedMetric,
-    rpe: session.rpe,
-  };
-  if (session.notes) {
-    row.notes = session.notes;
-  }
-  return [row];
-}
-
-function normalizeBike(session: EnduranceSession): BikeRow[] {
-  const row: BikeRow = {
-    date: session.startedAt,
-    distance: session.distance,
-    timeSeconds: session.totalSeconds,
-    avgSpeed: session.derivedMetric,
-    rpe: session.rpe,
-  };
-  if (session.notes) {
-    row.notes = session.notes;
-  }
-  return [row];
-}
-
-function normalizeSwim(session: EnduranceSession): SwimRow[] {
-  const row: SwimRow = {
-    date: session.startedAt,
-    distance: session.distance,
-    timeSeconds: session.totalSeconds,
-    pacePer100: session.derivedMetric,
-    rpe: session.rpe,
-  };
-  if (session.notes) {
-    row.notes = session.notes;
-  }
-  return [row];
-}
-
-export function normalizeSessionToRows(session: ActiveSession): SessionRow[] {
-  switch (session.activityType) {
-    case 'Lift':
-      return normalizeLift(session);
-    case 'Run':
-      return normalizeRun(session);
-    case 'Bike':
-      return normalizeBike(session);
-    case 'Swim':
-      return normalizeSwim(session);
-  }
+export function normalizeSessionToRows(session: LiftSession): LiftRow[] {
+  return normalizeLift(session);
 }

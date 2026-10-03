@@ -1,5 +1,8 @@
 import { useLocation, useNavigate } from 'react-router-dom';
 
+/** Pages grouped under the "Progress" tab (see ProgressTabs). */
+const PROGRESS_PATHS = ['/analytics', '/muscles', '/peak'];
+
 const IconHome = () => (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
     <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
@@ -73,12 +76,12 @@ function BottomNav(): React.JSX.Element {
       </button>
       <button
         type="button"
-        className={`bottom-nav-item ${isActive('/analytics') ? 'bottom-nav-item--active' : ''}`}
+        className={`bottom-nav-item ${PROGRESS_PATHS.includes(location.pathname) ? 'bottom-nav-item--active' : ''}`}
         onClick={() => navigate('/analytics')}
-        aria-label="Analytics"
+        aria-label="Progress"
       >
         <IconChart />
-        <span>Analytics</span>
+        <span>Progress</span>
       </button>
       <button
         type="button"
