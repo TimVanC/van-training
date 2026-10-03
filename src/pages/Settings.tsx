@@ -48,14 +48,20 @@ function Settings(): React.JSX.Element {
         </section>
       )}
 
-      {email === ADMIN_EMAIL && (
-        <section className="settings-card">
-          <h2 className="settings-card-title">Shortcuts</h2>
+      <section className="settings-card">
+        <h2 className="settings-card-title">Splits</h2>
+        <p className="settings-note">
+          Upload a program or describe what you want, and the coach sets it up as a new split. Your current splits stay as they are.
+        </p>
+        <button type="button" className="settings-btn" onClick={() => navigate('/onboarding')}>
+          Add a split with the coach
+        </button>
+        {email === ADMIN_EMAIL && (
           <button type="button" className="settings-btn" onClick={() => navigate('/admin')}>
             Admin portal
           </button>
-        </section>
-      )}
+        )}
+      </section>
 
       <section className="settings-card">
         <h2 className="settings-card-title">Account</h2>

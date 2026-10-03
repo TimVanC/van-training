@@ -28,3 +28,4 @@ dist-ssr
 
 # Local database backups (contain user data — keep out of the repo)
 backups/
+scripts/__pycache__/
