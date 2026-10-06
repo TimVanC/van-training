@@ -25,6 +25,10 @@ export interface DashboardMuscleGroup {
   verdict: TrendVerdict;
   slopePctPerWeek: number;
   weeklySets: Array<{ weekStart: string; sets: number }>;
+  /** Working sets in the rolling last 28 days. Optional for responses that predate the field. */
+  setsLast4Weeks?: number;
+  /** Working sets in the 28 days before that. */
+  setsPrior4Weeks?: number;
   exercises: DashboardExerciseTrend[];
   bestMover?: { name: string; slopePctPerWeek: number };
   worstMover?: { name: string; slopePctPerWeek: number };

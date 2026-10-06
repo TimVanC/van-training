@@ -88,6 +88,22 @@ function WeeklySetBars({ weeks }: { weeks: Array<{ weekStart: string; sets: numb
   );
 }
 
+/**
+ * Rolling 4-week set totals for a group. Falls back to the ISO-week bars for
+ * API responses that predate the rolling fields (last 4 bars vs. the 4 before).
+ */
+function fourWeekSets(group: DashboardMuscleGroup): { last: number; prior: number } {
+  if (group.setsLast4Weeks !== undefined && group.setsPrior4Weeks !== undefined) {
+    return { last: group.setsLast4Weeks, prior: group.setsPrior4Weeks };
+  }
+  const sum = (weeks: Array<{ sets: number }>) => weeks.reduce((s, w) => s + w.sets, 0);
+  return { last: sum(group.weeklySets.slice(-4)), prior: sum(group.weeklySets.slice(-8, -4)) };
+}
+
+function formatSets(n: number): string {
+  return Number.isInteger(n) ? String(n) : n.toFixed(1);
+}
+
 function TrendArrow({ pct }: { pct: number }): React.JSX.Element {
   const symbol = pct > 0.15 ? '▲' : pct < -0.15 ? '▼' : '—';
   const cls = pct > 0.15 ? 'trend-up' : pct < -0.15 ? 'trend-down' : 'trend-flat';
@@ -103,7 +119,19 @@ function MuscleGroupCard({
 }): React.JSX.Element {
   const [expanded, setExpanded] = useState(false);
   const meta = VERDICT_META[group.verdict];
-  const recentSets = group.weeklySets.slice(-1)[0]?.sets ?? 0;
+  const { last, prior } = fourWeekSets(group);
+  const avgPerWeek = last / 4;
+  // Change in average weekly sets vs. the previous 4 weeks. Only shown once
+  // there is a prior window to compare against.
+  const deltaPerWeek = prior > 0 ? (last - prior) / 4 : null;
+  const deltaFlat = deltaPerWeek === null || Math.abs(deltaPerWeek) < 0.5;
+  const deltaClass = deltaFlat ? 'trend-flat' : deltaPerWeek > 0 ? 'trend-up' : 'trend-down';
+  const deltaLabel =
+    deltaPerWeek === null
+      ? 'last 4 wks'
+      : deltaFlat
+        ? '— same as prior 4 wks'
+        : `${deltaPerWeek > 0 ? '▲' : '▼'} ${formatSets(Number(Math.abs(deltaPerWeek).toFixed(1)))} vs prior 4 wks`;
 
   return (
     <div
@@ -121,7 +149,11 @@ function MuscleGroupCard({
               <TrendArrow pct={group.slopePctPerWeek} />
               {group.verdict === 'insufficient' ? '' : ` ${Math.abs(group.slopePctPerWeek).toFixed(1)}%/wk`}
             </span>
-            <span className="muscle-card-sets">{recentSets} sets this week</span>
+            <span className="muscle-card-sets">
+              {formatSets(Number(avgPerWeek.toFixed(1)))} sets/wk
+              {' · '}
+              <span className={`muscle-card-delta ${deltaClass}`}>{deltaLabel}</span>
+            </span>
           </div>
           <WeeklySetBars weeks={group.weeklySets} />
         </div>
@@ -338,11 +370,13 @@ function Dashboard(): React.JSX.Element {
 
   const orderedMuscles = useMemo(() => {
     if (!data) return [];
-    // Most-trained groups first so the important cards are on top.
+    // Most-trained groups first so the important cards are on top. Rank on
+    // the rolling last 4 weeks so a group you stopped training a month ago
+    // sinks; the full 8-week total only breaks ties.
+    const total = (g: DashboardMuscleGroup) => g.weeklySets.reduce((s, w) => s + w.sets, 0);
     return [...data.muscleGroups].sort((a, b) => {
-      const setsA = a.weeklySets.reduce((s, w) => s + w.sets, 0);
-      const setsB = b.weeklySets.reduce((s, w) => s + w.sets, 0);
-      return setsB - setsA;
+      const diff = fourWeekSets(b).last - fourWeekSets(a).last;
+      return diff !== 0 ? diff : total(b) - total(a);
     });
   }, [data]);
 
@@ -459,8 +493,11 @@ function Dashboard(): React.JSX.Element {
                   (flat for 3+ weeks), Regressing (losing), or Needs data (fewer than 3 sessions).</li>
                 <li><strong>%/wk</strong> — average weekly change in estimated strength across the
                   group's exercises. The arrow shows direction.</li>
-                <li><strong>Sets this week</strong> and the bars — your working sets per week for the
-                  last 8 weeks, so you can see if volume is climbing or dropping.</li>
+                <li><strong>Sets/wk</strong> — your average working sets per week over the last 4
+                  weeks (a rolling 28 days, so a Monday never reads as zero), with the change
+                  against the 4 weeks before that.</li>
+                <li><strong>The bars</strong> — working sets per week for the last 8 weeks, so you
+                  can see the shape of the change. The right-most bar is the current, partial week.</li>
                 <li><strong>Tap a card</strong> to expand each exercise's last top set and a trend
                   line of its estimated strength over time.</li>
               </ul>

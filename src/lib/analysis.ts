@@ -54,6 +54,10 @@ export interface MuscleGroupSummary {
   slopePctPerWeek: number;
   /** Working sets per ISO week for the last 8 weeks, oldest first. */
   weeklySets: Array<{ weekStart: string; sets: number }>;
+  /** Working sets in the rolling 28 days ending now (always a full window). */
+  setsLast4Weeks: number;
+  /** Working sets in the 28 days before that, for a like-for-like comparison. */
+  setsPrior4Weeks: number;
   exercises: ExerciseTrend[];
   bestMover?: { name: string; slopePctPerWeek: number };
   worstMover?: { name: string; slopePctPerWeek: number };
@@ -223,8 +227,18 @@ export function summarizeMuscleGroups(
   // Bucket sets by exercise, and count weekly working sets per muscle group.
   const setsByExercise = new Map<string, AnalysisSetRow[]>();
   const weeklySetsByGroup = new Map<MuscleGroup, Map<string, number>>();
-  for (const g of MUSCLE_GROUPS) weeklySetsByGroup.set(g, new Map());
+  // Rolling 28-day windows: [now-28d, now] and [now-56d, now-28d). Unlike the
+  // ISO-week buckets these are always full, so a Monday never reads as "0
+  // sets" and a comparison is never 3 days against 30.
+  const last4ByGroup = new Map<MuscleGroup, number>();
+  const prior4ByGroup = new Map<MuscleGroup, number>();
+  for (const g of MUSCLE_GROUPS) {
+    weeklySetsByGroup.set(g, new Map());
+    last4ByGroup.set(g, 0);
+    prior4ByGroup.set(g, 0);
+  }
 
+  const fourWeeksAgo = now.getTime() - 4 * 7 * DAY_MS;
   const eightWeeksAgo = now.getTime() - 8 * 7 * DAY_MS;
   for (const set of sets) {
     const list = setsByExercise.get(set.exerciseName);
@@ -244,6 +258,9 @@ export function summarizeMuscleGroups(
       if (weight <= 0) continue;
       const map = weeklySetsByGroup.get(group)!;
       map.set(week, (map.get(week) ?? 0) + weight);
+      if (t > now.getTime()) continue;
+      if (t >= fourWeeksAgo) last4ByGroup.set(group, last4ByGroup.get(group)! + weight);
+      else prior4ByGroup.set(group, prior4ByGroup.get(group)! + weight);
     }
   }
 
@@ -301,6 +318,8 @@ export function summarizeMuscleGroups(
       verdict,
       slopePctPerWeek: Number(weightedSlope.toFixed(2)),
       weeklySets,
+      setsLast4Weeks: Number(last4ByGroup.get(group)!.toFixed(1)),
+      setsPrior4Weeks: Number(prior4ByGroup.get(group)!.toFixed(1)),
       exercises: trends,
       bestMover: movers[0] ? { name: movers[0].name, slopePctPerWeek: movers[0].slopePctPerWeek } : undefined,
       worstMover:
