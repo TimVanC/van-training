@@ -2553,6 +2553,190 @@ body {
   font-weight: 500;
 }
 
+/* --- Readiness page ------------------------------------------------------ */
+
+.progress-tabs .range-pill {
+  padding: 0.45rem 0.15rem;
+  font-size: 0.74rem;
+}
+
+.ready-intro-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 480px;
+}
+
+.ready-intro-row .muscle-lab-intro {
+  flex: 1;
+  margin-bottom: 0.9rem;
+}
+
+.ready-count {
+  width: 100%;
+  max-width: 480px;
+  margin-bottom: 0.75rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.ready-card-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.ready-card-name {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.ready-card-early {
+  margin-left: auto;
+  font-size: 0.66rem;
+  color: var(--text-muted);
+}
+
+.ready-card--quiet {
+  opacity: 0.75;
+}
+
+.ready-card-note {
+  margin-top: 0.5rem;
+  font-size: 0.76rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.ready-card-toggle {
+  margin-top: 0.5rem;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ready-table {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.ready-row {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr 0.9fr;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+}
+
+.ready-row--header {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.ready-row--header .ready-row-value small {
+  display: block;
+  font-size: 0.62rem;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-muted);
+}
+
+.ready-row--notable {
+  font-weight: 700;
+}
+
+.ready-row-label {
+  color: var(--text-secondary);
+}
+
+.ready-row--notable .ready-row-label {
+  color: var(--text-primary);
+}
+
+.ready-row-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.ready-row-value--low {
+  color: var(--text-secondary);
+}
+
+.ready-row-delta {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.ready-combo {
+  border-left: 3px solid var(--success);
+}
+
+.ready-combo--worse {
+  border-left-color: var(--danger);
+}
+
+.ready-combo-conditions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.6rem;
+}
+
+.ready-chip {
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background-color: rgba(245, 132, 38, 0.14);
+  color: var(--text-primary);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.ready-combo-stats {
+  display: flex;
+  gap: 0.9rem;
+  margin-bottom: 0.5rem;
+}
+
+.ready-stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.ready-stat-value {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.ready-stat-label {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.ready-combo-detail {
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
 .trend-arrow {
   font-size: 0.8em;
 }

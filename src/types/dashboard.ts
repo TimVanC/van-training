@@ -1,6 +1,7 @@
 import type { MuscleGroup } from '../lib/muscles.js';
 import type { TrendVerdict, CheckinInsight, PrEntry, WeekStats } from '../lib/analysis.js';
 import type { MuscleHeadReport } from '../lib/muscleHeads.js';
+import type { ReadinessReport } from '../lib/readiness.js';
 
 export interface DashboardSession {
   id: string;
@@ -66,4 +67,6 @@ export interface DashboardResponse {
   /** Rotations for the user's other splits (empty with a single split). */
   otherRotations?: DashboardRotation[];
   checkinSummary: DashboardCheckinSummary;
+  /** Check-in answers vs. lifting, for the Readiness page. */
+  readiness?: ReadinessReport;
 }

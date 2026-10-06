@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard';
 import CalendarPage from './pages/CalendarPage';
 import MuscleLab from './pages/MuscleLab';
 import PeakStrength from './pages/PeakStrength';
+import Readiness from './pages/Readiness';
 import LiftContainer from './pages/LiftContainer';
 import Analytics from './pages/Analytics';
 import AdminPortal from './pages/AdminPortal';
@@ -151,6 +152,7 @@ function App(): React.JSX.Element {
       <Route path="/calendar" element={user ? <CalendarPage /> : <Navigate to="/login" replace />} />
       <Route path="/muscles" element={user ? <MuscleLab /> : <Navigate to="/login" replace />} />
       <Route path="/peak" element={user ? <PeakStrength /> : <Navigate to="/login" replace />} />
+      <Route path="/readiness" element={user ? <Readiness /> : <Navigate to="/login" replace />} />
       <Route path="/lift/*" element={user ? <LiftContainer /> : <Navigate to="/login" replace />} />
       <Route path="/coach" element={user ? <CoachChat /> : <Navigate to="/login" replace />} />
       <Route path="/analytics" element={user ? <Analytics /> : <Navigate to="/login" replace />} />

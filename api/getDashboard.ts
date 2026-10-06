@@ -11,6 +11,7 @@ import {
 } from '../src/lib/analysis.js';
 import { computeNextDayName, type RotationDay } from '../src/lib/rotation.js';
 import { computeMuscleHeadReport } from '../src/lib/muscleHeads.js';
+import { buildReadinessReport } from '../src/lib/readiness.js';
 
 interface SessionQueryRow {
   id: string;
@@ -38,6 +39,7 @@ interface CheckinQueryRow {
   soreness: number | null;
   diet_quality: number | null;
   took_preworkout: boolean | null;
+  day_name: string | null;
 }
 
 function toNumber(value: unknown): number {
@@ -120,7 +122,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const checkinRows = await fetchAllPages<CheckinQueryRow>((from, to) =>
       supabase
         .from('workout_checkins')
-        .select('session_date, feel, effort, sleep, soreness, diet_quality, took_preworkout')
+        .select('session_date, feel, effort, sleep, soreness, diet_quality, took_preworkout, day_name')
         .eq('user_id', userId)
         .order('session_date', { ascending: true })
         .range(from, to),
@@ -156,6 +158,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       soreness: r.soreness,
       dietQuality: r.diet_quality,
       tookPreworkout: r.took_preworkout,
+      dayName: r.day_name,
     }));
 
     // --- Analyze ----------------------------------------------------------
@@ -165,6 +168,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const insights = buildCheckinInsights(sessions, sets, checkins);
     const weekStats = computeWeekStats(sessions, sets, now);
     const muscleHeads = computeMuscleHeadReport(sessions, sets, now);
+    const readiness = buildReadinessReport(sessions, sets, checkins);
 
     // Per-session summary for the calendar and recent-activity views.
     const volumeBySession = new Map<string, { volume: number; sets: number }>();
@@ -276,6 +280,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       rotation,
       otherRotations,
       checkinSummary,
+      readiness,
     });
   } catch (error) {
     console.error('Error in getDashboard:', error);

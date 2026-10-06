@@ -34,6 +34,8 @@ export interface CheckinRow {
   soreness: number | null;
   dietQuality: number | null;
   tookPreworkout: boolean | null;
+  /** Workout day the check-in was filed under, to pair it with the right session. */
+  dayName?: string | null;
 }
 
 export type TrendVerdict = 'progressing' | 'steady' | 'plateaued' | 'regressing' | 'insufficient';

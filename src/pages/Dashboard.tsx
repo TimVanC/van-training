@@ -598,17 +598,22 @@ function Dashboard(): React.JSX.Element {
         })()}
 
         {/* --- Insights ---------------------------------------------------- */}
-        {(d.insights.length > 0 || checkinSummary.count30d > 0) && (
+        {(d.readiness?.headline || checkinSummary.count30d > 0) && (
           <section className="dash-section">
-            <h2 className="dash-section-title dash-animate">Insights</h2>
-            {d.insights.map((insight, i) => (
-              <div key={insight.kind} className="dash-card insight-card dash-animate" style={{ animationDelay: `${i * 70}ms` }}>
-                <p className="insight-title">{insight.title}</p>
-                <p className="insight-detail">{insight.detail}</p>
+            <div className="dash-section-head dash-animate">
+              <h2 className="dash-section-title">Readiness</h2>
+              <button type="button" className="dash-section-link" onClick={() => navigate('/readiness')}>
+                All signals →
+              </button>
+            </div>
+            {d.readiness?.headline && (
+              <div className="dash-card insight-card dash-animate">
+                <p className="insight-title">Clearest signal</p>
+                <p className="insight-detail">{d.readiness.headline}</p>
               </div>
-            ))}
+            )}
             {checkinSummary.count30d > 0 && (
-              <div className="dash-card dash-animate" style={{ animationDelay: `${d.insights.length * 70}ms` }}>
+              <div className="dash-card dash-animate" style={{ animationDelay: '70ms' }}>
                 <p className="insight-title">Last 30 days check-ins ({checkinSummary.count30d})</p>
                 <div className="wellness-grid">
                   {checkinSummary.avgFeel != null && (

@@ -5,6 +5,7 @@ const TABS = [
   { path: '/analytics', label: 'Lifts' },
   { path: '/muscles', label: 'Muscles' },
   { path: '/peak', label: 'Peak' },
+  { path: '/readiness', label: 'Readiness' },
 ] as const;
 
 const COACH_TAB = { path: '/coach', label: 'Coach' } as const;
