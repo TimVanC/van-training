@@ -190,8 +190,9 @@ function Readiness(): React.JSX.Element {
 
       <div className="ready-intro-row dash-animate">
         <p className="muscle-lab-intro">
-          Your post-workout check-ins, matched against how you actually lifted. Strength is each
-          workout's lifts against their own average over the previous 4 weeks.
+          Every check-in you've ever filed, weighted equally, matched against how you actually
+          lifted that day. Strength is each workout's lifts against their own average over the
+          previous 4 weeks.
         </p>
         <button
           type="button"
@@ -255,7 +256,7 @@ function Readiness(): React.JSX.Element {
       {!loading && report && hasAnything && (
         <>
           <p className="ready-count dash-animate">
-            {report.checkins} check-ins · {report.matched} matched to a scored workout
+            All {report.checkins} check-ins count the same · {report.matched} matched to a scored workout
           </p>
 
           {report.headline && (
