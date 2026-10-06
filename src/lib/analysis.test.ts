@@ -56,3 +56,50 @@ describe('summarizeMuscleGroups rolling 4-week set totals', () => {
     expect(calves.setsPrior4Weeks).toBe(0);
   });
 });
+
+describe('summarizeMuscleGroups verdict readiness', () => {
+  const run = (parts: ReturnType<typeof session>[]) =>
+    summarizeMuscleGroups(
+      parts.map((p) => p.row),
+      parts.flatMap((p) => p.sets),
+      NOW,
+    );
+
+  it('reports what was logged while a group is still early', () => {
+    const summaries = run([
+      session('a', daysAgo(7), 'Lat Pulldown', 4),
+      session('b', daysAgo(3), 'Seated Cable Row', 3),
+    ]);
+    const back = summaries.find((s) => s.name === 'Back')!;
+    expect(back.verdict).toBe('insufficient');
+    expect(back.sessionsInWindow).toBe(2);
+    expect(back.liftsInWindow).toBe(2);
+  });
+
+  it('gives a verdict once lifts repeat and the group has 3 sessions', () => {
+    // Two lifts logged twice each: no single lift has 3 sessions, but the
+    // group does, and each lift can be compared against itself.
+    const summaries = run([
+      session('a', daysAgo(21), 'Lat Pulldown', 4),
+      session('b', daysAgo(14), 'Seated Cable Row', 3),
+      session('c', daysAgo(7), 'Lat Pulldown', 4),
+      session('d', daysAgo(1), 'Seated Cable Row', 3),
+    ]);
+    const back = summaries.find((s) => s.name === 'Back')!;
+    expect(back.verdict).not.toBe('insufficient');
+    expect(back.exercises.map((e) => e.sessions)).toEqual([2, 2]);
+  });
+
+  it('merges name drift onto one lift and shows the latest name', () => {
+    const summaries = run([
+      session('a', daysAgo(20), 'DB Bench Press', 3),
+      session('b', daysAgo(10), 'DB Bench Press', 3),
+      session('c', daysAgo(2), 'Flat Dumbbell Press', 3),
+    ]);
+    const chest = summaries.find((s) => s.name === 'Chest')!;
+    expect(chest.exercises).toHaveLength(1);
+    expect(chest.exercises[0].name).toBe('Flat Dumbbell Press');
+    expect(chest.exercises[0].sessions).toBe(3);
+    expect(chest.verdict).not.toBe('insufficient');
+  });
+});

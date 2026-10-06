@@ -18,7 +18,7 @@ const VERDICT_META: Record<TrendVerdict, { label: string; className: string }> =
   steady: { label: 'Steady', className: 'verdict--steady' },
   plateaued: { label: 'Plateaued', className: 'verdict--plateaued' },
   regressing: { label: 'Regressing', className: 'verdict--regressing' },
-  insufficient: { label: 'Needs data', className: 'verdict--insufficient' },
+  insufficient: { label: 'Early', className: 'verdict--insufficient' },
 };
 
 function formatVolume(volume: number): string {
@@ -126,6 +126,11 @@ function MuscleGroupCard({
   const deltaPerWeek = prior > 0 ? (last - prior) / 4 : null;
   const deltaFlat = deltaPerWeek === null || Math.abs(deltaPerWeek) < 0.5;
   const deltaClass = deltaFlat ? 'trend-flat' : deltaPerWeek > 0 ? 'trend-up' : 'trend-down';
+  // Before a trend exists, say what has been logged instead of leaving the slot empty.
+  const earlyLabel =
+    group.sessionsInWindow && group.liftsInWindow
+      ? `${group.sessionsInWindow} session${group.sessionsInWindow === 1 ? '' : 's'} · ${group.liftsInWindow} lift${group.liftsInWindow === 1 ? '' : 's'}`
+      : 'Logged';
   const deltaLabel =
     deltaPerWeek === null
       ? 'last 4 wks'
@@ -146,8 +151,13 @@ function MuscleGroupCard({
         <div className="muscle-card-body-row">
           <div className="muscle-card-stats">
             <span className="muscle-card-slope">
-              <TrendArrow pct={group.slopePctPerWeek} />
-              {group.verdict === 'insufficient' ? '' : ` ${Math.abs(group.slopePctPerWeek).toFixed(1)}%/wk`}
+              {group.verdict === 'insufficient' ? (
+                <span className="muscle-card-early">{earlyLabel}</span>
+              ) : (
+                <>
+                  <TrendArrow pct={group.slopePctPerWeek} /> {Math.abs(group.slopePctPerWeek).toFixed(1)}%/wk
+                </>
+              )}
             </span>
             <span className="muscle-card-sets">
               {formatSets(Number(avgPerWeek.toFixed(1)))} sets/wk
@@ -490,7 +500,8 @@ function Dashboard(): React.JSX.Element {
               </p>
               <ul className="dash-info-list">
                 <li><strong>Verdict</strong> — Progressing (gaining), Steady (holding), Plateaued
-                  (flat for 3+ weeks), Regressing (losing), or Needs data (fewer than 3 sessions).</li>
+                  (flat for 3+ weeks), Regressing (losing), or Early (logged, but no lift has been
+                  repeated enough to compare against itself yet: 2+ sessions of a lift and 3 in total).</li>
                 <li><strong>%/wk</strong> — average weekly change in estimated strength across the
                   group's exercises. The arrow shows direction.</li>
                 <li><strong>Sets/wk</strong> — your average working sets per week over the last 4

@@ -2548,6 +2548,11 @@ body {
   font-weight: 600;
 }
 
+.muscle-card-early {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
 .trend-arrow {
   font-size: 0.8em;
 }

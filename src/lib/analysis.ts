@@ -7,6 +7,7 @@
  */
 
 import { MUSCLE_GROUPS, classifyExercise, type MuscleGroup } from './muscles.js';
+import { canonicalLiftKey } from './peak.js';
 import { estimateOneRepMax } from './progression.js';
 
 export interface AnalysisSetRow {
@@ -58,6 +59,10 @@ export interface MuscleGroupSummary {
   setsLast4Weeks: number;
   /** Working sets in the 28 days before that, for a like-for-like comparison. */
   setsPrior4Weeks: number;
+  /** Distinct sessions in the trend window that loaded this group as the primary mover. */
+  sessionsInWindow: number;
+  /** Distinct lifts (after merging name drift) logged for this group in the trend window. */
+  liftsInWindow: number;
   exercises: ExerciseTrend[];
   bestMover?: { name: string; slopePctPerWeek: number };
   worstMover?: { name: string; slopePctPerWeek: number };
@@ -183,10 +188,12 @@ function verdictFor(slope: number, totalSessions: number, spanWeeks: number): Tr
 export function verdictExplanation(summary: {
   verdict: TrendVerdict;
   slopePctPerWeek: number;
+  sessionsInWindow?: number;
+  liftsInWindow?: number;
   bestMover?: { name: string; slopePctPerWeek: number };
   worstMover?: { name: string; slopePctPerWeek: number };
 }): string {
-  const { verdict, slopePctPerWeek, bestMover, worstMover } = summary;
+  const { verdict, slopePctPerWeek, sessionsInWindow, liftsInWindow, bestMover, worstMover } = summary;
   const pct = Math.abs(slopePctPerWeek).toFixed(1);
   switch (verdict) {
     case 'progressing':
@@ -211,8 +218,16 @@ export function verdictExplanation(summary: {
         `Change is inside the noise band (between −0.6 and +0.4%/wk) and the trend window is still short — ` +
         `holding ground, not yet a plateau.`
       );
-    case 'insufficient':
-      return `Not enough data yet — a trend needs at least 3 logged sessions per exercise in the last 8 weeks.`;
+    case 'insufficient': {
+      const logged =
+        sessionsInWindow && liftsInWindow
+          ? `${sessionsInWindow} session${sessionsInWindow === 1 ? '' : 's'} across ${liftsInWindow} lift${liftsInWindow === 1 ? '' : 's'} logged in the last 8 weeks. `
+          : '';
+      return (
+        `${logged}A strength trend compares the same lift against itself, so it needs a lift logged ` +
+        `at least twice and 3 sessions in total — one more session of any of these lifts gets there.`
+      );
+    }
   }
 }
 
@@ -224,8 +239,13 @@ export function summarizeMuscleGroups(
 ): MuscleGroupSummary[] {
   const lookup = buildLookup(sessions);
 
-  // Bucket sets by exercise, and count weekly working sets per muscle group.
-  const setsByExercise = new Map<string, AnalysisSetRow[]>();
+  // Bucket sets by lift lineage so name drift ("DB Bench Press" vs. "Flat
+  // Dumbbell Press") trends as one lift, and count weekly working sets per
+  // muscle group. Lifts outside the known lineages fall back to their name.
+  const setsByLift = new Map<string, AnalysisSetRow[]>();
+  const displayNameByLift = new Map<string, { name: string; t: number }>();
+  const liftKeyOf = (name: string) => canonicalLiftKey(name) ?? name.toLowerCase().replace(/\s+/g, ' ').trim();
+  const sessionsByGroup = new Map<MuscleGroup, Set<string>>();
   const weeklySetsByGroup = new Map<MuscleGroup, Map<string, number>>();
   // Rolling 28-day windows: [now-28d, now] and [now-56d, now-28d). Unlike the
   // ISO-week buckets these are always full, so a Monday never reads as "0
@@ -234,24 +254,35 @@ export function summarizeMuscleGroups(
   const prior4ByGroup = new Map<MuscleGroup, number>();
   for (const g of MUSCLE_GROUPS) {
     weeklySetsByGroup.set(g, new Map());
+    sessionsByGroup.set(g, new Set());
     last4ByGroup.set(g, 0);
     prior4ByGroup.set(g, 0);
   }
 
   const fourWeeksAgo = now.getTime() - 4 * 7 * DAY_MS;
+  const trendCutoff = now.getTime() - windowDays * DAY_MS;
   const eightWeeksAgo = now.getTime() - 8 * 7 * DAY_MS;
   for (const set of sets) {
-    const list = setsByExercise.get(set.exerciseName);
+    const liftKey = liftKeyOf(set.exerciseName);
+    const list = setsByLift.get(liftKey);
     if (list) list.push(set);
-    else setsByExercise.set(set.exerciseName, [set]);
+    else setsByLift.set(liftKey, [set]);
 
     const session = lookup.byId.get(set.sessionId);
     if (!session) continue;
     const t = new Date(session.date).getTime();
-    if (!Number.isFinite(t) || t < eightWeeksAgo) continue;
+    if (!Number.isFinite(t)) continue;
+    // Show each lift under whatever it was called most recently.
+    const current = displayNameByLift.get(liftKey);
+    if (!current || t > current.t) displayNameByLift.set(liftKey, { name: set.exerciseName, t });
+
+    if (t < eightWeeksAgo) continue;
     const week = isoWeekStart(new Date(session.date));
     const cls = classifyExercise(set.exerciseName);
     if (!cls) continue;
+    if (t >= trendCutoff && t <= now.getTime() && set.weight > 0 && set.reps > 0) {
+      sessionsByGroup.get(cls.primary)!.add(set.sessionId);
+    }
     // Compound lifts credit every group they load: 1 set to the primary
     // mover, a fraction to each synergist (see muscles.ts for the scale).
     for (const [group, weight] of Object.entries(cls.load) as Array<[MuscleGroup, number]>) {
@@ -266,7 +297,8 @@ export function summarizeMuscleGroups(
 
   // Trends per exercise, grouped by primary muscle.
   const trendsByGroup = new Map<MuscleGroup, ExerciseTrend[]>();
-  for (const [exerciseName, exerciseSets] of setsByExercise) {
+  for (const [liftKey, exerciseSets] of setsByLift) {
+    const exerciseName = displayNameByLift.get(liftKey)?.name ?? exerciseSets[0].exerciseName;
     const cls = classifyExercise(exerciseName);
     if (!cls) continue;
     const trend = computeExerciseTrend(exerciseName, exerciseSets, lookup, windowDays, now);
@@ -295,7 +327,10 @@ export function summarizeMuscleGroups(
     const everTrained = trends.length > 0 || weeklySets.some((w) => w.sets > 0);
     if (!everTrained) continue;
 
-    const trended = trends.filter((t) => t.sessions >= 3);
+    // A lift needs two sessions to have a slope at all; the group then needs
+    // 3 sessions in total across its trended lifts before it gets a verdict
+    // (see verdictFor), so two lifts logged twice each is enough.
+    const trended = trends.filter((t) => t.sessions >= 2);
     const totalSessions = trended.reduce((s, t) => s + t.sessions, 0);
     const weightedSlope =
       totalSessions > 0
@@ -310,7 +345,7 @@ export function summarizeMuscleGroups(
         (7 * DAY_MS);
     }
 
-    const verdict = trended.length === 0 ? 'insufficient' : verdictFor(weightedSlope, totalSessions, spanWeeks);
+    const verdict = verdictFor(weightedSlope, totalSessions, spanWeeks);
     const movers = [...trended].sort((a, b) => b.slopePctPerWeek - a.slopePctPerWeek);
 
     summaries.push({
@@ -320,6 +355,8 @@ export function summarizeMuscleGroups(
       weeklySets,
       setsLast4Weeks: Number(last4ByGroup.get(group)!.toFixed(1)),
       setsPrior4Weeks: Number(prior4ByGroup.get(group)!.toFixed(1)),
+      sessionsInWindow: sessionsByGroup.get(group)!.size,
+      liftsInWindow: trends.length,
       exercises: trends,
       bestMover: movers[0] ? { name: movers[0].name, slopePctPerWeek: movers[0].slopePctPerWeek } : undefined,
       worstMover:

@@ -29,6 +29,9 @@ export interface DashboardMuscleGroup {
   setsLast4Weeks?: number;
   /** Working sets in the 28 days before that. */
   setsPrior4Weeks?: number;
+  /** Sessions and distinct lifts logged for this group in the trend window. */
+  sessionsInWindow?: number;
+  liftsInWindow?: number;
   exercises: DashboardExerciseTrend[];
   bestMover?: { name: string; slopePctPerWeek: number };
   worstMover?: { name: string; slopePctPerWeek: number };
