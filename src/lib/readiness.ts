@@ -386,12 +386,11 @@ function buildFactorInsight(rows: SessionRow[], factor: FactorKey): FactorInsigh
   };
 }
 
+/** Chip text for one condition, kept short: "Sleep 6+", "Soreness ≤3", "No pre-workout". */
 function conditionLabel(factor: FactorKey, state: 'high' | 'low', split: Split): string {
   if (factor === 'preworkout') return state === 'high' ? 'Pre-workout' : 'No pre-workout';
-  if (factor === 'soreness') {
-    return state === 'high' ? `Sore (${split.highLabel})` : `Fresh (soreness ${split.lowLabel})`;
-  }
-  return `${FACTOR_LABELS[factor]} ${state === 'high' ? split.highLabel : split.lowLabel}`;
+  const bound = state === 'high' ? split.highLabel : `≤${(split.threshold ?? 1) - 1}`;
+  return `${FACTOR_LABELS[factor]} ${bound}`;
 }
 
 function subsets<T>(items: T[], size: number): T[][] {
@@ -488,21 +487,42 @@ function signed(n: number, suffix = ''): string {
   return `${n > 0 ? '+' : ''}${n}${suffix}`;
 }
 
+/** How each side of a factor's split reads in a sentence, e.g. "6+ sleep nights" / "5 or below". */
+export function sideLabels(insight: FactorInsight): { high: string; low: string } {
+  switch (insight.factor) {
+    case 'preworkout':
+      return { high: 'pre-workout days', low: 'days without it' };
+    case 'soreness':
+      return { high: `sore days (${insight.highLabel})`, low: `fresh days (${insight.lowLabel})` };
+    case 'sleep':
+      return { high: `${insight.highLabel} sleep nights`, low: `${insight.lowLabel} nights` };
+    default:
+      return { high: `${insight.highLabel} ${insight.label.toLowerCase()} days`, low: `${insight.lowLabel} days` };
+  }
+}
+
+/** Short direction words for a notable effect, e.g. "stronger lifts", "less soreness". */
+export function effectPhrase(effect: OutcomeEffect): string {
+  const up = effect.delta > 0;
+  switch (effect.outcome) {
+    case 'strength':
+      return up ? 'stronger lifts' : 'weaker lifts';
+    case 'effort':
+      return up ? 'harder effort' : 'less effort';
+    case 'feel':
+      return up ? 'better feel' : 'worse feel';
+    case 'soreness':
+      return up ? 'more soreness' : 'less soreness';
+    case 'sleep':
+      return up ? 'better sleep' : 'worse sleep';
+    case 'diet':
+      return up ? 'better diet' : 'worse diet';
+  }
+}
+
 /** One sentence for a single-factor effect, shared by the page and the homepage. */
 export function describeEffect(insight: FactorInsight, effect: OutcomeEffect): string {
-  const name = insight.label.toLowerCase();
-  const highDays =
-    insight.factor === 'preworkout'
-      ? 'pre-workout days'
-      : insight.factor === 'soreness'
-        ? `sore days (${insight.highLabel})`
-        : `${insight.highLabel} ${name} days`;
-  const lowDays =
-    insight.factor === 'preworkout'
-      ? 'days without it'
-      : insight.factor === 'soreness'
-        ? `fresh days (${insight.lowLabel})`
-        : `${insight.lowLabel} days`;
+  const { high: highDays, low: lowDays } = sideLabels(insight);
   const n = `(${insight.highCount} vs ${insight.lowCount} workouts)`;
   switch (effect.outcome) {
     case 'strength': {

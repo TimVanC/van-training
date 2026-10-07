@@ -99,7 +99,7 @@ describe('buildReadinessReport', () => {
     const effort = sleep.effects.find((e) => e.outcome === 'effort')!;
     expect(effort.high).toBe(8);
     expect(effort.low).toBe(6);
-    expect(report.headline).toContain('sleep days');
+    expect(report.headline).toContain('sleep nights');
   });
 
   it('does not credit a factor that made no difference', () => {
