@@ -2820,11 +2820,6 @@ body {
   font-weight: 600;
 }
 
-.combo-plus {
-  color: var(--text-muted);
-  font-weight: 400;
-}
-
 .combo-meta {
   font-size: 0.7rem;
   color: var(--text-secondary);

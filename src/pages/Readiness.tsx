@@ -162,9 +162,8 @@ function ComboList({ title, combos, tone }: { title: string; combos: ComboInsigh
         <div key={combo.conditions.map((c) => c.factor + c.state).join()} className="combo-item">
           <div className="combo-item-main">
             <div className="combo-chips">
-              {combo.conditions.map((c, i) => (
+              {combo.conditions.map((c) => (
                 <span key={c.factor} className="combo-chip">
-                  {i > 0 && <span className="combo-plus">+</span>}
                   {c.label}
                 </span>
               ))}
