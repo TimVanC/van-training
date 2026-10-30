@@ -52,7 +52,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       ownRows(
         supabase,
         'sessions',
-        'date, notes, workouts ( name, splits ( name ) ), lift_sets ( exercise_name, set_number, weight, reps, rir, plate_data ), session_exercise_notes ( exercise_name, note )',
+        'id, date, notes, workouts ( name, splits ( name ) ), lift_sets ( exercise_name, set_number, weight, reps, rir, plate_data )',
         userId,
       ),
       ownRows(
@@ -65,11 +65,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       ownRows(supabase, 'notification_settings', '*', userId),
     ]);
 
+    // Per-exercise notes, keyed to sessions by id. Additive: an export must
+    // still succeed if the notes table is missing or unreadable.
+    let exerciseNotes: unknown[] = [];
+    try {
+      exerciseNotes = await fetchAllPages((from, to) =>
+        supabase
+          .from('session_exercise_notes')
+          .select('session_id, exercise_name, note, sessions!inner ( user_id )')
+          .eq('sessions.user_id', userId)
+          .range(from, to),
+      );
+    } catch (notesError) {
+      console.error('exportData: exercise notes unavailable:', notesError);
+    }
+
     res.status(200).json({
       exportedAt: new Date().toISOString(),
       units: 'lb',
       splits,
       sessions,
+      exerciseNotes,
       importedHistory: history,
       checkins,
       notificationSettings,
