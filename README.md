@@ -16,6 +16,30 @@ That rewrites `public/icons/icon-180.png` (iPhone home screen), `icon-192.png` a
 - Running `npm run icons` with no path rebuilds from the current source at `src/assets/app-icon.png` (pass the same flags as above).
 - iOS copies the icon at "Add to Home Screen" time, so remove and re-add the app on your phone to see a new icon there. Android and desktop pick it up on the next manifest update.
 
+## Garmin backfill
+
+`scripts/garmin_backfill.py` pulls Tim's Garmin data through the official
+[Garmin Connect Personal API](https://github.com/garmin/connect-personal-api-python)
+into the raw tables `garmin_daily_raw`, `garmin_activities` and
+`garmin_sync_runs`, which the views `garmin_daily` and `training_recovery`
+read (`supabase/migrate_add_garmin_tables.sql`, `supabase/migrate_add_garmin_views.sql`).
+Field names are documented in `supabase/garmin_field_reference.md`.
+
+```bash
+python3 -m pip install -r scripts/requirements-garmin.txt      # Python 3.12+
+# .env (gitignored): GARMIN_PERSONAL_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+python3 scripts/garmin_backfill.py --inspect                   # samples to ./samples, field check, window probe
+python3 scripts/garmin_backfill.py                             # backfill 2026-02-23 .. today
+python3 scripts/garmin_backfill.py --start 2026-10-01 --datasets sleep,hrv,activities
+```
+
+Runs are idempotent and resumable: stored dates are skipped unless `--force`,
+apart from the last `--refresh-days` (default 3) which Garmin may still be
+updating. Range endpoints use 28-day windows and shrink on HTTP 400; 429/5xx
+back off exponentially; a 401 triggers one token refresh. The bearer token is
+cached in `.garmin-bearer-token.json` (gitignored). The three tables have RLS
+enabled with no policies, so only the service role can read or write them.
+
 ---
 
 # React + TypeScript + Vite

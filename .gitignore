@@ -29,3 +29,9 @@ dist-ssr
 # Local database backups (contain user data — keep out of the repo)
 backups/
 scripts/__pycache__/
+
+# Garmin Personal API: key lives in .env (already ignored); never commit the
+# cached bearer token or the raw personal health data samples.
+.garmin-bearer-token.json
+connect-personal-api-bearer-token.json
+samples/
