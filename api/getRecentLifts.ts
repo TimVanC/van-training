@@ -13,6 +13,8 @@ interface RecentLiftEntry {
 interface HistorySession {
   date: string;
   sets: RecentLiftEntry[];
+  /** Note written for this exercise in that session. */
+  note?: string;
 }
 
 interface RecommendedPlanSet {
@@ -166,6 +168,34 @@ async function fetchRecentSessions(
 }
 
 /**
+ * Per-exercise notes for a set of sessions, keyed by session id. Notes are
+ * additive, so a failure (including the table not existing yet) yields an
+ * empty map rather than an error.
+ */
+async function fetchExerciseNotes(
+  supabase: ReturnType<typeof createClient>,
+  sessionIds: string[],
+  exerciseName: string,
+): Promise<Map<string, string>> {
+  const notes = new Map<string, string>();
+  if (sessionIds.length === 0) return notes;
+  const result = await supabase
+    .from('session_exercise_notes')
+    .select('session_id, note')
+    .in('session_id', sessionIds)
+    .eq('exercise_name', exerciseName);
+  if (result.error) {
+    console.error('Failed to load exercise notes:', result.error);
+    return notes;
+  }
+  for (const row of (result.data ?? []) as Array<{ session_id: string; note: string | null }>) {
+    const note = String(row.note ?? '').trim();
+    if (note) notes.set(row.session_id, note);
+  }
+  return notes;
+}
+
+/**
  * Fetch lift rows for one session with the same column-fallback chain used
  * for the latest/previous session queries. Throws on a genuine error so the
  * caller can decide how to surface it.
@@ -263,9 +293,12 @@ export default async function handler(
     let lastTrained: string | undefined;
     let sets: RecentLiftEntry[] = [];
     let previousNote: string | undefined;
+    let previousExerciseNote: string | undefined;
     let recommendedPlan: RecommendedPlanSet[] | null = null;
     let progressionMetrics: ProgressionMetrics | undefined;
     let sessionHistory: HistorySession[] = [];
+    /** Session id behind each sessionHistory entry, for attaching notes. */
+    const historySessionIds: string[] = [];
 
     let recentSessionsResult = await fetchRecentSessions(supabase, userId, exerciseName, true);
     if (recentSessionsResult.error && isMissingColumnError(recentSessionsResult.error, 'notes')) {
@@ -338,15 +371,29 @@ export default async function handler(
               plateBreakdown: parsePlateData(row.plate_data),
             })),
           };
-          return entry;
+          return { sessionId: sessionRow.id, entry };
         }),
       );
-      sessionHistory = historyEntries.filter((entry): entry is HistorySession => entry !== null);
+      for (const item of historyEntries) {
+        if (!item) continue;
+        sessionHistory.push(item.entry);
+        historySessionIds.push(item.sessionId);
+      }
     } catch (historyError) {
       // History is additive — never fail the whole request if it can't load.
       console.error('Failed to load session history:', historyError);
       sessionHistory = [];
+      historySessionIds.length = 0;
     }
+
+    // Per-exercise notes for the latest session and each history entry.
+    const noteSessionIds = [...new Set([...(latestSession ? [latestSession.id] : []), ...historySessionIds])];
+    const exerciseNotes = await fetchExerciseNotes(supabase, noteSessionIds, exerciseName);
+    if (latestSession) previousExerciseNote = exerciseNotes.get(latestSession.id);
+    sessionHistory = sessionHistory.map((entry, i) => {
+      const note = exerciseNotes.get(historySessionIds[i] ?? '');
+      return note ? { ...entry, note } : entry;
+    });
 
     // The progression engine reads the ladder position straight from history
     // (most recent session first) — no stored state needed.
@@ -372,7 +419,17 @@ export default async function handler(
       }
     }
 
-    res.status(200).json({ lastTrained, sets, previousNote, recommendedPlan, planPhase, planRationale, progressionMetrics, sessionHistory });
+    res.status(200).json({
+      lastTrained,
+      sets,
+      previousNote,
+      previousExerciseNote,
+      recommendedPlan,
+      planPhase,
+      planRationale,
+      progressionMetrics,
+      sessionHistory,
+    });
   } catch (error) {
     console.error('Error in getRecentLifts:', error);
     res.status(500).json({ error: 'Internal Server Error' });

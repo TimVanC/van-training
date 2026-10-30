@@ -180,6 +180,12 @@ function ExerciseList({
                         <span className="workout-card-logged">{loggedLabel}</span>
                       </>
                     )}
+                    {ex.note?.trim() && (
+                      <>
+                        <span className="workout-card-dot" aria-hidden>&middot;</span>
+                        <span className="workout-card-note">note</span>
+                      </>
+                    )}
                   </span>
                 </span>
                 <span className="day-card-go workout-card-go" aria-hidden>
@@ -193,7 +199,7 @@ function ExerciseList({
 
       <div className="workout-footer dash-animate" style={{ animationDelay: `${footerDelay}ms` }}>
         <label className="input-label notes-label workout-notes">
-          Notes (optional)
+          Notes for the whole workout (optional)
           <textarea
             className="textarea-field"
             rows={3}

@@ -52,7 +52,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       ownRows(
         supabase,
         'sessions',
-        'date, notes, workouts ( name, splits ( name ) ), lift_sets ( exercise_name, set_number, weight, reps, rir, plate_data )',
+        'date, notes, workouts ( name, splits ( name ) ), lift_sets ( exercise_name, set_number, weight, reps, rir, plate_data ), session_exercise_notes ( exercise_name, note )',
         userId,
       ),
       ownRows(

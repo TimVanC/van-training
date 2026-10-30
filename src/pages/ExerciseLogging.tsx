@@ -6,6 +6,7 @@ import SetLoggingForm from '../components/SetLoggingForm';
 import LoadingOverlay from '../components/LoadingOverlay';
 import IncompleteSetModal from '../components/IncompleteSetModal';
 import RecentLiftsSection from '../components/RecentLiftsSection';
+import ExerciseNoteField from '../components/ExerciseNoteField';
 import { exerciseAlternates } from '../data/exerciseAlternates';
 import { isSledExercise, supportsAssistedMode, usesPlateInputMode } from '../data/plateModeExercises';
 import { validateLiftWeight, validateReps } from '../utils/validateSetInput';
@@ -83,6 +84,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   const [recentLifts, setRecentLifts] = useState<RecentLift[]>([]);
   const [lastTrained, setLastTrained] = useState<string | undefined>();
   const [previousNote, setPreviousNote] = useState<string | undefined>();
+  const [previousExerciseNote, setPreviousExerciseNote] = useState<string | undefined>();
   const [recommendedPlan, setRecommendedPlan] = useState<RecommendedPlanSet[] | null>(null);
   const [planRationale, setPlanRationale] = useState<string | undefined>();
   const [sessionHistory, setSessionHistory] = useState<HistorySession[]>([]);
@@ -109,6 +111,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     setRecentLifts([]);
     setLastTrained(undefined);
     setPreviousNote(undefined);
+    setPreviousExerciseNote(undefined);
     setRecommendedPlan(null);
     setPlanRationale(undefined);
     setSessionHistory([]);
@@ -134,6 +137,9 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         setRecentLifts(mappedRecentLifts);
         setLastTrained(mappedLastTrained);
         setPreviousNote(mappedPreviousNote);
+        setPreviousExerciseNote(
+          typeof data.previousExerciseNote === 'string' && data.previousExerciseNote ? data.previousExerciseNote : undefined,
+        );
         setRecommendedPlan(mappedRecommendedPlan);
         setPlanRationale(typeof data.planRationale === 'string' && data.planRationale ? data.planRationale : undefined);
         setSessionHistory(mappedSessionHistory);
@@ -394,6 +400,13 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
           completed: completed ?? ex.completed,
         }
         : ex,
+    );
+    onUpdateSession({ ...session, exercises: updated });
+  }
+
+  function updateExerciseNote(note: string): void {
+    const updated = session.exercises.map((ex, i) =>
+      i === index ? { ...ex, note: note.trim().length > 0 ? note : undefined } : ex,
     );
     onUpdateSession({ ...session, exercises: updated });
   }
@@ -857,6 +870,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         recentLifts={recentLifts}
         loading={recentLiftsLoading}
         previousNote={previousNote}
+        previousExerciseNote={previousExerciseNote}
         recommendedPlan={recommendedPlan}
         planRationale={planRationale}
         targetSets={totalSets}
@@ -864,6 +878,9 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         sledBarWeight={isSledExercise(selectedExerciseName) ? 0 : 45}
         sessionHistory={sessionHistory}
       />
+      </div>
+      <div className="logging-section dash-animate" style={{ animationDelay: '105ms' }}>
+        <ExerciseNoteField value={exercise.note ?? ''} onChange={updateExerciseNote} disabled={isSubmitting} />
       </div>
       <div className="logging-section logging-form dash-animate" style={{ animationDelay: '140ms' }}>
       <SetLoggingForm

@@ -34,6 +34,8 @@ export interface HistorySession {
   /** ISO date string in `YYYY-MM-DD` form (server-local). */
   date: string;
   sets: RecentLift[];
+  /** The note written for this exercise in that session, if any. */
+  note?: string;
 }
 
 export type ProgressionPhase = 'baseline' | 'ladder' | 'hold' | 'rep-ladder' | 'deload';
@@ -41,7 +43,10 @@ export type ProgressionPhase = 'baseline' | 'ladder' | 'hold' | 'rep-ladder' | '
 export interface RecentLiftsResponse {
   lastTrained?: string;
   sets: RecentLift[];
+  /** Day-level note from the last session that included this exercise. */
   previousNote?: string;
+  /** Note written for this exercise itself in that session. */
+  previousExerciseNote?: string;
   recommendedPlan?: RecommendedPlanSet[] | null;
   /** Which progression strategy produced the plan. */
   planPhase?: ProgressionPhase;
@@ -80,6 +85,8 @@ export interface SessionExercise {
   inputMode?: 'weight' | 'plates';
   sets: LoggedSet[];
   completed: boolean;
+  /** Note for this exercise only; the day-level note lives on the session. */
+  note?: string;
 }
 
 export interface LiftSession {

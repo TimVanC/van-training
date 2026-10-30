@@ -65,22 +65,53 @@ function isMissingColumnError(error: unknown, columnName: string): boolean {
   return message.includes(columnName) || details.includes(columnName);
 }
 
-function parseAppendBody(body: unknown): { rows: RowRecord[]; workout_id?: string; notes?: string } {
+interface ExerciseNoteInput {
+  exercise: string;
+  note: string;
+}
+
+const MAX_NOTE_LENGTH = 2000;
+
+/** Keep well-formed, non-empty per-exercise notes; one per exercise name. */
+function parseExerciseNotes(value: unknown): ExerciseNoteInput[] {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
+  const notes: ExerciseNoteInput[] = [];
+  for (const item of value) {
+    if (item === null || typeof item !== 'object') continue;
+    const o = item as { exercise?: unknown; note?: unknown };
+    const exercise = typeof o.exercise === 'string' ? o.exercise.trim() : '';
+    const note = typeof o.note === 'string' ? o.note.trim().slice(0, MAX_NOTE_LENGTH) : '';
+    if (!exercise || !note) continue;
+    const key = exercise.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    notes.push({ exercise, note });
+  }
+  return notes;
+}
+
+function parseAppendBody(body: unknown): {
+  rows: RowRecord[];
+  workout_id?: string;
+  notes?: string;
+  exercise_notes: ExerciseNoteInput[];
+} {
   if (Array.isArray(body)) {
-    return { rows: body as RowRecord[] };
+    return { rows: body as RowRecord[], exercise_notes: [] };
   }
   if (body !== null && typeof body === 'object') {
-    const o = body as { rows?: unknown; workout_id?: unknown; notes?: unknown };
+    const o = body as { rows?: unknown; workout_id?: unknown; notes?: unknown; exercise_notes?: unknown };
     if (Array.isArray(o.rows)) {
       const wid = o.workout_id;
       const workout_id =
         typeof wid === 'string' && wid.trim().length > 0 ? wid.trim() : undefined;
       const notesRaw = typeof o.notes === 'string' ? o.notes.trim() : '';
       const notes = notesRaw.length > 0 ? notesRaw : undefined;
-      return { rows: o.rows as RowRecord[], workout_id, notes };
+      return { rows: o.rows as RowRecord[], workout_id, notes, exercise_notes: parseExerciseNotes(o.exercise_notes) };
     }
   }
-  return { rows: [] };
+  return { rows: [], exercise_notes: [] };
 }
 
 function getSheetName(rows: RowRecord[]): string {
@@ -134,7 +165,12 @@ export default async function handler(
   }
 
   try {
-    const { rows, workout_id: workoutIdFromBody, notes: notesFromBody } = parseAppendBody(req.body);
+    const {
+      rows,
+      workout_id: workoutIdFromBody,
+      notes: notesFromBody,
+      exercise_notes: exerciseNotes,
+    } = parseAppendBody(req.body);
     if (!Array.isArray(rows) || rows.length === 0) {
       res.status(400).json({ error: 'Invalid body: expected non-empty rows' });
       return;
@@ -289,6 +325,16 @@ export default async function handler(
           throw liftSetInsert.error;
         }
         console.log('Lift sets insert success');
+
+        // Per-exercise notes are additive: the workout is already saved, so a
+        // problem here is logged rather than failing the submission.
+        if (exerciseNotes.length > 0) {
+          const notesInsert = await supabase.from('session_exercise_notes').insert(
+            exerciseNotes.map((n) => ({ session_id: sessionId, exercise_name: n.exercise, note: n.note })),
+          );
+          if (notesInsert.error) console.error('Exercise notes insert failed:', notesInsert.error);
+          else console.log('Exercise notes insert success:', exerciseNotes.length);
+        }
       } else {
         const cardioType =
           sheetName === 'Run_Log' ? 'Run' : sheetName === 'Bike_Log' ? 'Bike' : 'Swim';

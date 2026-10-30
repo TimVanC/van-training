@@ -4,7 +4,7 @@ import type { LiftSession } from '../types/session';
 import type { Exercise } from '../types/lift';
 import { loadSession, saveSession, clearSession } from '../utils/storage';
 import { createLiftSession, mergeLiftSessionWithTemplate } from '../utils/session';
-import { normalizeSessionToRows } from '../utils/normalizeSession';
+import { collectExerciseNotes, normalizeSessionToRows } from '../utils/normalizeSession';
 import { submitWorkout } from '../utils/submitWorkout';
 import { resolveWorkoutIdForLiftSession } from '../utils/resolveWorkoutId';
 import { supabase } from '../utils/supabaseClient';
@@ -293,7 +293,7 @@ function LiftContainer(): React.JSX.Element {
       return;
     }
     const rows = normalizeSessionToRows(session);
-    const ok = await submitWorkout(rows, workoutId, session.notes);
+    const ok = await submitWorkout(rows, workoutId, session.notes, collectExerciseNotes(session));
     if (!ok) {
       setSubmitError('Submission failed. Please try again.');
       setIsSubmitting(false);

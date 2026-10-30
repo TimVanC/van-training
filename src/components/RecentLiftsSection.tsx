@@ -22,7 +22,10 @@ function IconHistory(): React.JSX.Element {
 interface RecentLiftsSectionProps {
   recentLifts: RecentLift[];
   loading: boolean;
+  /** Day-level note from the last session with this exercise. */
   previousNote?: string;
+  /** Note written for this exercise itself in that session. */
+  previousExerciseNote?: string;
   recommendedPlan?: RecommendedPlanSet[] | null;
   /** Why the engine chose this plan — shown under the recommended sets. */
   planRationale?: string;
@@ -78,10 +81,48 @@ function formatPlateBreakdown(lift: RecentLift): string | null {
   return parts.length > 0 ? parts.join(', ') : '';
 }
 
+/** A collapsible previous note: the exercise note and the day note each get one. */
+function NoteDisclosure({ label, text }: { label: string; text: string }): React.JSX.Element | null {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isFullExpanded, setIsFullExpanded] = useState(false);
+  const noteText = text.trim();
+  if (noteText.length === 0) return null;
+  const previewMax = 62;
+  const preview = noteText.length > previewMax ? `${noteText.slice(0, previewMax).trimEnd()}...` : noteText;
+  const shouldShowMoreToggle = noteText.length > 240;
+  return (
+    <div className="recent-lifts-note">
+      <button
+        type="button"
+        className="recent-lifts-header recent-lifts-header--note"
+        onClick={() => {
+          setIsExpanded((v) => !v);
+          if (isExpanded) setIsFullExpanded(false);
+        }}
+        aria-expanded={isExpanded}
+      >
+        <span className="recent-lifts-note-label">{isExpanded ? label : `${label}: "${preview}"`}</span>
+        <span className={`recent-lifts-caret recent-lifts-note-caret ${isExpanded ? 'recent-lifts-note-caret--open' : ''}`}>
+          <IconCaretDown />
+        </span>
+      </button>
+      <div className={`recent-lifts-note-panel ${isExpanded ? 'recent-lifts-note-panel--expanded' : ''}`} aria-hidden={!isExpanded}>
+        <p className={`recent-lifts-previous-note ${isFullExpanded ? 'recent-lifts-previous-note--expanded' : ''}`}>&quot;{noteText}&quot;</p>
+        {shouldShowMoreToggle && (
+          <button type="button" className="recent-lifts-note-more" onClick={() => setIsFullExpanded((v) => !v)}>
+            {isFullExpanded ? 'Show less' : 'Show more'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function RecentLiftsSection({
   recentLifts,
   loading,
   previousNote,
+  previousExerciseNote,
   recommendedPlan,
   planRationale,
   targetSets = 3,
@@ -91,15 +132,7 @@ function RecentLiftsSection({
 }: RecentLiftsSectionProps): React.JSX.Element {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isSuggestionExpanded, setIsSuggestionExpanded] = useState(false);
-  const [isNoteExpanded, setIsNoteExpanded] = useState(false);
-  const [isNoteFullExpanded, setIsNoteFullExpanded] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const noteText = String(previousNote ?? '').trim();
-  const previewMax = 62;
-  const notePreview =
-    noteText.length > previewMax ? `${noteText.slice(0, previewMax).trimEnd()}...` : noteText;
-  const shouldRenderNote = noteText.length > 0;
-  const shouldShowMoreToggle = noteText.length > 240;
   const hasMissingPlateData =
     inputMode === 'plates' && recentLifts.some((lift) => lift.plateBreakdown == null);
 
@@ -167,41 +200,8 @@ function RecentLiftsSection({
                 One or more recent plate-based sets are missing plate data.
               </p>
             )}
-            {shouldRenderNote && (
-              <div className="recent-lifts-note">
-                <button
-                  type="button"
-                  className="recent-lifts-header recent-lifts-header--note"
-                  onClick={() => {
-                    setIsNoteExpanded((v) => !v);
-                    if (isNoteExpanded) setIsNoteFullExpanded(false);
-                  }}
-                  aria-expanded={isNoteExpanded}
-                >
-                  <span className="recent-lifts-note-label">
-                    {isNoteExpanded ? 'Note' : `Note: "${notePreview}"`}
-                  </span>
-                  <span className={`recent-lifts-caret recent-lifts-note-caret ${isNoteExpanded ? 'recent-lifts-note-caret--open' : ''}`}>
-                    <IconCaretDown />
-                  </span>
-                </button>
-                <div
-                  className={`recent-lifts-note-panel ${isNoteExpanded ? 'recent-lifts-note-panel--expanded' : ''}`}
-                  aria-hidden={!isNoteExpanded}
-                >
-                  <p className={`recent-lifts-previous-note ${isNoteFullExpanded ? 'recent-lifts-previous-note--expanded' : ''}`}>&quot;{noteText}&quot;</p>
-                  {shouldShowMoreToggle && (
-                    <button
-                      type="button"
-                      className="recent-lifts-note-more"
-                      onClick={() => setIsNoteFullExpanded((v) => !v)}
-                    >
-                      {isNoteFullExpanded ? 'Show less' : 'Show more'}
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
+            <NoteDisclosure label="Exercise note" text={previousExerciseNote ?? ''} />
+            <NoteDisclosure label="Day note" text={previousNote ?? ''} />
           </div>
         </div>
       </div>
@@ -217,6 +217,7 @@ function RecentLiftsSection({
               sessionHistory.map((historySession, si) => (
                 <div key={`${historySession.date}-${si}`} className="history-session-block">
                   <p className="history-session-date">{formatHistoryDate(historySession.date)}</p>
+                  {historySession.note && <p className="history-session-note">&quot;{historySession.note}&quot;</p>}
                   {historySession.sets.map((set, i) => {
                     const rir = set.rir == null || String(set.rir).trim() === '' ? 0 : set.rir;
                     const plateText = formatPlateBreakdown(set);

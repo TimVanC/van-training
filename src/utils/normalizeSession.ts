@@ -66,3 +66,29 @@ function normalizeLift(session: LiftSession): LiftRow[] {
 export function normalizeSessionToRows(session: LiftSession): LiftRow[] {
   return normalizeLift(session);
 }
+
+export interface ExerciseNote {
+  /** The name the sets were logged under (the swap, when one was used). */
+  exercise: string;
+  note: string;
+}
+
+/**
+ * One note per exercise that has one, independent of the set rows so a note
+ * on a skipped exercise still gets saved. The first note wins when two
+ * entries resolve to the same name.
+ */
+export function collectExerciseNotes(session: LiftSession): ExerciseNote[] {
+  const seen = new Set<string>();
+  const notes: ExerciseNote[] = [];
+  for (const exercise of session.exercises) {
+    const note = exercise.note?.trim() ?? '';
+    const name = (exercise.activeName ?? exercise.name).trim();
+    if (!note || !name) continue;
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    notes.push({ exercise: name, note });
+  }
+  return notes;
+}
