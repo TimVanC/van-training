@@ -52,7 +52,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         .select('date, workouts(name, splits(name))')
         .eq('user_id', userId)
         .order('date', { ascending: true }),
-      supabase.from('splits').select('name, workouts(name, order_index)').eq('user_id', userId),
+      supabase.from('splits').select('name, is_preferred, workouts(name, order_index)').eq('user_id', userId),
     ]);
     if (subsResult.error) throw subsResult.error;
     if (sessionsResult.error) throw sessionsResult.error;
@@ -69,10 +69,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       const split = workout ? unwrap(workout.splits) : null;
       return { date: s.date, dayName: workout?.name ?? 'Workout', splitName: split?.name ?? '' };
     });
-    const splits = (splitsResult.data ?? []) as Array<{ name: string; workouts: UpNextSplit['workouts'] | null }>;
+    const splits = (splitsResult.data ?? []) as Array<{
+      name: string;
+      is_preferred: boolean | null;
+      workouts: UpNextSplit['workouts'] | null;
+    }>;
     const upNext = computeUpNext(
       sessions,
-      splits.map((s) => ({ name: s.name, workouts: s.workouts ?? [] })),
+      splits.map((s) => ({ name: s.name, isPreferred: s.is_preferred === true, workouts: s.workouts ?? [] })),
     );
 
     const result = await sendToSubscriptions(supabase, subscriptions, testMessage(upNext));

@@ -9,7 +9,7 @@ import {
   type AnalysisSetRow,
   type CheckinRow,
 } from '../src/lib/analysis.js';
-import { computeNextDayName, type RotationDay } from '../src/lib/rotation.js';
+import { computeNextDayName, pickActiveSplit, type RotationDay } from '../src/lib/rotation.js';
 import { computeMuscleHeadReport } from '../src/lib/muscleHeads.js';
 import { buildReadinessReport } from '../src/lib/readiness.js';
 
@@ -190,15 +190,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     // --- Rotation: which day is up next? ----------------------------------
     const { data: splitRows, error: splitError } = await supabase
       .from('splits')
-      .select('id, name, workouts(id, name, order_index)')
+      .select('id, name, is_preferred, workouts(id, name, order_index)')
       .eq('user_id', userId);
     if (splitError) throw splitError;
 
     const realSplits = ((splitRows ?? []) as Array<{
       id: string;
       name: string;
+      is_preferred: boolean | null;
       workouts: Array<{ id: string; name: string; order_index: number }> | null;
-    }>).filter((s) => s.name.trim().toLowerCase() !== 'import split');
+    }>)
+      .filter((s) => s.name.trim().toLowerCase() !== 'import split')
+      .map((s) => ({ ...s, isPreferred: s.is_preferred === true }));
 
     // Last-trained dates are scoped per split — two splits can both have a
     // "Push A", and one split's session must not advance the other's rotation.
@@ -206,6 +209,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     // toward every split so history keeps working.
     function buildRotation(split: (typeof realSplits)[number]): {
       splitName: string;
+      isPreferred: boolean;
       days: RotationDay[];
       nextDayName: string | null;
     } {
@@ -224,20 +228,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         seen.add(w.name);
         days.push({ name: w.name, lastTrained: lastTrainedByDayName.get(w.name) });
       }
-      return { splitName: split.name, days, nextDayName: computeNextDayName(days) };
+      return {
+        splitName: split.name,
+        isPreferred: split.isPreferred,
+        days,
+        nextDayName: computeNextDayName(days),
+      };
     }
 
-    // The hero follows whichever split was trained most recently, so switching
-    // splits is self-correcting: complete one workout in the new split and it
-    // becomes the default. Brand-new users fall back to the first split.
-    let activeSplitName: string | null = null;
-    for (let i = sessions.length - 1; i >= 0; i--) {
-      const name = sessions[i].splitName;
-      if (name && realSplits.some((s) => s.name === name)) {
-        activeSplitName = name;
-        break;
-      }
-    }
+    // The hero follows the starred split, else whichever split was trained
+    // most recently (see pickActiveSplit).
+    const activeSplitName = pickActiveSplit(realSplits, sessions)?.name ?? null;
 
     const rotations = realSplits.map(buildRotation);
     const activeIndex = Math.max(

@@ -10,7 +10,7 @@
  * reminders at 5pm) never produces a "morning" ping at dinner.
  */
 
-import { computeNextDayName, type RotationDay } from './rotation.js';
+import { computeNextDayName, pickActiveSplit, type RotationDay } from './rotation.js';
 
 export const DEFAULT_TIMEZONE = 'America/New_York';
 /** How long after the configured time a reminder may still be sent. */
@@ -107,6 +107,8 @@ export interface UpNextSession {
 
 export interface UpNextSplit {
   name: string;
+  /** Starred as the user's default split. */
+  isPreferred?: boolean;
   workouts: Array<{ name: string; order_index: number }>;
 }
 
@@ -116,22 +118,15 @@ export interface UpNext {
 }
 
 /**
- * Which day is up next, mirroring the dashboard hero: follow the most recently
- * trained split and pick the rotation day that has gone longest untrained.
- * `sessions` must be sorted by date ascending.
+ * Which day is up next, mirroring the dashboard hero: follow the user's
+ * preferred split (else the most recently trained one) and pick the rotation
+ * day that has gone longest untrained. `sessions` must be sorted by date
+ * ascending.
  */
 export function computeUpNext(sessions: UpNextSession[], splits: UpNextSplit[]): UpNext | null {
   const realSplits = splits.filter((s) => s.name.trim().toLowerCase() !== 'import split');
-  if (realSplits.length === 0) return null;
-
-  let active = realSplits[0];
-  for (let i = sessions.length - 1; i >= 0; i--) {
-    const match = realSplits.find((s) => s.name === sessions[i].splitName);
-    if (match) {
-      active = match;
-      break;
-    }
-  }
+  const active = pickActiveSplit(realSplits, sessions);
+  if (!active) return null;
 
   const lastTrained = new Map<string, string>();
   for (const session of sessions) {

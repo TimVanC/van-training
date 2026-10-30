@@ -40,6 +40,8 @@ export interface DashboardMuscleGroup {
 
 export interface DashboardRotation {
   splitName: string;
+  /** Starred as the user's default split. Optional for responses that predate the field. */
+  isPreferred?: boolean;
   days: Array<{ name: string; lastTrained?: string }>;
   nextDayName: string | null;
 }

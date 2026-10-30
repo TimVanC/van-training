@@ -42,6 +42,7 @@ interface SessionQueryRow {
 
 interface SplitQueryRow {
   name: string;
+  is_preferred: boolean | null;
   workouts: Array<{ name: string; order_index: number }> | null;
 }
 
@@ -107,7 +108,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
           .select('date, workouts(name, splits(name))')
           .eq('user_id', row.user_id)
           .order('date', { ascending: true }),
-        supabase.from('splits').select('name, workouts(name, order_index)').eq('user_id', row.user_id),
+        supabase.from('splits').select('name, is_preferred, workouts(name, order_index)').eq('user_id', row.user_id),
         supabase
           .from('push_subscriptions')
           .select('id, user_id, endpoint, p256dh, auth')
@@ -125,7 +126,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
       const splits = (splitsResult.data ?? []) as SplitQueryRow[];
       const upNext = computeUpNext(
         sessions,
-        splits.map((s): UpNextSplit => ({ name: s.name, workouts: s.workouts ?? [] })),
+        splits.map((s): UpNextSplit => ({
+          name: s.name,
+          isPreferred: s.is_preferred === true,
+          workouts: s.workouts ?? [],
+        })),
       );
       const trainedToday = sessions.some(
         (s) => localTimeIn(new Date(s.date), settings.timezone).dateKey === local.dateKey,
