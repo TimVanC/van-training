@@ -1,16 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../utils/supabaseClient';
-import { computeNextDayName } from '../lib/rotation.js';
-
-function dayKind(dayName: string): string {
-  const n = dayName.toLowerCase();
-  if (n.includes('push')) return 'push';
-  if (n.includes('pull')) return 'pull';
-  if (n.includes('leg')) return 'legs';
-  if (n.includes('core')) return 'core';
-  return 'other';
-}
+import { computeNextDayName, dayKind } from '../lib/rotation.js';
 
 /** Whole calendar days between two dates, compared at LOCAL midnight so an
  *  evening workout logged yesterday reads as "yesterday", not "today". */

@@ -35,6 +35,24 @@ export function isAccessoryDay(name: string): boolean {
  * `lastTrained` values must be comparable date strings (ISO); an empty/absent
  * value means never trained and sorts before any real date.
  */
+export type DayKind = 'push' | 'pull' | 'legs' | 'upper' | 'lower' | 'core' | 'other';
+
+/**
+ * What kind of day a workout name describes, for colour coding across the
+ * day picker, home mini-calendar and calendar. Every kind has its own colour
+ * so no two days of a split look alike.
+ */
+export function dayKind(dayName: string): DayKind {
+  const n = dayName.toLowerCase();
+  if (n.includes('push')) return 'push';
+  if (n.includes('pull')) return 'pull';
+  if (n.includes('leg')) return 'legs';
+  if (n.includes('upper')) return 'upper';
+  if (n.includes('lower')) return 'lower';
+  if (n.includes('core')) return 'core';
+  return 'other';
+}
+
 export interface ActiveSplitCandidate {
   name: string;
   /** The split the user starred as their default. */

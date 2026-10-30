@@ -1,5 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { computeNextDayName, describeSplitDays, pickActiveSplit } from './rotation';
+import { computeNextDayName, dayKind, describeSplitDays, pickActiveSplit } from './rotation';
+
+describe('dayKind', () => {
+  it('gives every day of a PPL/UL split its own kind', () => {
+    const kinds = ['Push', 'Pull', 'Legs', 'Upper', 'Lower', 'Core'].map(dayKind);
+    expect(kinds).toEqual(['push', 'pull', 'legs', 'upper', 'lower', 'core']);
+    expect(new Set(kinds).size).toBe(kinds.length);
+  });
+
+  it('reads variants and falls back to other', () => {
+    expect(dayKind('Legs + Shoulders')).toBe('legs');
+    expect(dayKind('Push - B')).toBe('push');
+    expect(dayKind('Core - Short')).toBe('core');
+    expect(dayKind('Shouldies')).toBe('other');
+  });
+});
 
 describe('computeNextDayName', () => {
   it('suggests the day that has gone longest without training', () => {

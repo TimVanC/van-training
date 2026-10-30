@@ -8,6 +8,7 @@ import type {
   DashboardSession,
 } from '../types/dashboard';
 import { verdictExplanation, type TrendVerdict } from '../lib/analysis.js';
+import { dayKind } from '../lib/rotation.js';
 import { funComparisonLabel } from '../data/weightComparisons';
 import { loadSession } from '../utils/storage';
 
@@ -203,15 +204,6 @@ function localDateKey(date: Date): string {
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
-}
-
-function dayKind(dayName: string): string {
-  const n = dayName.toLowerCase();
-  if (n.includes('push')) return 'push';
-  if (n.includes('pull')) return 'pull';
-  if (n.includes('leg')) return 'legs';
-  if (n.includes('core')) return 'core';
-  return 'other';
 }
 
 interface MiniCalCell {
@@ -652,6 +644,8 @@ function Dashboard(): React.JSX.Element {
                 <span className="mini-cal-legend-item"><i className="legend-dot legend-dot--push" /> Push</span>
                 <span className="mini-cal-legend-item"><i className="legend-dot legend-dot--pull" /> Pull</span>
                 <span className="mini-cal-legend-item"><i className="legend-dot legend-dot--legs" /> Legs</span>
+                <span className="mini-cal-legend-item"><i className="legend-dot legend-dot--upper" /> Upper</span>
+                <span className="mini-cal-legend-item"><i className="legend-dot legend-dot--lower" /> Lower</span>
                 <span className="mini-cal-legend-item"><i className="legend-dot legend-dot--core" /> Core</span>
               </div>
               <span className="dash-strip-link">Open full calendar →</span>

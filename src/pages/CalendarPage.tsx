@@ -6,16 +6,7 @@ import type { DashboardSession } from '../types/dashboard';
 const numberFormatter = new Intl.NumberFormat('en-US');
 const WEEKDAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-type DayKind = 'push' | 'pull' | 'legs' | 'core' | 'other';
-
-function dayKind(dayName: string): DayKind {
-  const n = dayName.toLowerCase();
-  if (n.includes('push')) return 'push';
-  if (n.includes('pull')) return 'pull';
-  if (n.includes('leg')) return 'legs';
-  if (n.includes('core')) return 'core';
-  return 'other';
-}
+import { dayKind } from '../lib/rotation.js';
 
 function localDateKey(iso: string): string {
   const d = new Date(iso);
@@ -167,6 +158,8 @@ function CalendarPage(): React.JSX.Element {
               <span className="calendar-legend-item"><i className="legend-dot legend-dot--push" /> Push</span>
               <span className="calendar-legend-item"><i className="legend-dot legend-dot--pull" /> Pull</span>
               <span className="calendar-legend-item"><i className="legend-dot legend-dot--legs" /> Legs</span>
+              <span className="calendar-legend-item"><i className="legend-dot legend-dot--upper" /> Upper</span>
+              <span className="calendar-legend-item"><i className="legend-dot legend-dot--lower" /> Lower</span>
               <span className="calendar-legend-item"><i className="legend-dot legend-dot--core" /> Core</span>
             </div>
           </div>

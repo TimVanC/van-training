@@ -19,6 +19,8 @@
   --accent-blue: #006bb6;
   --accent-blue-hover: #00578f;
   --success: #22c55e;
+  --accent-cyan: #06b6d4;
+  --accent-yellow: #eab308;
   --warning: #f59e0b;
   --danger: #ef4444;
   --radius: 8px;
@@ -3141,6 +3143,14 @@ body {
   background: linear-gradient(145deg, rgba(34, 197, 94, 0.75), rgba(34, 197, 94, 0.45));
 }
 
+.mini-cal-day--upper {
+  background: linear-gradient(145deg, rgba(6, 182, 212, 0.8), rgba(6, 182, 212, 0.5));
+}
+
+.mini-cal-day--lower {
+  background: linear-gradient(145deg, rgba(234, 179, 8, 0.8), rgba(234, 179, 8, 0.5));
+}
+
 .mini-cal-day--core {
   background: linear-gradient(145deg, rgba(168, 85, 247, 0.75), rgba(168, 85, 247, 0.45));
 }
@@ -3288,6 +3298,14 @@ body {
 
 .day-card-bar--legs {
   background: var(--success);
+}
+
+.day-card-bar--upper {
+  background: var(--accent-cyan);
+}
+
+.day-card-bar--lower {
+  background: var(--accent-yellow);
 }
 
 .day-card-bar--core {
@@ -3955,6 +3973,14 @@ body {
   background: linear-gradient(145deg, rgba(34, 197, 94, 0.75), rgba(34, 197, 94, 0.45));
 }
 
+.calendar-day--upper {
+  background: linear-gradient(145deg, rgba(6, 182, 212, 0.8), rgba(6, 182, 212, 0.5));
+}
+
+.calendar-day--lower {
+  background: linear-gradient(145deg, rgba(234, 179, 8, 0.8), rgba(234, 179, 8, 0.5));
+}
+
 .calendar-day--core {
   background: linear-gradient(145deg, rgba(168, 85, 247, 0.75), rgba(168, 85, 247, 0.45));
 }
@@ -3994,6 +4020,14 @@ body {
 
 .legend-dot--legs {
   background-color: var(--success);
+}
+
+.legend-dot--upper {
+  background-color: var(--accent-cyan);
+}
+
+.legend-dot--lower {
+  background-color: var(--accent-yellow);
 }
 
 .legend-dot--core {
