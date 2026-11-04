@@ -6,7 +6,6 @@ import SetLoggingForm from '../components/SetLoggingForm';
 import LoadingOverlay from '../components/LoadingOverlay';
 import IncompleteSetModal from '../components/IncompleteSetModal';
 import RecentLiftsSection from '../components/RecentLiftsSection';
-import ExerciseNoteField from '../components/ExerciseNoteField';
 import { exerciseAlternates } from '../data/exerciseAlternates';
 import { isSledExercise, supportsAssistedMode, usesPlateInputMode } from '../data/plateModeExercises';
 import { validateLiftWeight, validateReps } from '../utils/validateSetInput';
@@ -877,10 +876,10 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         inputMode={inputMode}
         sledBarWeight={isSledExercise(selectedExerciseName) ? 0 : 45}
         sessionHistory={sessionHistory}
+        exerciseNote={exercise.note ?? ''}
+        onExerciseNoteChange={updateExerciseNote}
+        noteDisabled={isSubmitting}
       />
-      </div>
-      <div className="logging-section dash-animate" style={{ animationDelay: '105ms' }}>
-        <ExerciseNoteField value={exercise.note ?? ''} onChange={updateExerciseNote} disabled={isSubmitting} />
       </div>
       <div className="logging-section logging-form dash-animate" style={{ animationDelay: '140ms' }}>
       <SetLoggingForm

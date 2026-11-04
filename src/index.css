@@ -5330,3 +5330,31 @@ body {
 .settings-delete-actions .settings-btn {
   text-align: center;
 }
+
+/* Exercise note: hidden behind a pencil button mirroring the history button. */
+.recent-lifts-note-tab {
+  position: relative;
+}
+
+.recent-lifts-note-dot {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.3rem;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.recent-lifts-history-tab--open .recent-lifts-note-dot,
+.recent-lifts-note-tab:hover .recent-lifts-note-dot {
+  background: #1a0d00;
+}
+
+.recent-lifts-tab-spacer {
+  flex: 0 0 2.1rem;
+}
+
+.recent-lifts-note-edit {
+  margin-bottom: 0.25rem;
+}

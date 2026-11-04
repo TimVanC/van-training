@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import ExerciseNoteField from './ExerciseNoteField';
 import type { HistorySession, RecommendedPlanSet, RecentLift } from '../types/session';
 import { formatHistoryDate } from '../utils/format';
 
@@ -6,6 +7,15 @@ function IconCaretDown(): React.JSX.Element {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="m6 9 6 6 6-6" />
+    </svg>
+  );
+}
+
+function IconNote(): React.JSX.Element {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
     </svg>
   );
 }
@@ -40,6 +50,10 @@ interface RecentLiftsSectionProps {
   sledBarWeight?: number;
   /** Up to 10 recent sessions rendered in the side-drawer history view. */
   sessionHistory?: HistorySession[];
+  /** This workout's note for the exercise; editing lives behind the note button. */
+  exerciseNote?: string;
+  onExerciseNoteChange?: (value: string) => void;
+  noteDisabled?: boolean;
 }
 
 const PLATE_DENOMS = [45, 35, 25, 10, 5, 2.5];
@@ -129,8 +143,19 @@ function RecentLiftsSection({
   inputMode = 'weight',
   sledBarWeight = 45,
   sessionHistory,
+  exerciseNote = '',
+  onExerciseNoteChange,
+  noteDisabled = false,
 }: RecentLiftsSectionProps): React.JSX.Element {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isNoteOpen, setIsNoteOpen] = useState(false);
+  const noteInputRef = useRef<HTMLTextAreaElement>(null);
+  const hasNote = exerciseNote.trim().length > 0;
+  const canEditNote = onExerciseNoteChange != null;
+
+  useEffect(() => {
+    if (isNoteOpen) noteInputRef.current?.focus({ preventScroll: true });
+  }, [isNoteOpen]);
   const [isSuggestionExpanded, setIsSuggestionExpanded] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const hasMissingPlateData =
@@ -139,6 +164,24 @@ function RecentLiftsSection({
   return (
     <div className="recent-lifts">
       <div className="recent-lifts-header-row">
+        {canEditNote ? (
+          <button
+            type="button"
+            className={`recent-lifts-history-tab recent-lifts-note-tab ${isNoteOpen ? 'recent-lifts-history-tab--open' : ''}`}
+            onClick={(e) => {
+              e.currentTarget.blur();
+              setIsNoteOpen((v) => !v);
+            }}
+            aria-expanded={isNoteOpen}
+            aria-label={hasNote ? 'Edit note for this exercise' : 'Add note for this exercise'}
+            title="Exercise note"
+          >
+            <IconNote />
+            {hasNote && <span className="recent-lifts-note-dot" aria-hidden />}
+          </button>
+        ) : (
+          <span className="recent-lifts-tab-spacer" aria-hidden />
+        )}
         <button
           type="button"
           className="recent-lifts-header"
@@ -164,6 +207,23 @@ function RecentLiftsSection({
           <IconHistory />
         </button>
       </div>
+      {canEditNote && (
+        <div
+          className={`recent-lifts-panel recent-lifts-note-edit-panel ${isNoteOpen ? 'recent-lifts-panel--expanded' : ''}`}
+          aria-hidden={!isNoteOpen}
+        >
+          <div className="recent-lifts-inner">
+            <div className="recent-lifts-content recent-lifts-note-edit">
+              <ExerciseNoteField
+                value={exerciseNote}
+                onChange={onExerciseNoteChange}
+                disabled={noteDisabled || !isNoteOpen}
+                inputRef={noteInputRef}
+              />
+            </div>
+          </div>
+        </div>
+      )}
       <div className={`recent-lifts-panel ${isExpanded ? 'recent-lifts-panel--expanded' : ''}`}>
         <div className="recent-lifts-inner">
           <div className="recent-lifts-content">

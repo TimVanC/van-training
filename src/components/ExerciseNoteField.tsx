@@ -2,14 +2,16 @@ interface ExerciseNoteFieldProps {
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  inputRef?: React.Ref<HTMLTextAreaElement>;
 }
 
 /** Free-text note for one exercise in the current workout (the day-level note lives on the exercise list). */
-function ExerciseNoteField({ value, onChange, disabled = false }: ExerciseNoteFieldProps): React.JSX.Element {
+function ExerciseNoteField({ value, onChange, disabled = false, inputRef }: ExerciseNoteFieldProps): React.JSX.Element {
   return (
     <label className="input-label notes-label exercise-note-field">
-      Note for this exercise (optional)
+      Note for this exercise
       <textarea
+        ref={inputRef}
         className="textarea-field"
         rows={2}
         value={value}
