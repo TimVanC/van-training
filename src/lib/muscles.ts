@@ -180,13 +180,21 @@ const CORE = {
   pushUp: [0.3, 0.3, 0.1, 0.6],
 } as const;
 
+const BARE_NAMES: Record<string, string> = {
+  landmine: 'landmine row',
+  overhead: 'overhead triceps extension',
+};
+
 function profile(primary: MuscleGroup, load: MuscleLoad, heads: HeadEmphasisMap): ExerciseProfile {
   return { primary, load: { [primary]: 1, ...load }, heads };
 }
 
 /** Resolve the full muscle profile for a free-text exercise name. */
 export function exerciseProfile(exerciseName: string): ExerciseProfile | null {
-  const n = exerciseName.toLowerCase();
+  const raw = exerciseName.trim().toLowerCase();
+  // Bare names from the imported spreadsheet history, resolved from the day
+  // they were logged on ("Landmine" on a pull day, "Overhead" on triceps day).
+  const n = BARE_NAMES[raw] ?? raw;
   const has = (...keys: string[]) => keys.some((k) => n.includes(k));
   const word = (re: RegExp) => re.test(n);
 
@@ -226,6 +234,10 @@ export function exerciseProfile(exerciseName: string): ExerciseProfile | null {
   }
 
   // ------------------------------------------------------------------- Hinges
+  if (has('reverse nordic')) {
+    // Knee extension with the hip open: rectus femoris-biased quad work.
+    return profile('Quads', {}, { Quads: QUAD.extension });
+  }
   if (has('nordic', 'leg curl', 'hamstring curl', 'ham curl', 'lying curl', 'seated curl', 'glute ham', 'ghr')) {
     const seated = has('seated');
     // Gastrocnemius crosses the knee and assists knee flexion, most on lying curls.
@@ -276,7 +288,7 @@ export function exerciseProfile(exerciseName: string): ExerciseProfile | null {
   }
 
   // -------------------------------------------------------------- Knee-dominant
-  if (has('leg extension', 'sissy')) {
+  if (has('leg extension', 'quad extension', 'sissy')) {
     return profile('Quads', {}, { Quads: QUAD.extension });
   }
   if (has('lunge', 'bulgarian', 'split squat', 'step up', 'step-up', 'stepup', 'pistol')) {
@@ -332,7 +344,7 @@ export function exerciseProfile(exerciseName: string): ExerciseProfile | null {
       { Shoulders: DELT.upright, Back: BACK.upperTraps, Biceps: BI.brachialis },
     );
   }
-  if (has('lateral raise', 'lateral', 'lean-away', 'lean away', 'side raise', 'y raise', 'y-raise')) {
+  if (has('lateral raise', 'lateral', 'laterial', 'lat raise', 'lean-away', 'lean away', 'side raise', 'y raise', 'y-raise')) {
     // Upper traps take over above shoulder height, especially with dumbbells.
     return profile('Shoulders', { Back: 0.2 }, { Shoulders: DELT.side, Back: BACK.upperTraps });
   }
@@ -394,7 +406,8 @@ export function exerciseProfile(exerciseName: string): ExerciseProfile | null {
   // ------------------------------------------------------------------ Biceps
   if (has('curl')) {
     let heads: readonly number[] = BI.even;
-    if (has('hammer', 'reverse', 'rope', 'zottman', 'cross-body', 'cross body', 'neutral')) heads = BI.brachialis;
+    // No forearm group: wrist curls land on the brachialis/brachioradialis column.
+    if (has('hammer', 'reverse', 'rope', 'zottman', 'cross-body', 'cross body', 'neutral', 'wrist')) heads = BI.brachialis;
     else if (has('incline', 'bayesian', 'drag', 'behind')) heads = BI.longHead;
     else if (has('preacher', 'spider', 'concentration', 'wide')) heads = BI.shortHead;
     else if (has('close', 'narrow')) heads = BI.longHead;
@@ -439,7 +452,7 @@ export function exerciseProfile(exerciseName: string): ExerciseProfile | null {
     );
   }
   if (has('pulldown', 'pull down', 'pull-up', 'pull up', 'pullup', 'chin-up', 'chin up', 'chinup', 'chins', 'muscle up') || word(/\blat\b/)) {
-    const supinated = has('chin-up', 'chin up', 'chinup', 'chins', 'underhand', 'supinated', 'reverse grip');
+    const supinated = has('chin-up', 'chin up', 'chinup', 'chins', 'underhand', 'supinated', 'reverse grip', 'sup ', 'bicep pulldown');
     const neutral = has('neutral', 'hammer', 'v-bar', 'v bar', 'close grip', 'close-grip');
     const bodyweight = has('pull-up', 'pull up', 'pullup', 'chin-up', 'chin up', 'chinup', 'muscle up');
     return profile(
@@ -496,7 +509,7 @@ export function exerciseProfile(exerciseName: string): ExerciseProfile | null {
   }
   // A bare "extension" that survived every check above is almost always a
   // cable triceps extension in this catalog.
-  if (has('extension')) {
+  if (has('extension') || word(/\bext\b/)) {
     return profile('Triceps', {}, { Triceps: TRI.even });
   }
   if (has('raise')) {

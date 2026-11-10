@@ -12,6 +12,8 @@ import {
 import { computeNextDayName, pickActiveSplit, type RotationDay } from '../src/lib/rotation.js';
 import { computeMuscleHeadReport } from '../src/lib/muscleHeads.js';
 import { buildReadinessReport } from '../src/lib/readiness.js';
+import { fatigueByOccurrence, orderExercises, type ExerciseLog } from '../src/lib/fatigue.js';
+import { loadProgramOrder } from './_lib/exerciseOrder.js';
 
 interface SessionQueryRow {
   id: string;
@@ -163,7 +165,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
 
     // --- Analyze ----------------------------------------------------------
     const now = new Date();
-    const muscleGroups = summarizeMuscleGroups(sessions, sets, now);
+    // Upstream fatigue per exercise occurrence, so a lift that dips after a
+    // heavier compound earlier in the day isn't read as regressing.
+    let fatigue: ReturnType<typeof fatigueByOccurrence> | undefined;
+    try {
+      const programOrder = await loadProgramOrder(supabase, userId, sessionRows.map((r) => r.workout_id ?? ''));
+      const logsBySession = new Map<string, Map<string, ExerciseLog>>();
+      for (const set of sets) {
+        const logs = logsBySession.get(set.sessionId) ?? new Map<string, ExerciseLog>();
+        const log = logs.get(set.exerciseName) ?? { exerciseName: set.exerciseName, sets: [] };
+        log.sets.push({ weight: set.weight, reps: set.reps, rir: set.rir });
+        logs.set(set.exerciseName, log);
+        logsBySession.set(set.sessionId, logs);
+      }
+      fatigue = fatigueByOccurrence(
+        sessionRows.map((row) => ({
+          id: row.id,
+          date: row.date,
+          exercises: orderExercises(
+            [...(logsBySession.get(row.id)?.values() ?? [])],
+            programOrder.get(row.workout_id ?? '') ?? new Map<string, number>(),
+          ),
+        })),
+      );
+    } catch (fatigueError) {
+      console.error('Failed to compute upstream fatigue:', fatigueError);
+    }
+
+    const muscleGroups = summarizeMuscleGroups(sessions, sets, now, undefined, fatigue);
     const prs = computeRecentPrs(sessions, sets, now);
     const insights = buildCheckinInsights(sessions, sets, checkins);
     const weekStats = computeWeekStats(sessions, sets, now);

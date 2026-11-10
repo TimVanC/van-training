@@ -9,6 +9,10 @@
 import { MUSCLE_GROUPS, classifyExercise, type MuscleGroup } from './muscles.js';
 import { canonicalLiftKey } from './peak.js';
 import { estimateOneRepMax } from './progression.js';
+import { allowanceFor, fatigueAdjusted } from './fatigue.js';
+
+/** sessionId -> lowercased exercise name -> upstream-fatigue allowance (see fatigue.ts). */
+export type FatigueMap = Map<string, Map<string, number>>;
 
 export interface AnalysisSetRow {
   sessionId: string;
@@ -134,9 +138,10 @@ function computeExerciseTrend(
   lookup: SessionLookup,
   windowDays: number,
   now: Date,
+  fatigue?: FatigueMap,
 ): ExerciseTrend | null {
   const cutoff = now.getTime() - windowDays * DAY_MS;
-  const bySession = new Map<string, { date: string; e1rm: number; top: { weight: number; reps: number } }>();
+  const bySession = new Map<string, { sessionId: string; date: string; e1rm: number; top: { weight: number; reps: number } }>();
 
   for (const set of sets) {
     if (set.weight <= 0 || set.reps <= 0) continue;
@@ -148,6 +153,7 @@ function computeExerciseTrend(
     const existing = bySession.get(set.sessionId);
     if (!existing || e1rm > existing.e1rm) {
       bySession.set(set.sessionId, {
+        sessionId: set.sessionId,
         date: session.date,
         e1rm,
         top: { weight: set.weight, reps: set.reps },
@@ -157,6 +163,15 @@ function computeExerciseTrend(
 
   const series = [...bySession.values()].sort((a, b) => a.date.localeCompare(b.date));
   if (series.length === 0) return null;
+
+  // A dip explained by heavier work earlier in the session (a bench PR before
+  // triceps) counts as holding, not regressing.
+  let prevRaw = 0;
+  for (const point of series) {
+    const raw = point.e1rm;
+    if (prevRaw > 0) point.e1rm = fatigueAdjusted(raw, prevRaw, allowanceFor(fatigue, point.sessionId, name));
+    prevRaw = raw;
+  }
 
   const mean = series.reduce((s, p) => s + p.e1rm, 0) / series.length;
   const t0 = new Date(series[0].date).getTime();
@@ -238,6 +253,7 @@ export function summarizeMuscleGroups(
   sets: AnalysisSetRow[],
   now: Date,
   windowDays = 56,
+  fatigue?: FatigueMap,
 ): MuscleGroupSummary[] {
   const lookup = buildLookup(sessions);
 
@@ -303,7 +319,7 @@ export function summarizeMuscleGroups(
     const exerciseName = displayNameByLift.get(liftKey)?.name ?? exerciseSets[0].exerciseName;
     const cls = classifyExercise(exerciseName);
     if (!cls) continue;
-    const trend = computeExerciseTrend(exerciseName, exerciseSets, lookup, windowDays, now);
+    const trend = computeExerciseTrend(exerciseName, exerciseSets, lookup, windowDays, now, fatigue);
     if (!trend) continue;
     const list = trendsByGroup.get(cls.primary);
     if (list) list.push(trend);

@@ -38,7 +38,7 @@ export interface HistorySession {
   note?: string;
 }
 
-export type ProgressionPhase = 'baseline' | 'ladder' | 'hold' | 'rep-ladder' | 'deload';
+export type ProgressionPhase = 'baseline' | 'ladder' | 'build' | 'hold' | 'rep-ladder' | 'deload';
 
 export interface RecentLiftsResponse {
   lastTrained?: string;

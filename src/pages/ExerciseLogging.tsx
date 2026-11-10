@@ -99,6 +99,14 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   const [setInputError, setSetInputError] = useState<string | null>(null);
   const overlayTimer = useRef<number>(0);
 
+  // Exercises already logged in this workout. The server weighs their extra
+  // fatigue against what preceded this exercise last time.
+  const todayUpstream = JSON.stringify(
+    session.exercises
+      .filter((ex, i) => i !== index && ex.sets.length > 0)
+      .map((ex) => ({ e: ex.activeName ?? ex.name, s: ex.sets.map((set) => [set.weight, set.reps, set.rir]) })),
+  );
+
   function clearSetInputError(): void {
     setSetInputError(null);
   }
@@ -121,7 +129,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         const session = await supabase.auth.getSession();
         const token = session.data.session?.access_token;
         const response = await fetch(
-          `/api/getRecentLifts?exercise=${encodeURIComponent(queryExerciseName)}&targetSets=${targetSets}&repRange=${encodeURIComponent(repRangeQuery)}`,
+          `/api/getRecentLifts?exercise=${encodeURIComponent(queryExerciseName)}&targetSets=${targetSets}&repRange=${encodeURIComponent(repRangeQuery)}&today=${encodeURIComponent(todayUpstream)}`,
           {
             cache: 'no-store',
             headers: token ? { Authorization: `Bearer ${token}` } : {},
@@ -149,7 +157,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         setRecentLiftsLoading(false);
       }
     })();
-  }, [selectedExerciseName, exercise?.targetSets, exercise?.targetRepRange, exercise?.targetReps]);
+  }, [selectedExerciseName, exercise?.targetSets, exercise?.targetRepRange, exercise?.targetReps, todayUpstream]);
 
   useEffect(() => {
     if (!exercise?.name) return;

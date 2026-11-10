@@ -1,7 +1,17 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { buildProgressionPlan } from '../src/lib/progression.js';
-import type { ProgressionPhase } from '../src/lib/progression.js';
+import type { PerformedSet, ProgressionPhase } from '../src/lib/progression.js';
+import {
+  fatigueByOccurrence,
+  orderExercises,
+  upstreamFatigue,
+  upstreamOf,
+  type ExerciseLog,
+  type FatigueReport,
+  type OrderedSessionLog,
+} from '../src/lib/fatigue.js';
+import { loadProgramOrder } from './_lib/exerciseOrder.js';
 
 interface RecentLiftEntry {
   weight: string | number;
@@ -35,6 +45,7 @@ interface SessionJoinRow {
   id: string;
   user_id: string;
   date: string;
+  workout_id?: string | null;
   notes?: string | null;
 }
 
@@ -152,7 +163,7 @@ async function fetchRecentSessions(
   includeNotes: boolean,
   limit = 2,
 ): Promise<{ data: SessionJoinRow[]; error: unknown }> {
-  const sessionCols = includeNotes ? 'id,date,notes' : 'id,date';
+  const sessionCols = includeNotes ? 'id,date,workout_id,notes' : 'id,date,workout_id';
   const result = await supabase
     .from('sessions')
     .select(`${sessionCols},lift_sets!inner(exercise_name)`)
@@ -236,6 +247,100 @@ function parseRepRange(
   return { min: single, max: single };
 }
 
+/**
+ * Exercises already logged in today's in-progress workout, sent by the client
+ * as JSON: [{ e: exerciseName, s: [[weight, reps, rir], ...] }, ...].
+ */
+function parseTodayUpstream(value: unknown, targetExercise: string): ExerciseLog[] {
+  if (typeof value !== 'string' || !value.trim()) return [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    return [];
+  }
+  if (!Array.isArray(parsed)) return [];
+  const target = targetExercise.trim().toLowerCase();
+  const logs: ExerciseLog[] = [];
+  for (const item of parsed.slice(0, 20)) {
+    if (!item || typeof item !== 'object') continue;
+    const o = item as { e?: unknown; s?: unknown };
+    const exerciseName = String(o.e ?? '').trim();
+    if (!exerciseName || exerciseName.toLowerCase() === target || !Array.isArray(o.s)) continue;
+    const sets: PerformedSet[] = [];
+    for (const raw of o.s.slice(0, 20)) {
+      if (!Array.isArray(raw)) continue;
+      const weight = toFiniteNumber(raw[0]);
+      const reps = toFiniteNumber(raw[1]);
+      if (reps <= 0) continue;
+      sets.push({ weight, reps, rir: toProgressionRir(raw[2]) });
+    }
+    if (sets.length > 0) logs.push({ exerciseName, sets });
+  }
+  return logs;
+}
+
+/**
+ * Upstream fatigue for each history session (aligned with `sessions`, most
+ * recent first) and for today's attempt. Lift rows don't record exercise
+ * order, so the day's program order stands in for it.
+ */
+async function loadFatigueContext(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  exerciseName: string,
+  sessions: SessionJoinRow[],
+  todayUpstream: ExerciseLog[],
+): Promise<{ historyFatigue: number[]; todayFatigue?: FatigueReport }> {
+  const ids = sessions.map((s) => s.id);
+  if (ids.length === 0) return { historyFatigue: [] };
+
+  const [rowsResult, programOrder] = await Promise.all([
+    supabase
+      .from('lift_sets')
+      .select('session_id,exercise_name,set_number,weight,reps,rir')
+      .in('session_id', ids)
+      .order('set_number', { ascending: true }),
+    loadProgramOrder(supabase, userId, sessions.map((s) => s.workout_id ?? '')),
+  ]);
+  if (rowsResult.error) throw rowsResult.error;
+
+  const bySession = new Map<string, Map<string, ExerciseLog>>();
+  for (const row of (rowsResult.data ?? []) as LiftSetQueryRow[]) {
+    const name = String(row.exercise_name ?? '').trim();
+    if (!name) continue;
+    const logs = bySession.get(row.session_id) ?? new Map<string, ExerciseLog>();
+    const log = logs.get(name) ?? { exerciseName: name, sets: [] };
+    log.sets.push({ weight: toFiniteNumber(row.weight), reps: toFiniteNumber(row.reps), rir: toProgressionRir(row.rir) });
+    logs.set(name, log);
+    bySession.set(row.session_id, logs);
+  }
+
+  const ordered: OrderedSessionLog[] = sessions
+    .map((s) => ({
+      id: s.id,
+      date: s.date,
+      exercises: orderExercises(
+        [...(bySession.get(s.id)?.values() ?? [])],
+        programOrder.get(s.workout_id ?? '') ?? new Map<string, number>(),
+      ),
+    }))
+    .reverse(); // oldest first
+  const byOccurrence = fatigueByOccurrence(ordered);
+  const key = exerciseName.trim().toLowerCase();
+  const historyFatigue = sessions.map((s) => byOccurrence.get(s.id)?.get(key) ?? 0);
+
+  // Today vs the last time this exercise was trained. If its place in that
+  // session is unknown, there's nothing fair to compare against.
+  const latest = ordered[ordered.length - 1];
+  const previousUpstream = latest ? upstreamOf(latest, exerciseName) : null;
+  const todayFatigue =
+    todayUpstream.length > 0 && previousUpstream
+      ? upstreamFatigue(exerciseName, todayUpstream, previousUpstream)
+      : undefined;
+  return { historyFatigue, todayFatigue };
+}
+
 /** RIR for progression decisions: missing/invalid values are treated as 1. */
 function toProgressionRir(value: unknown): number {
   const n = Number(value);
@@ -297,8 +402,9 @@ export default async function handler(
     let recommendedPlan: RecommendedPlanSet[] | null = null;
     let progressionMetrics: ProgressionMetrics | undefined;
     let sessionHistory: HistorySession[] = [];
-    /** Session id behind each sessionHistory entry, for attaching notes. */
+    /** Session id behind each sessionHistory entry, for attaching notes and fatigue. */
     const historySessionIds: string[] = [];
+    let historySessionRows: SessionJoinRow[] = [];
 
     let recentSessionsResult = await fetchRecentSessions(supabase, userId, exerciseName, true);
     if (recentSessionsResult.error && isMissingColumnError(recentSessionsResult.error, 'notes')) {
@@ -356,6 +462,7 @@ export default async function handler(
       if (historySessionsResult.error) throw historySessionsResult.error;
 
       const historySessions = historySessionsResult.data.slice(0, 10);
+      historySessionRows = historySessions;
       const historyEntries = await Promise.all(
         historySessions.map(async (sessionRow) => {
           const dateOnly = toDateOnly(sessionRow.date);
@@ -400,6 +507,25 @@ export default async function handler(
     let planPhase: ProgressionPhase | undefined;
     let planRationale: string | undefined;
     if (sessionHistory.length > 0) {
+      // Fatigue from earlier exercises is additive context — the plan still
+      // works without it.
+      let historyFatigue: number[] | undefined;
+      let todayFatigue: FatigueReport | undefined;
+      try {
+        const context = await loadFatigueContext(
+          supabase,
+          userId,
+          exerciseName,
+          historySessionRows,
+          parseTodayUpstream(req.query.today, exerciseName),
+        );
+        const fatigueById = new Map(historySessionRows.map((row, i) => [row.id, context.historyFatigue[i] ?? 0]));
+        historyFatigue = historySessionIds.map((id) => fatigueById.get(id) ?? 0);
+        todayFatigue = context.todayFatigue;
+      } catch (fatigueError) {
+        console.error('Failed to load fatigue context:', fatigueError);
+      }
+
       const plan = buildProgressionPlan({
         exerciseName,
         history: sessionHistory.map((entry) =>
@@ -411,6 +537,8 @@ export default async function handler(
         ),
         repRange,
         targetSets,
+        historyFatigue,
+        todayFatigue,
       });
       if (plan) {
         recommendedPlan = plan.sets;
