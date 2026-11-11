@@ -565,7 +565,7 @@ function ladderStep(ctx: PlanContext, allowSkip: boolean): ProgressionPlan {
         phase: 'ladder',
         rationale: tooEasy
           ? `All sets at ${formatWeight(w)} had 3+ reps in reserve — that's too easy. Skipping ahead: ${describeMix(sets)}.`
-          : `You completed all ${n} sets at ${formatWeight(w)}. Time to start the next rung: ${describeMix(sets)}, heaviest set first.`,
+          : `You completed all ${n} sets at ${formatWeight(w)}. Time to move up: ${describeMix(sets)}, heaviest set first.`,
       };
     }
 
@@ -586,7 +586,7 @@ function ladderStep(ctx: PlanContext, allowSkip: boolean): ProgressionPlan {
       return {
         sets,
         phase: 'rep-ladder',
-        rationale: `Three sessions stuck at ${formatWeight(w)}. New angle: keep the weight, push the first set to ${boostReps} reps, then extend set by set.`,
+        rationale: `Three sessions stuck at ${formatWeight(w)}. Trying something different: keep the weight, push the first set to ${boostReps} reps, then extend set by set.`,
       };
     }
 
@@ -594,7 +594,7 @@ function ladderStep(ctx: PlanContext, allowSkip: boolean): ProgressionPlan {
     return {
       sets,
       phase: 'hold',
-      rationale: `Not every set reached ${range.min} reps at ${formatWeight(w)} yet. Own this weight first — same prescription, aim for at least ${range.min} on every set.`,
+      rationale: `Not every set reached ${range.min} reps at ${formatWeight(w)} yet. Stay at this weight and aim for at least ${range.min} reps on every set.`,
     };
   }
 
@@ -616,7 +616,7 @@ function ladderStep(ctx: PlanContext, allowSkip: boolean): ProgressionPlan {
       return {
         sets,
         phase: 'ladder',
-        rationale: `The ${formatWeight(topWeight)} sets are solid. Last step of this rung: all ${n} sets at ${formatWeight(topWeight)}.`,
+        rationale: `The ${formatWeight(topWeight)} sets are solid. Last step before the next jump: all ${n} sets at ${formatWeight(topWeight)}.`,
       };
     }
     const promoted = tooEasy ? Math.min(promotedCount + 2, n) : promotedCount + 1;
@@ -651,7 +651,7 @@ function ladderStep(ctx: PlanContext, allowSkip: boolean): ProgressionPlan {
   return {
     sets,
     phase: 'hold',
-    rationale: `The ${formatWeight(topWeight)} ${promotedCount === 1 ? 'set' : 'sets'} didn't hit ${range.min} reps yet. Run it back — same prescription until it's earned.`,
+    rationale: `The ${formatWeight(topWeight)} ${promotedCount === 1 ? 'set' : 'sets'} didn't hit ${range.min} reps yet. Repeat the same weights and reps until they're there.`,
   };
 }
 

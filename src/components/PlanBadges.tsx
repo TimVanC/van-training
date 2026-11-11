@@ -11,12 +11,36 @@ interface BadgeDef {
 }
 
 const PHASE_BADGES: Record<ProgressionPhase, Omit<BadgeDef, 'key' | 'tone'>> = {
-  baseline: { label: 'Baseline', title: 'Baseline', blurb: 'Not enough history yet, so this repeats your last session.' },
-  ladder: { label: 'Progress', title: 'Progress', blurb: 'The next step up the weight ladder.' },
-  build: { label: 'Build reps', title: 'Build reps', blurb: "The next weight jump isn't realistic yet, so this adds reps first." },
-  hold: { label: 'Hold', title: 'Hold', blurb: 'Same prescription again until it is earned.' },
-  'rep-ladder': { label: 'Rep push', title: 'Rep push', blurb: 'Weight is stuck, so reps progress set by set.' },
-  deload: { label: 'Deload', title: 'Deload', blurb: 'One lighter session to recover, then rebuild.' },
+  baseline: {
+    label: 'First look',
+    title: 'First look',
+    blurb: "There isn't enough history yet to plan a jump, so this repeats your last session.",
+  },
+  ladder: {
+    label: 'Weight up',
+    title: 'Weight up',
+    blurb: 'You earned it: one or more sets go up in weight this time, heaviest set first.',
+  },
+  build: {
+    label: 'More reps',
+    title: 'More reps',
+    blurb: "Same weights as last time. The next weight jump isn't realistic yet, so beat last time's reps first.",
+  },
+  hold: {
+    label: 'Same weight',
+    title: 'Same weight',
+    blurb: "Same weights as last time. Match or beat these reps; the weight doesn't go up yet.",
+  },
+  'rep-ladder': {
+    label: 'Rep push',
+    title: 'Rep push',
+    blurb: 'The weight has been stuck, so add reps set by set at this weight before trying heavier again.',
+  },
+  deload: {
+    label: 'Deload',
+    title: 'Deload',
+    blurb: 'Strength dipped three sessions in a row. One lighter session (about 10% off) to recover, then rebuild.',
+  },
 };
 
 const ADJUSTMENT_BADGES: Record<PlanAdjustment, Omit<BadgeDef, 'key' | 'tone'>> = {

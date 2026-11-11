@@ -49,8 +49,7 @@ interface RecentLiftsSectionProps {
   /**
    * Bar/sled weight (lbs) to subtract from a recommended total before
    * decomposing into plates per side. Defaults to a standard 45 lb bar.
-   * Sled-style movements should pass 0 since the sled weight is already
-   * baked into the user's recorded total via the dedicated sled input.
+   * Sled movements pass the sled's weight: logged totals include it.
    */
   sledBarWeight?: number;
   /** Up to 10 recent sessions rendered in the side-drawer history view. */

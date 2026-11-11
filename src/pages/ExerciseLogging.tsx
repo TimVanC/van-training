@@ -17,6 +17,8 @@ interface ExerciseLoggingProps {
 }
 
 const ADD_SWAP_OPTION_VALUE = '__add_custom_swap__';
+/** Hack squat / leg press sled weight (lbs) when none is entered. */
+const DEFAULT_SLED_WEIGHT = 100;
 
 function IconChevronLeft(): React.JSX.Element {
   return (
@@ -890,7 +892,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         planPhase={planPhase}
         targetSets={totalSets}
         inputMode={inputMode}
-        sledBarWeight={isSledExercise(selectedExerciseName) ? 0 : 45}
+        sledBarWeight={isSledExercise(selectedExerciseName) ? Number(sled) || DEFAULT_SLED_WEIGHT : 45}
         sessionHistory={sessionHistory}
         exerciseNote={exercise.note ?? ''}
         onExerciseNoteChange={updateExerciseNote}
