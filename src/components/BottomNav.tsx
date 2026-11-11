@@ -85,7 +85,7 @@ function BottomNav(): React.JSX.Element {
       </button>
       <button
         type="button"
-        className={`bottom-nav-item ${isActive('/settings') ? 'bottom-nav-item--active' : ''}`}
+        className={`bottom-nav-item ${location.pathname.startsWith('/settings') ? 'bottom-nav-item--active' : ''}`}
         onClick={() => navigate('/settings')}
         aria-label="Settings"
       >

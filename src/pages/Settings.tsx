@@ -68,6 +68,14 @@ function Settings(): React.JSX.Element {
         </section>
       )}
 
+      <section className="settings-card">
+        <h2 className="settings-card-title">Historical data</h2>
+        <p className="settings-note">Fix a typo in any set you've logged, from any exercise.</p>
+        <button type="button" className="settings-btn" onClick={() => navigate('/settings/history')}>
+          Edit logged sets
+        </button>
+      </section>
+
       <AccountSettings email={email} />
 
       <BottomNav />

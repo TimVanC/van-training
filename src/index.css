@@ -5358,3 +5358,129 @@ body {
 .recent-lifts-note-edit {
   margin-bottom: 0.25rem;
 }
+
+/* ============================================================
+   Settings → Historical data (set editor)
+   ============================================================ */
+
+.history-page {
+  gap: 1rem;
+}
+
+.history-header {
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.history-header h1 {
+  margin: 0;
+  flex: 1;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.history-intro {
+  width: 100%;
+  max-width: 480px;
+}
+
+.history-exercise-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  max-width: 480px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.history-exercise {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.history-exercise-name {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.history-exercise-meta {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.history-session {
+  gap: 0.5rem;
+}
+
+.history-set-head,
+.history-set {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr) 3.6rem;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.history-set-head {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.history-set-num {
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.history-input {
+  margin-top: 0;
+  width: 100%;
+  min-width: 0;
+  padding: 0.5rem 0.45rem;
+  font-size: 0.95rem;
+}
+
+.history-save {
+  height: 38px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.history-save:disabled {
+  border-color: var(--border);
+  color: var(--text-muted);
+  cursor: default;
+}
+
+.history-set-msg {
+  margin: 0.25rem 0 0 2.4rem;
+  font-size: 0.78rem;
+  color: var(--warning);
+}
+
+.history-set-msg--ok {
+  color: var(--text-secondary);
+}

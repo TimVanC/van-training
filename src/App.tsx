@@ -10,6 +10,7 @@ import LiftContainer from './pages/LiftContainer';
 import Analytics from './pages/Analytics';
 import AdminPortal from './pages/AdminPortal';
 import Settings from './pages/Settings';
+import SetHistory from './pages/SetHistory';
 import Onboarding from './pages/Onboarding';
 import CoachChat from './pages/CoachChat';
 import Login from './pages/Login';
@@ -158,6 +159,7 @@ function App(): React.JSX.Element {
       <Route path="/analytics" element={user ? <Analytics /> : <Navigate to="/login" replace />} />
       <Route path="/admin" element={user ? <AdminPortal /> : <Navigate to="/login" replace />} />
       <Route path="/settings" element={user ? <Settings /> : <Navigate to="/login" replace />} />
+      <Route path="/settings/history" element={user ? <SetHistory /> : <Navigate to="/login" replace />} />
       <Route path="*" element={<Navigate to={user ? '/' : '/login'} replace />} />
     </Routes>
   );
