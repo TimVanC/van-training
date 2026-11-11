@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import ExerciseNoteField from './ExerciseNoteField';
-import type { HistorySession, RecommendedPlanSet, RecentLift } from '../types/session';
+import type { HistorySession, PlanAdjustment, RecommendedPlanSet, RecentLift } from '../types/session';
 import { formatHistoryDate } from '../utils/format';
 
 function IconCaretDown(): React.JSX.Element {
@@ -39,6 +39,8 @@ interface RecentLiftsSectionProps {
   recommendedPlan?: RecommendedPlanSet[] | null;
   /** Why the engine chose this plan — shown under the recommended sets. */
   planRationale?: string;
+  /** Badges for what scaled the plan's expected strength. */
+  planAdjustments?: PlanAdjustment[];
   targetSets?: number;
   inputMode?: 'weight' | 'plates';
   /**
@@ -139,6 +141,7 @@ function RecentLiftsSection({
   previousExerciseNote,
   recommendedPlan,
   planRationale,
+  planAdjustments = [],
   targetSets = 3,
   inputMode = 'weight',
   sledBarWeight = 45,
@@ -321,6 +324,16 @@ function RecentLiftsSection({
               <p className="recent-lifts-loading">Loading progression...</p>
             ) : recommendedPlan && recommendedPlan.length > 0 ? (
               <>
+                {planAdjustments.length > 0 && (
+                  <div className="plan-badges">
+                    {planAdjustments.includes('fatigue') && (
+                      <span className="plan-badge plan-badge--fatigue">Adjusted for today's fatigue</span>
+                    )}
+                    {planAdjustments.includes('layoff') && (
+                      <span className="plan-badge plan-badge--layoff">Adjusted for time off</span>
+                    )}
+                  </div>
+                )}
                 {recommendedPlan.map((planSet) => (
                   <div key={`${planSet.setNumber}-${planSet.weight}`} className="recent-lifts-item">
                     Set {planSet.setNumber} - {inputMode === 'plates'

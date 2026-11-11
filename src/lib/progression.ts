@@ -19,6 +19,10 @@
  * ways: drops it explains don't count as regression or stalling, and when
  * today's upstream lifts went up, targets are trimmed to what's realistic.
  *
+ * Time away works the same way: after a layoff from the exercise's main
+ * muscle, expected strength is scaled down by `layoffRetention` before the
+ * realism check, and long layoffs drop the weight rather than the reps.
+ *
  * When weight progression stalls, the engine falls back to a rep ladder
  * (extend reps on the first set, then the first two, etc.) before trying
  * weight again, and suggests a deload after sustained regression.
@@ -50,11 +54,36 @@ export type ProgressionPhase =
   | 'rep-ladder'    // weight is stuck, progress reps set by set
   | 'deload';       // sustained regression, back off to rebuild
 
+/** What scaled expected strength for this plan, shown as badges. */
+export type PlanAdjustment = 'fatigue' | 'layoff';
+
 export interface ProgressionPlan {
   sets: PlanSet[];
   phase: ProgressionPhase;
   /** One or two sentences explaining why this plan was chosen. */
   rationale: string;
+  adjustments?: PlanAdjustment[];
+}
+
+/** Strength holds for about three weeks without training a muscle. */
+const LAYOFF_GRACE_DAYS = 21;
+/** Below this much expected loss, a layoff doesn't change the plan. */
+const MEANINGFUL_LAYOFF_LOSS = 0.02;
+
+/**
+ * Share of strength kept after `days` without training a muscle (0.88..1).
+ * Nothing is lost for three weeks, then about 8% by eight weeks, levelling
+ * off at 12% from sixteen weeks. Matches the owner's own comebacks in the
+ * Sept 2024–Nov 2026 history (median change by muscle-group gap: none under
+ * 4 weeks, about -2.5% at 4-6, -8 to -10% at 6-9, -6 to -8% at 9-14) and the
+ * general detraining literature. An estimate, not a measurement per person.
+ */
+export function layoffRetention(days: number): number {
+  if (!(days > LAYOFF_GRACE_DAYS)) return 1;
+  const loss = days <= 56
+    ? (0.08 * (days - LAYOFF_GRACE_DAYS)) / (56 - LAYOFF_GRACE_DAYS)
+    : Math.min(0.12, 0.08 + (0.04 * (days - 56)) / 56);
+  return 1 - loss;
 }
 
 export interface ExerciseProfile {
@@ -309,6 +338,8 @@ export interface ProgressionInput {
   historyFatigue?: number[];
   /** Extra fatigue carried into today from exercises already done this session. */
   todayFatigue?: FatigueReport;
+  /** Days since the exercise's main muscle was last trained, and that muscle's name. */
+  layoff?: { days: number; muscle: string };
 }
 
 interface PlanContext {
@@ -324,6 +355,9 @@ interface PlanContext {
   /** Strength available today relative to last time (1 = fresh as usual). */
   todayFactor: number;
   todayDrivers: string[];
+  /** Part of todayFactor that comes from time away (1 = no layoff). */
+  layoffFactor: number;
+  layoff?: { days: number; muscle: string };
 }
 
 interface Prediction {
@@ -414,8 +448,10 @@ function buildStep(ctx: PlanContext, desired: PlanSet[], blocked: number, chaine
 }
 
 /**
- * Today's upstream lifts went up and the next step isn't realistic on top of
- * that: last time's weights, with each target trimmed to what's realistic.
+ * Today's upstream lifts went up, or the muscle has been off for a while, and
+ * the next step isn't realistic on top of that: last time's weights, with
+ * each target trimmed to what's realistic. After a layoff, a set that would
+ * fall under the rep floor drops weight instead.
  */
 function fatigueHold(ctx: PlanContext): ProgressionPlan {
   const base: PlanSet[] = Array.from({ length: ctx.n }, (_, i) => ({
@@ -425,21 +461,51 @@ function fatigueHold(ctx: PlanContext): ProgressionPlan {
     targetRIR: ctx.targetRir,
   }));
   const pred = predictEffectiveReps(base, ctx);
-  const sets = base.map((s, i) =>
-    s.weight > 0
-      ? { ...s, targetReps: Math.max(1, Math.min(s.targetReps, Math.floor(pred[i].reps - ctx.targetRir + 0.5))) }
-      : s,
+  const sets = base.map((s, i) => {
+    if (s.weight <= 0) return s;
+    const trimmed = { ...s, targetReps: Math.max(1, Math.min(s.targetReps, Math.floor(pred[i].reps - ctx.targetRir + 0.5))) };
+    return ctx.layoffFactor < 1 && trimmed.targetReps < ctx.range.min ? lighterSet(ctx, i, trimmed) : trimmed;
+  });
+  const trimmed = sets.some((s, i) => s.weight < base[i].weight || s.targetReps < base[i].targetReps);
+  return { sets, phase: 'hold', rationale: adjustedRationale(ctx, trimmed) };
+}
+
+/**
+ * Steps a set's weight down until it projects to at least the rep floor
+ * (at most three steps), for comebacks where reps alone would sink too low.
+ */
+function lighterSet(ctx: PlanContext, i: number, set: PlanSet): PlanSet {
+  const e1rm = setE1rm(refSet(ctx, i)) * ctx.todayFactor;
+  const step = Math.max(ctx.profile.increment, ctx.profile.rounding);
+  for (let k = 1; k <= 3; k++) {
+    const weight = roundTo(set.weight - step * k, ctx.profile.rounding);
+    if (weight <= 0) break;
+    const reps = Math.floor(repsAtWeight(e1rm, weight) - ctx.targetRir + 0.5);
+    if (reps >= ctx.range.min) return { ...set, weight, targetReps: Math.min(reps, ctx.range.max) };
+  }
+  return set;
+}
+
+function layoffSentence(ctx: PlanContext): string {
+  if (!ctx.layoff) return '';
+  const weeks = Math.round(ctx.layoff.days / 7);
+  const pct = Math.round((1 - ctx.layoffFactor) * 100);
+  return `It's been about ${weeks} weeks since you last trained ${ctx.layoff.muscle.toLowerCase()}, so expect roughly ${pct}% less strength than last time.`;
+}
+
+function adjustedRationale(ctx: PlanContext, trimmed: boolean): string {
+  const parts: string[] = [];
+  if (ctx.layoff) parts.push(layoffSentence(ctx));
+  if (ctx.todayDrivers.length > 0) {
+    const verb = ctx.todayDrivers.length === 1 ? 'hits' : 'hit';
+    parts.push(`${listNames(ctx.todayDrivers)} went up earlier today and ${verb} the same muscles.`);
+  }
+  parts.push(
+    trimmed
+      ? "Targets are trimmed to what's realistic. Hitting them — or matching last time — is a win."
+      : 'Matching last time here is a win.',
   );
-  const trimmed = sets.some((s, i) => s.targetReps < base[i].targetReps);
-  const names = listNames(ctx.todayDrivers);
-  const verb = ctx.todayDrivers.length === 1 ? 'hits' : 'hit';
-  return {
-    sets,
-    phase: 'hold',
-    rationale: trimmed
-      ? `${names} went up earlier today and ${verb} the same muscles, so targets are trimmed to what's realistic. Hitting them — or matching last time — is a win.`
-      : `${names} went up earlier today and ${verb} the same muscles. Matching last time here is a win.`,
-  };
+  return parts.join(' ');
 }
 
 /** The step the ladder wants next, before any realism check. */
@@ -607,7 +673,11 @@ function realize(ctx: PlanContext, allowSkip: boolean): ProgressionPlan {
         }
         return s.weight === refSet(ctx, i).weight ? { ...s, targetReps: matchedReps(ctx, i) } : s;
       });
-      const note = ctx.todayFactor < 1 ? ` Even with ${listNames(ctx.todayDrivers)} up earlier today, the numbers support it.` : '';
+      const reasons = [
+        ...(ctx.layoff ? ['the time away'] : []),
+        ...(ctx.todayDrivers.length > 0 ? [`${listNames(ctx.todayDrivers)} up earlier today`] : []),
+      ];
+      const note = reasons.length > 0 ? ` Even with ${reasons.join(' and ')}, the numbers support it.` : '';
       return { ...plan, sets, rationale: plan.rationale + note };
     }
     // A double jump that isn't realistic still might be as a single step.
@@ -650,6 +720,9 @@ export function buildProgressionPlan(input: ProgressionInput): ProgressionPlan |
   const state = readLadderState(last);
   const today = input.todayFatigue;
   const todayMeaningful = today !== undefined && today.allowance >= MEANINGFUL_ALLOWANCE;
+  const retention = input.layoff ? layoffRetention(input.layoff.days) : 1;
+  const layoffMeaningful = 1 - retention >= MEANINGFUL_LAYOFF_LOSS;
+  const layoffFactor = layoffMeaningful ? retention : 1;
 
   const ctx: PlanContext = {
     n,
@@ -661,8 +734,10 @@ export function buildProgressionPlan(input: ProgressionInput): ProgressionPlan |
     fatigue,
     targetRir: targetRirFor(last),
     setDrop: interSetDrop(sessions),
-    todayFactor: todayMeaningful ? 1 - today.allowance : 1,
+    todayFactor: (todayMeaningful ? 1 - today.allowance : 1) * layoffFactor,
     todayDrivers: todayMeaningful ? today.drivers.slice(0, 2).map((d) => d.exerciseName) : [],
+    layoffFactor,
+    layoff: layoffMeaningful ? input.layoff : undefined,
   };
 
   // ---- Deload: three straight sessions of declining strength -----------------
@@ -679,5 +754,10 @@ export function buildProgressionPlan(input: ProgressionInput): ProgressionPlan |
     };
   }
 
-  return realize(ctx, true);
+  const plan = realize(ctx, true);
+  const adjustments: PlanAdjustment[] = [
+    ...(todayMeaningful ? (['fatigue'] as const) : []),
+    ...(layoffMeaningful ? (['layoff'] as const) : []),
+  ];
+  return adjustments.length > 0 ? { ...plan, adjustments } : plan;
 }

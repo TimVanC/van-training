@@ -40,6 +40,9 @@ export interface HistorySession {
 
 export type ProgressionPhase = 'baseline' | 'ladder' | 'build' | 'hold' | 'rep-ladder' | 'deload';
 
+/** What scaled expected strength for a plan: today's earlier lifts, or time away. */
+export type PlanAdjustment = 'fatigue' | 'layoff';
+
 export interface RecentLiftsResponse {
   lastTrained?: string;
   sets: RecentLift[];
@@ -52,6 +55,7 @@ export interface RecentLiftsResponse {
   planPhase?: ProgressionPhase;
   /** Human-readable explanation of why this plan was recommended. */
   planRationale?: string;
+  planAdjustments?: PlanAdjustment[];
   progressionMetrics?: ProgressionMetrics;
   /** Up to 10 recent sessions for the side-drawer history view. */
   sessionHistory?: HistorySession[];

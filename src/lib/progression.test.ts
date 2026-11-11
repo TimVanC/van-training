@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildProgressionPlan, type PerformedSet } from './progression';
+import { buildProgressionPlan, layoffRetention, type PerformedSet } from './progression';
 import {
   fatigueAdjusted,
   fatigueByOccurrence,
@@ -77,6 +77,46 @@ describe('buildProgressionPlan realism', () => {
     const base = { exerciseName: 'Overhead Cable Triceps Extension', history, repRange: { min: 10, max: 15 }, targetSets: 1 };
     expect(buildProgressionPlan(base)!.phase).toBe('deload');
     expect(buildProgressionPlan({ ...base, historyFatigue: [0.06, 0.06, 0.06] })!.phase).not.toBe('deload');
+  });
+});
+
+describe('layoff', () => {
+  it('holds strength for three weeks, then loses up to 12%', () => {
+    expect(layoffRetention(14)).toBe(1);
+    expect(layoffRetention(21)).toBe(1);
+    expect(layoffRetention(35)).toBeCloseTo(0.968, 3);
+    expect(layoffRetention(56)).toBeCloseTo(0.92, 3);
+    expect(layoffRetention(112)).toBeCloseTo(0.88, 3);
+    expect(layoffRetention(400)).toBeCloseTo(0.88, 3);
+  });
+
+  const curls = {
+    exerciseName: 'Hammer Curls',
+    history: [[s(35, 12), s(35, 12)]],
+    repRange: { min: 10, max: 12 },
+    targetSets: 2,
+  };
+
+  it('ignores short breaks', () => {
+    const plan = buildProgressionPlan({ ...curls, layoff: { days: 20, muscle: 'Biceps' } })!;
+    expect(plan.adjustments).toBeUndefined();
+  });
+
+  it('scales a comeback down and badges it', () => {
+    const plan = buildProgressionPlan({ ...curls, layoff: { days: 60, muscle: 'Biceps' } })!;
+    expect(plan.adjustments).toEqual(['layoff']);
+    expect(plan.rationale).toMatch(/9 weeks since you last trained biceps/);
+    // Reps alone would sink under the floor, so the weight comes down instead.
+    expect(plan.sets.every((x) => x.weight < 35 && x.targetReps >= 10)).toBe(true);
+  });
+
+  it('badges both adjustments when they stack', () => {
+    const plan = buildProgressionPlan({
+      ...curls,
+      layoff: { days: 40, muscle: 'Biceps' },
+      todayFatigue: { allowance: 0.04, drivers: [{ exerciseName: 'Incline Cable Curls', change: 1, contribution: 0.04 }] },
+    })!;
+    expect(plan.adjustments).toEqual(['fatigue', 'layoff']);
   });
 });
 

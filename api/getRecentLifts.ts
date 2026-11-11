@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { createClient } from '@supabase/supabase-js';
 import { buildProgressionPlan } from '../src/lib/progression.js';
-import type { PerformedSet, ProgressionPhase } from '../src/lib/progression.js';
+import type { PerformedSet, PlanAdjustment, ProgressionPhase } from '../src/lib/progression.js';
 import {
   fatigueByOccurrence,
   orderExercises,
@@ -11,6 +11,7 @@ import {
   type FatigueReport,
   type OrderedSessionLog,
 } from '../src/lib/fatigue.js';
+import { exerciseProfile } from '../src/lib/muscles.js';
 import { loadProgramOrder } from './_lib/exerciseOrder.js';
 
 interface RecentLiftEntry {
@@ -341,6 +342,50 @@ async function loadFatigueContext(
   return { historyFatigue, todayFatigue };
 }
 
+/** An exercise counts as training a muscle when it credits it at least this much. */
+const TRAINS_MUSCLE = 0.5;
+
+/**
+ * Days since the exercise's main muscle was last trained by anything, looking
+ * at sessions since the exercise itself was last done (other curls keep
+ * hammer curls' biceps from detraining).
+ */
+async function loadLayoff(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+  exerciseName: string,
+  lastDoneAt: string,
+): Promise<{ days: number; muscle: string } | undefined> {
+  const muscle = exerciseProfile(exerciseName)?.primary;
+  if (!muscle) return undefined;
+
+  const sessionsResult = await supabase
+    .from('sessions')
+    .select('id,date')
+    .eq('user_id', userId)
+    .gt('date', lastDoneAt);
+  if (sessionsResult.error) throw sessionsResult.error;
+  const later = (sessionsResult.data ?? []) as Array<{ id: string; date: string }>;
+
+  let lastTrained = lastDoneAt;
+  if (later.length > 0) {
+    const namesResult = await supabase
+      .from('lift_sets')
+      .select('session_id,exercise_name')
+      .in('session_id', later.map((x) => x.id));
+    if (namesResult.error) throw namesResult.error;
+    const trainedIn = new Set(
+      ((namesResult.data ?? []) as Array<{ session_id: string; exercise_name: string | null }>)
+        .filter((r) => (exerciseProfile(String(r.exercise_name ?? ''))?.load[muscle] ?? 0) >= TRAINS_MUSCLE)
+        .map((r) => r.session_id),
+    );
+    for (const x of later) if (trainedIn.has(x.id) && x.date > lastTrained) lastTrained = x.date;
+  }
+
+  const days = (Date.now() - Date.parse(lastTrained)) / 86_400_000;
+  return Number.isFinite(days) ? { days, muscle } : undefined;
+}
+
 /** RIR for progression decisions: missing/invalid values are treated as 1. */
 function toProgressionRir(value: unknown): number {
   const n = Number(value);
@@ -506,6 +551,7 @@ export default async function handler(
     // (most recent session first) — no stored state needed.
     let planPhase: ProgressionPhase | undefined;
     let planRationale: string | undefined;
+    let planAdjustments: PlanAdjustment[] | undefined;
     if (sessionHistory.length > 0) {
       // Fatigue from earlier exercises is additive context — the plan still
       // works without it.
@@ -526,6 +572,13 @@ export default async function handler(
         console.error('Failed to load fatigue context:', fatigueError);
       }
 
+      let layoff: { days: number; muscle: string } | undefined;
+      try {
+        if (latestSession) layoff = await loadLayoff(supabase, userId, exerciseName, latestSession.date);
+      } catch (layoffError) {
+        console.error('Failed to load layoff context:', layoffError);
+      }
+
       const plan = buildProgressionPlan({
         exerciseName,
         history: sessionHistory.map((entry) =>
@@ -539,11 +592,13 @@ export default async function handler(
         targetSets,
         historyFatigue,
         todayFatigue,
+        layoff,
       });
       if (plan) {
         recommendedPlan = plan.sets;
         planPhase = plan.phase;
         planRationale = plan.rationale;
+        planAdjustments = plan.adjustments;
       }
     }
 
@@ -555,6 +610,7 @@ export default async function handler(
       recommendedPlan,
       planPhase,
       planRationale,
+      planAdjustments,
       progressionMetrics,
       sessionHistory,
     });

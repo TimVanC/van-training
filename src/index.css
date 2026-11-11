@@ -284,6 +284,35 @@ body {
   border-radius: 0 var(--radius) var(--radius) 0;
 }
 
+.plan-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
+.plan-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border: 1px solid currentColor;
+}
+
+.plan-badge--fatigue {
+  color: var(--accent);
+  background: rgba(245, 132, 38, 0.12);
+}
+
+.plan-badge--layoff {
+  color: #5aa9e6;
+  background: rgba(90, 169, 230, 0.12);
+}
+
 .recent-lifts-error {
   font-size: 0.8125rem;
   color: var(--danger);
