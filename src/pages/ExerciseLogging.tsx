@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import type { LiftSession, LoggedSet, PlanAdjustment, RecommendedPlanSet, RecentLift, RecentLiftsResponse, HistorySession } from '../types/session';
+import type { LiftSession, LoggedSet, PlanAdjustment, ProgressionPhase, RecommendedPlanSet, RecentLift, RecentLiftsResponse, HistorySession } from '../types/session';
 import TemporaryOverlay from '../components/TemporaryOverlay';
 import SetLoggingForm from '../components/SetLoggingForm';
 import LoadingOverlay from '../components/LoadingOverlay';
@@ -87,6 +87,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
   const [recommendedPlan, setRecommendedPlan] = useState<RecommendedPlanSet[] | null>(null);
   const [planRationale, setPlanRationale] = useState<string | undefined>();
   const [planAdjustments, setPlanAdjustments] = useState<PlanAdjustment[]>([]);
+  const [planPhase, setPlanPhase] = useState<ProgressionPhase | undefined>();
   const [sessionHistory, setSessionHistory] = useState<HistorySession[]>([]);
   const [recentLiftsLoading, setRecentLiftsLoading] = useState(false);
   const [selectedExerciseName, setSelectedExerciseName] = useState(
@@ -123,6 +124,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
     setRecommendedPlan(null);
     setPlanRationale(undefined);
     setPlanAdjustments([]);
+    setPlanPhase(undefined);
     setSessionHistory([]);
     const targetSets = exercise?.targetSets ?? 3;
     const repRangeQuery = exercise?.targetRepRange ?? (exercise?.targetReps != null ? String(exercise.targetReps) : '');
@@ -152,6 +154,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         setRecommendedPlan(mappedRecommendedPlan);
         setPlanRationale(typeof data.planRationale === 'string' && data.planRationale ? data.planRationale : undefined);
         setPlanAdjustments(Array.isArray(data.planAdjustments) ? data.planAdjustments : []);
+        setPlanPhase(data.planPhase);
         setSessionHistory(mappedSessionHistory);
       } catch {
         setRecentLifts([]);
@@ -884,6 +887,7 @@ function ExerciseLogging({ session, onUpdateSession }: ExerciseLoggingProps): Re
         recommendedPlan={recommendedPlan}
         planRationale={planRationale}
         planAdjustments={planAdjustments}
+        planPhase={planPhase}
         targetSets={totalSets}
         inputMode={inputMode}
         sledBarWeight={isSledExercise(selectedExerciseName) ? 0 : 45}

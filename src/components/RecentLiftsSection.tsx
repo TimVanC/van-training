@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import ExerciseNoteField from './ExerciseNoteField';
-import type { HistorySession, PlanAdjustment, RecommendedPlanSet, RecentLift } from '../types/session';
+import PlanBadges from './PlanBadges';
+import type { HistorySession, PlanAdjustment, ProgressionPhase, RecommendedPlanSet, RecentLift } from '../types/session';
 import { formatHistoryDate } from '../utils/format';
 
 function IconCaretDown(): React.JSX.Element {
@@ -39,6 +40,8 @@ interface RecentLiftsSectionProps {
   recommendedPlan?: RecommendedPlanSet[] | null;
   /** Why the engine chose this plan — shown under the recommended sets. */
   planRationale?: string;
+  /** Which strategy produced the plan, shown as a tag. */
+  planPhase?: ProgressionPhase;
   /** Badges for what scaled the plan's expected strength. */
   planAdjustments?: PlanAdjustment[];
   targetSets?: number;
@@ -141,6 +144,7 @@ function RecentLiftsSection({
   previousExerciseNote,
   recommendedPlan,
   planRationale,
+  planPhase,
   planAdjustments = [],
   targetSets = 3,
   inputMode = 'weight',
@@ -324,16 +328,6 @@ function RecentLiftsSection({
               <p className="recent-lifts-loading">Loading progression...</p>
             ) : recommendedPlan && recommendedPlan.length > 0 ? (
               <>
-                {planAdjustments.length > 0 && (
-                  <div className="plan-badges">
-                    {planAdjustments.includes('fatigue') && (
-                      <span className="plan-badge plan-badge--fatigue">Adjusted for today's fatigue</span>
-                    )}
-                    {planAdjustments.includes('layoff') && (
-                      <span className="plan-badge plan-badge--layoff">Adjusted for time off</span>
-                    )}
-                  </div>
-                )}
                 {recommendedPlan.map((planSet) => (
                   <div key={`${planSet.setNumber}-${planSet.weight}`} className="recent-lifts-item">
                     Set {planSet.setNumber} - {inputMode === 'plates'
@@ -341,7 +335,7 @@ function RecentLiftsSection({
                       : `${planSet.weight} lbs`} {'->'} {planSet.targetReps} reps (Target RIR: {planSet.targetRIR})
                   </div>
                 ))}
-                {planRationale && <p className="recent-lifts-rationale">{planRationale}</p>}
+                <PlanBadges phase={planPhase} adjustments={planAdjustments} rationale={planRationale} />
               </>
             ) : (
               <p className="recent-lifts-empty">Not enough data to generate progression.</p>

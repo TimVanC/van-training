@@ -289,18 +289,39 @@ body {
   flex-wrap: wrap;
   justify-content: center;
   gap: 0.4rem;
-  margin-bottom: 0.5rem;
+  margin-top: 0.5rem;
 }
 
 .plan-badge {
   display: inline-flex;
   align-items: center;
+  gap: 0.25rem;
   padding: 0.2rem 0.6rem;
   border-radius: 999px;
+  border: 1px solid currentColor;
+  font-family: inherit;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+button.plan-badge::after {
+  content: 'i';
+  display: inline-grid;
+  place-items: center;
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 50%;
   border: 1px solid currentColor;
+  font-size: 0.55rem;
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.plan-badge--phase {
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .plan-badge--fatigue {
@@ -311,6 +332,37 @@ body {
 .plan-badge--layoff {
   color: #5aa9e6;
   background: rgba(90, 169, 230, 0.12);
+}
+
+.plan-badge-modal {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+
+.plan-badge-modal .modal-title,
+.plan-badge-modal .modal-message {
+  margin: 0;
+}
+
+.plan-badge-modal .plan-badge {
+  cursor: default;
+}
+
+.plan-badge-rationale {
+  margin: 0;
+  padding: 0.5rem 0.65rem;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  background-color: rgba(245, 132, 38, 0.08);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.plan-badge-modal .nav-button {
+  align-self: stretch;
 }
 
 .recent-lifts-error {
