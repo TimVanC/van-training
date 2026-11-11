@@ -14,7 +14,10 @@ interface CheckinAnswers {
   soreness: number | null;
   dietQuality: number | null;
   tookPreworkout: boolean | null;
+  preworkoutType: PreworkoutType | null;
 }
+
+type PreworkoutType = 'preworkout' | 'energy_drink' | 'coffee' | 'other';
 
 const INITIAL_ANSWERS: CheckinAnswers = {
   feel: null,
@@ -23,18 +26,23 @@ const INITIAL_ANSWERS: CheckinAnswers = {
   soreness: null,
   dietQuality: null,
   tookPreworkout: null,
+  preworkoutType: null,
 };
 
 const SCALE_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as const;
 const ADVANCE_DELAY_MS = 320;
 
 type QuestionKey = keyof CheckinAnswers;
+type AnswerValue = number | boolean | string | null;
 
 interface QuestionDef {
   key: QuestionKey;
   label: string;
   hint?: string;
-  type: 'scale' | 'yesno';
+  type: 'scale' | 'yesno' | 'choice';
+  options?: { value: string; label: string }[];
+  /** Asked only when this returns true for the answers so far. */
+  showIf?: (answers: CheckinAnswers) => boolean;
 }
 
 const QUESTIONS: QuestionDef[] = [
@@ -44,18 +52,34 @@ const QUESTIONS: QuestionDef[] = [
   { key: 'soreness', label: 'Soreness going in?', hint: '1 = none, 10 = very sore', type: 'scale' },
   { key: 'dietQuality', label: 'Diet quality today?', hint: '1 = poor, 10 = excellent', type: 'scale' },
   { key: 'tookPreworkout', label: 'Did you take pre-workout?', type: 'yesno' },
+  {
+    key: 'preworkoutType',
+    label: 'What did you take?',
+    type: 'choice',
+    options: [
+      { value: 'preworkout', label: 'Pre-workout' },
+      { value: 'energy_drink', label: 'Energy drink' },
+      { value: 'coffee', label: 'Coffee' },
+      { value: 'other', label: 'Other' },
+    ],
+    showIf: (a) => a.tookPreworkout === true,
+  },
 ];
+
+function questionsFor(answers: CheckinAnswers): QuestionDef[] {
+  return QUESTIONS.filter((q) => !q.showIf || q.showIf(answers));
+}
 
 function WorkoutCheckin({ splitName, dayName, onComplete }: WorkoutCheckinProps): React.JSX.Element {
   const [stepIndex, setStepIndex] = useState(0);
   const [answers, setAnswers] = useState<CheckinAnswers>(INITIAL_ANSWERS);
-  const [pendingValue, setPendingValue] = useState<number | boolean | null>(null);
+  const [pendingValue, setPendingValue] = useState<AnswerValue>(null);
   const [isAdvancing, setIsAdvancing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
 
-  const currentQuestion = QUESTIONS[stepIndex];
-  const isLastQuestion = stepIndex === QUESTIONS.length - 1;
+  const questions = questionsFor(answers);
+  const currentQuestion = questions[stepIndex];
   const isFirstQuestion = stepIndex === 0;
   const currentAnswerValue = answers[currentQuestion.key];
 
@@ -78,6 +102,7 @@ function WorkoutCheckin({ splitName, dayName, onComplete }: WorkoutCheckinProps)
           soreness: finalAnswers.soreness,
           diet_quality: finalAnswers.dietQuality,
           took_preworkout: finalAnswers.tookPreworkout,
+          preworkout_type: finalAnswers.tookPreworkout === true ? finalAnswers.preworkoutType : null,
         });
       }
     } catch {
@@ -95,14 +120,18 @@ function WorkoutCheckin({ splitName, dayName, onComplete }: WorkoutCheckinProps)
     }
   }
 
-  function commitAnswer(value: number | boolean | null): void {
+  function commitAnswer(value: AnswerValue): void {
     if (isAdvancing) return;
     blurActiveElement();
     setPendingValue(value);
     setIsAdvancing(true);
 
     const updated = { ...answers, [currentQuestion.key]: value };
+    // Changing "took pre-workout" away from yes drops what it was.
+    if (currentQuestion.key === 'tookPreworkout' && value !== true) updated.preworkoutType = null;
     setAnswers(updated);
+    // A yes adds the follow-up question, so check what's left with the new answer.
+    const isLastQuestion = stepIndex >= questionsFor(updated).length - 1;
 
     window.setTimeout(() => {
       setIsAdvancing(false);
@@ -148,7 +177,7 @@ function WorkoutCheckin({ splitName, dayName, onComplete }: WorkoutCheckinProps)
         ) : (
           <>
             <div className="checkin-progress" aria-hidden>
-              {QUESTIONS.map((q, i) => (
+              {questions.map((q, i) => (
                 <span
                   key={q.key}
                   className={`checkin-progress-dot ${i === stepIndex ? 'checkin-progress-dot--active' : ''} ${i < stepIndex ? 'checkin-progress-dot--done' : ''}`}
@@ -173,6 +202,20 @@ function WorkoutCheckin({ splitName, dayName, onComplete }: WorkoutCheckinProps)
                       disabled={isSubmitting || isAdvancing}
                     >
                       {n}
+                    </button>
+                  ))}
+                </div>
+              ) : currentQuestion.type === 'choice' ? (
+                <div className="checkin-choice" role="radiogroup" aria-label={currentQuestion.label}>
+                  {currentQuestion.options?.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`checkin-yesno-btn ${displayValue === option.value ? 'checkin-yesno-btn--selected' : ''}`}
+                      onClick={() => commitAnswer(option.value)}
+                      disabled={isSubmitting || isAdvancing}
+                    >
+                      {option.label}
                     </button>
                   ))}
                 </div>
