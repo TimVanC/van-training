@@ -81,13 +81,16 @@ describe('buildProgressionPlan realism', () => {
 });
 
 describe('layoff', () => {
-  it('holds strength for three weeks, then loses up to 12%', () => {
+  it('holds strength for three weeks, then loses up to 16%', () => {
     expect(layoffRetention(14)).toBe(1);
     expect(layoffRetention(21)).toBe(1);
-    expect(layoffRetention(35)).toBeCloseTo(0.968, 3);
-    expect(layoffRetention(56)).toBeCloseTo(0.92, 3);
-    expect(layoffRetention(112)).toBeCloseTo(0.88, 3);
-    expect(layoffRetention(400)).toBeCloseTo(0.88, 3);
+    // 6-9 weeks: 8-10%
+    expect(layoffRetention(42)).toBeCloseTo(0.92, 3);
+    expect(layoffRetention(63)).toBeCloseTo(0.9, 3);
+    // 9-14 weeks: 11-16%, then level
+    expect(layoffRetention(70)).toBeCloseTo(0.888, 3);
+    expect(layoffRetention(98)).toBeCloseTo(0.84, 3);
+    expect(layoffRetention(400)).toBeCloseTo(0.84, 3);
   });
 
   const curls = {

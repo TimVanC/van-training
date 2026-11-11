@@ -71,19 +71,29 @@ const LAYOFF_GRACE_DAYS = 21;
 const MEANINGFUL_LAYOFF_LOSS = 0.02;
 
 /**
- * Share of strength kept after `days` without training a muscle (0.88..1).
- * Nothing is lost for three weeks, then about 8% by eight weeks, levelling
- * off at 12% from sixteen weeks. Matches the owner's own comebacks in the
- * Sept 2024–Nov 2026 history (median change by muscle-group gap: none under
- * 4 weeks, about -2.5% at 4-6, -8 to -10% at 6-9, -6 to -8% at 9-14) and the
- * general detraining literature. An estimate, not a measurement per person.
+ * Expected strength loss by days without training a muscle, as
+ * [days, loss] points joined by straight lines. Nothing is lost for three
+ * weeks; 6-9 weeks costs 8-10% and 9-14 weeks 11-16%, levelling off there.
+ * The 6-14 week values are the owner's call: their own comeback history
+ * agreed up to 9 weeks but showed less loss after that, which reads as
+ * sampling skew (few, easier comebacks) rather than recovery.
  */
+const LAYOFF_LOSS_CURVE: ReadonlyArray<readonly [number, number]> = [
+  [LAYOFF_GRACE_DAYS, 0],
+  [42, 0.08],
+  [63, 0.1],
+  [98, 0.16],
+];
+
+/** Share of strength kept after `days` without training a muscle (0.84..1). */
 export function layoffRetention(days: number): number {
   if (!(days > LAYOFF_GRACE_DAYS)) return 1;
-  const loss = days <= 56
-    ? (0.08 * (days - LAYOFF_GRACE_DAYS)) / (56 - LAYOFF_GRACE_DAYS)
-    : Math.min(0.12, 0.08 + (0.04 * (days - 56)) / 56);
-  return 1 - loss;
+  const last = LAYOFF_LOSS_CURVE[LAYOFF_LOSS_CURVE.length - 1];
+  if (days >= last[0]) return 1 - last[1];
+  const i = LAYOFF_LOSS_CURVE.findIndex(([d]) => d >= days);
+  const [d0, l0] = LAYOFF_LOSS_CURVE[i - 1];
+  const [d1, l1] = LAYOFF_LOSS_CURVE[i];
+  return 1 - (l0 + ((l1 - l0) * (days - d0)) / (d1 - d0));
 }
 
 export interface ExerciseProfile {
